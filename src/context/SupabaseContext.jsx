@@ -7,8 +7,8 @@ const SupabaseContext = createContext();
 // ============================================
 // YOUR PROJECT KEYS
 // ============================================
-const SUPABASE_URL = 'https://zaupoobfkajpdaqglqwh.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphdXBvb2Jma2FqcGRhcWdscXdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNzYxNDksImV4cCI6MjA4MTUzNjE0OX0.RGZFGiU4pQHTVwpxGcJbNDWy0CljSAFnEq7pqLKmjlE';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 console.log('=== SUPABASE INITIALIZATION ===');
 console.log('URL:', SUPABASE_URL);
