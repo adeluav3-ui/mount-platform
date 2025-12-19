@@ -1,0 +1,965 @@
+// src/components/company/JobsSection.jsx — CORRECTED VERSION
+import React from 'react'
+import { useState, useEffect } from 'react'
+import QuoteForm from './QuoteForm'
+
+export default function JobsSection({
+    showJobs,
+    setShowJobs,
+    user,
+    supabase
+}) {
+    const [jobs, setJobs] = useState([])
+    const [jobsLoading, setJobsLoading] = useState(false)
+    const [jobToQuote, setJobToQuote] = useState(null)
+    const [showOnsiteModal, setShowOnsiteModal] = useState(false)
+    const [selectedJobForOnsite, setSelectedJobForOnsite] = useState(null)
+
+    const loadJobs = async () => {
+        setJobsLoading(true)
+        try {
+            // Get jobs where company_id matches AND status is NOT declined_by_company
+            const { data: jobsData, error: jobsError } = await supabase
+                .from('jobs')
+                .select('*')
+                .eq('company_id', user.id)
+                .neq('status', 'declined_by_company')  // EXCLUDE declined jobs
+                .order('created_at', { ascending: false })
+
+            if (jobsError) throw jobsError
+
+            if (!jobsData || jobsData.length === 0) {
+                setJobs([])
+                setJobsLoading(false)
+                return
+            }
+
+            const jobsWithDetails = await Promise.all(
+                jobsData.map(async (job) => {
+                    let customerDetails = null
+
+                    try {
+                        const { data: customer } = await supabase
+                            .from('customers')
+                            .select('customer_name, phone, email')
+                            .eq('id', job.customer_id)
+                            .single()
+
+                        customerDetails = customer
+                    } catch (error) {
+                        console.warn(`Could not fetch customer ${job.customer_id}:`, error)
+
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('full_name, phone')
+                            .eq('id', job.customer_id)
+                            .single()
+
+                        if (profile) {
+                            customerDetails = {
+                                customer_name: profile.full_name,
+                                phone: profile.phone,
+                                email: job.customer_id
+                            }
+                        }
+                    }
+
+                    return {
+                        ...job,
+                        customer: customerDetails || {
+                            customer_name: 'Unknown Customer',
+                            phone: 'N/A',
+                            email: 'N/A'
+                        }
+                    }
+                })
+            )
+
+            setJobs(jobsWithDetails)
+        } catch (error) {
+            console.error('Error loading jobs:', error)
+            alert('Failed to load jobs. Please refresh the page.')
+        } finally {
+            setJobsLoading(false)
+        }
+    }
+
+    const markWorkAsCompleted = async (jobId) => {
+        console.log('🔄 markWorkAsCompleted called for job:', jobId);
+
+        if (!window.confirm('Mark this job as completed? This will notify the customer to review the work.')) return
+
+        try {
+            console.log('📝 Updating job status to work_completed...');
+
+            // Update job status
+            const { data: updateData, error } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'work_completed',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId)
+                .select() // Add select to see what's returned
+
+            console.log('📤 Update response:', { updateData, error });
+
+            if (error) {
+                console.error('❌ Update error details:', error);
+                throw error;
+            }
+
+            console.log('✅ Job status updated. Fetching job details...');
+
+            // Get job details for notification
+            const { data: job, error: jobError } = await supabase
+                .from('jobs')
+                .select('customer_id, category, company_id')
+                .eq('id', jobId)
+                .single()
+
+            console.log('📋 Job fetch result:', { job, jobError });
+
+            if (jobError) {
+                console.error('❌ Job fetch error:', jobError);
+                throw jobError;
+            }
+
+            if (!job) {
+                throw new Error('Job not found after update');
+            }
+
+            console.log('📧 Creating notification for customer:', job.customer_id);
+
+            // Notify customer
+            const { data: notificationData, error: notificationError } = await supabase
+                .from('notifications')
+                .insert({
+                    user_id: job.customer_id,
+                    job_id: jobId,
+                    type: 'work_completed',
+                    title: 'Work Completed',
+                    message: `Company has marked your ${job.category} job as completed. Please review and approve to release final payment.`,
+                    read: false,
+                    created_at: new Date().toISOString()
+                })
+                .select()
+
+            console.log('📨 Notification insert result:', { notificationData, notificationError });
+
+            if (notificationError) {
+                console.error('❌ Notification error:', notificationError);
+                throw notificationError;
+            }
+
+            alert('✅ Job marked as completed! Customer has been notified to review.');
+            console.log('🔄 Reloading jobs...');
+            loadJobs()
+
+        } catch (error) {
+            console.error('💥 Error marking work as completed:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+            alert(`❌ Failed to mark job as completed. Error: ${error.message || 'Unknown error'}`);
+        }
+    }
+
+    const requestIntermediatePayment = async (jobId) => {
+        console.log('🔄 requestIntermediatePayment called for job:', jobId);
+
+        // Find the job
+        const job = jobs.find(j => j.id === jobId);
+        if (!job) {
+            alert('Job not found');
+            return;
+        }
+
+        const intermediateAmount = Math.round(job.quoted_price * 0.30);
+
+        if (!window.confirm(
+            `Request 30% intermediate payment for materials?\n\n` +
+            `This will:\n` +
+            `1. Request ₦${intermediateAmount.toLocaleString()} from customer\n` +
+            `2. Notify customer to make payment\n` +
+            `3. Allow you to purchase materials\n\n` +
+            `Customer will pay 30% now and 20% upon completion (instead of 50% later).`
+        )) return;
+
+        try {
+            console.log('📝 Creating intermediate payment request...');
+
+            // 1. Create a financial transaction record for the intermediate payment
+            const paymentData = {
+                job_id: jobId,
+                user_id: job.customer_id, // Customer's user ID
+                type: 'intermediate',
+                amount: intermediateAmount,
+                platform_fee: 0, // No fee on intermediate payments
+                description: '30% intermediate payment for materials',
+                reference: `INT-${jobId.substring(0, 8)}-${Date.now()}`,
+                status: 'pending',
+                payment_method: 'bank_transfer',
+                bank_reference: `INT-${jobId.substring(0, 8)}-${Date.now()}`,
+                verified_by_admin: false,
+                proof_of_payment_url: null,
+                admin_notes: null,
+                metadata: {
+                    requested_by_company: user.id,
+                    company_name: 'Your Company', // You might want to fetch this
+                    for_materials: true,
+                    requested_at: new Date().toISOString()
+                },
+                created_at: new Date().toISOString()
+            };
+
+            console.log('📦 Creating intermediate payment record:', paymentData);
+
+            // 2. Insert the payment record
+            const { data: transaction, error: transactionError } = await supabase
+                .from('financial_transactions')
+                .insert(paymentData)
+                .select()
+                .single();
+
+            if (transactionError) {
+                console.error('❌ Transaction creation error:', transactionError);
+                throw transactionError;
+            }
+
+            console.log('✅ Intermediate payment record created:', transaction);
+
+            // 3. Update job status to indicate intermediate payment was requested
+            const { error: jobUpdateError } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'work_ongoing',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+
+            if (jobUpdateError) {
+                console.error('❌ Job update error:', jobUpdateError);
+                throw jobUpdateError;
+            }
+
+            console.log('✅ Job status updated to work_ongoing');
+
+            // 4. Send notification to customer
+            const notificationData = {
+                user_id: job.customer_id,
+                job_id: jobId,
+                type: 'intermediate_payment_requested',
+                title: 'Intermediate Payment Requested',
+                message: `Company has requested a 30% intermediate payment (₦${intermediateAmount.toLocaleString()}) for materials. Please make payment to continue.`,
+                read: false,
+                created_at: new Date().toISOString()
+            };
+
+            const { error: notificationError } = await supabase
+                .from('notifications')
+                .insert(notificationData);
+
+            if (notificationError) {
+                console.warn('⚠️ Notification error:', notificationError);
+            } else {
+                console.log('✅ Customer notified');
+            }
+
+            alert(`✅ Intermediate payment request sent to customer!\n\nAmount: ₦${intermediateAmount.toLocaleString()}\n\nCustomer has been notified to make payment.`);
+
+            console.log('🔄 Reloading jobs...');
+            loadJobs();
+
+        } catch (error) {
+            console.error('💥 Error requesting intermediate payment:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
+            alert(`❌ Failed to request intermediate payment. Error: ${error.message || 'Unknown error'}`);
+        }
+    };
+    useEffect(() => {
+        if (!showJobs || !user || !supabase) return
+
+        loadJobs()
+
+        const channel = supabase
+            .channel('jobs-changes')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'jobs',
+                filter: `company_id=eq.${user.id}`
+            }, () => loadJobs())
+            .subscribe()
+
+        return () => supabase.removeChannel(channel)
+    }, [showJobs, supabase, user])
+
+    const handleRequestOnsiteCheck = async (jobId) => {
+        if (!window.confirm("Request onsite check? This will notify the customer that you need to visit the location before giving a final quote.")) {
+            return
+        }
+
+        try {
+            const { error } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'onsite_pending',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId)
+
+            if (error) throw error
+
+            console.log('=== DEBUG: Creating onsite notification ===')
+            console.log('Job ID:', jobId)
+            console.log('Current user ID (company):', user.id)
+
+            const { data: job } = await supabase
+                .from('jobs')
+                .select('customer_id')
+                .eq('id', jobId)
+                .single()
+
+            console.log('Customer ID from job:', job?.customer_id)
+
+            await createCustomerNotification(jobId, 'onsite_requested')
+
+            alert('Onsite check requested! Customer has been notified.')
+            loadJobs()
+
+        } catch (error) {
+            console.error('Failed to request onsite check:', error)
+            alert('Error requesting onsite check. Please try again.')
+        }
+    }
+
+
+
+    const createCustomerNotification = async (jobId, notificationType, companyName = '') => {
+        try {
+            const { data: job, error: jobError } = await supabase
+                .from('jobs')
+                .select('customer_id, category, sub_service, company_id')
+                .eq('id', jobId)
+                .single()
+
+            if (!job) return
+
+            let title = '';
+            let message = '';
+
+            switch (notificationType) {
+                case 'onsite_requested':
+                    title = 'Onsite Check Requested';
+                    message = `${companyName || 'The company'} has requested to visit your location for assessment before providing a final quote.`;
+                    break;
+                case 'job_declined':
+                    title = 'Job Declined';
+                    message = `${companyName || 'A company'} has declined your "${job.sub_service || job.category}" job. You can post the job again to find another company if you wish.`;
+                    break;
+                case 'quote_received':
+                    title = 'New Quote Received';
+                    message = `${companyName || 'A company'} has sent you a quote for your "${job.sub_service || job.category}" job.`;
+                    break;
+                default:
+                    title = 'Job Update';
+                    message = 'There is an update on your job.';
+            }
+
+            const notificationData = {
+                user_id: job.customer_id,
+                job_id: jobId,
+                type: notificationType,
+                title: title,
+                message: message,
+                // REMOVE company_name - it doesn't exist in your table
+                read: false,
+                created_at: new Date().toISOString()
+            }
+
+            await supabase.from('notifications').insert(notificationData)
+
+        } catch (error) {
+            console.error('Failed to create notification:', error)
+        }
+    }
+
+    const handleDeleteJob = async (jobId, e) => {
+        e.stopPropagation()
+        if (!window.confirm("Are you sure you want to decline this job? The customer will see that you declined and may choose to post the job again.")) return
+
+        const jobToDelete = jobs.find(job => job.id === jobId)
+        if (!jobToDelete) return
+
+        // Remove from UI immediately for better UX
+        setJobs(prev => prev.filter(job => job.id !== jobId))
+
+        try {
+            // Get your company name first
+            const { data: companyData, error: companyError } = await supabase
+                .from('companies')
+                .select('company_name')
+                .eq('id', user.id)
+                .single()
+
+            const companyName = companyData?.company_name || 'A company'
+
+            console.log('Updating job with:', {
+                jobId,
+                status: 'declined_by_company',
+                company_id: null,
+                companyName
+            });
+
+            // Update job status to declined_by_company but KEEP company_id
+            const { error } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'declined_by_company',
+                    // DON'T set company_id to null - keep it so we know who declined
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId)
+                .eq('company_id', user.id)
+
+            if (error) {
+                console.error('Update error details:', error);
+                throw error;
+            }
+
+            console.log('Job update successful');
+
+            // Create notification for customer
+            await createCustomerNotification(jobId, 'job_declined', companyName)
+
+            alert('Job declined. The customer has been notified.')
+
+        } catch (err) {
+            console.error('Failed to decline job:', err)
+            // Restore the job in the UI if the update failed
+            setJobs(prev => [jobToDelete, ...prev.filter(job => job.id !== jobToDelete.id)])
+            alert("Error: Failed to decline the job. Please try again. Message: " + err.message)
+        }
+    }
+
+    const OnsiteCheckModal = () => {
+        if (!showOnsiteModal || !selectedJobForOnsite) return null
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                    <h3 className="text-xl font-bold text-naijaGreen mb-4">Request Onsite Check</h3>
+
+                    <p className="text-gray-700 mb-6">
+                        You're about to request an onsite check for:
+                        <strong className="block mt-2">{selectedJobForOnsite.sub_service || selectedJobForOnsite.category}</strong>
+                    </p>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                        <p className="text-sm text-yellow-800">
+                            <strong>Note:</strong> This will notify the customer that you need to visit their location
+                            to assess the job before providing a final quote.
+                        </p>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => {
+                                setShowOnsiteModal(false)
+                                setSelectedJobForOnsite(null)
+                            }}
+                            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={async () => {
+                                await handleRequestOnsiteCheck(selectedJobForOnsite.id)
+                                setShowOnsiteModal(false)
+                                setSelectedJobForOnsite(null)
+                            }}
+                            className="flex-1 bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen"
+                        >
+                            Confirm Request
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    if (!showJobs) return null
+
+    return (
+        <div className="mt-12 bg-white rounded-3xl shadow-2xl p-8">
+            <button
+                onClick={() => setShowJobs(false)}
+                className="mb-6 text-naijaGreen font-bold hover:underline flex items-center gap-2"
+            >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to Dashboard
+            </button>
+
+            <OnsiteCheckModal />
+
+            {jobsLoading ? (
+                <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-naijaGreen"></div>
+                    <p className="mt-4 text-gray-500">Loading jobs...</p>
+                </div>
+            ) : jobs.length === 0 ? (
+                <div className="text-center py-16">
+                    <div className="text-6xl mb-4 text-gray-300">🛠️</div>
+                    <p className="text-2xl text-gray-500 font-bold">No jobs yet</p>
+                    <p className="text-gray-400 mt-2">Jobs will appear here when customers send them.</p>
+                </div>
+            ) : (
+                <div className="space-y-6">
+                    {jobs.map(job => (
+                        <div key={job.id} className="relative border-2 border-naijaGreen/20 rounded-2xl p-6 hover:shadow-lg transition">
+                            <button
+                                onClick={(e) => handleDeleteJob(job.id, e)}
+                                className="absolute top-4 right-4 bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-full transition"
+                                title="Delete Job"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+
+                            <h3 className="text-xl font-bold text-naijaGreen pr-10">
+                                {job.sub_service || job.category}
+                                {job.custom_sub_description && (
+                                    <span className="block text-lg italic text-gray-600">Custom: {job.custom_sub_description}</span>
+                                )}
+                            </h3>
+
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-gray-700">
+                                        <span className="font-bold">Location:</span> {job.location || 'Not specified'}
+                                    </p>
+                                    <p className="text-gray-700 mt-2">
+                                        <span className="font-bold">Customer Budget:</span>
+                                        <span className="text-naijaGreen font-bold ml-2">₦{Number(job.budget || 0).toLocaleString()}</span>
+                                    </p>
+                                    <p className="text-gray-700 mt-2">
+                                        <span className="font-bold">Description:</span> {job.description || 'No description provided'}
+                                    </p>
+                                </div>
+
+                                <div className="mt-4 p-4 bg-gray-100 rounded-xl">
+                                    <p className="font-bold text-gray-800 mb-2">Customer Contact:</p>
+                                    <p className="text-gray-700">
+                                        <span className="font-medium">Name:</span> {job.customer?.customer_name || 'N/A'}
+                                    </p>
+                                    <p className="text-gray-700 mt-1">
+                                        <span className="font-medium">Phone:</span>
+                                        <strong className="ml-2">{job.customer?.phone || 'Not provided'}</strong>
+                                    </p>
+                                    <p className="text-gray-700 mt-1">
+                                        <span className="font-medium">Email:</span> {job.customer?.email || 'N/A'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {job.photos && Array.isArray(job.photos) && job.photos.length > 0 && (
+                                <div className="mt-6">
+                                    <p className="font-bold text-gray-700 mb-3">Job Photos ({job.photos.length}):</p>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        {job.photos.map((url, i) => (
+                                            <a
+                                                key={i}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block"
+                                            >
+                                                <img
+                                                    src={url}
+                                                    alt={`Job photo ${i + 1}`}
+                                                    className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
+                                                    onError={(e) => {
+                                                        e.target.src = '/default-job-photo.jpg'
+                                                        e.target.alt = 'Image failed to load'
+                                                    }}
+                                                />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-6">
+                                <span className={`px-4 py-2 rounded-full text-sm font-bold ${job.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    job.status === 'onsite_pending' ? 'bg-orange-100 text-orange-800' :
+                                        job.status === 'price_set' ? 'bg-blue-100 text-blue-800' :
+                                            job.status === 'deposit_paid' ? 'bg-green-100 text-green-800' :
+                                                job.status === 'work_ongoing' ? 'bg-blue-100 text-blue-800' :      // NEW
+                                                    job.status === 'intermediate_paid' ? 'bg-purple-100 text-purple-800' : // NEW
+                                                        job.status === 'work_completed' ? 'bg-orange-100 text-orange-800' :
+                                                            job.status === 'completed_paid' ? 'bg-purple-100 text-purple-800' :
+                                                                job.status === 'declined_by_customer' ? 'bg-red-100 text-red-800' :
+                                                                    'bg-gray-100 text-gray-800'
+                                    }`}>
+                                    {job.status.replace(/_/g, ' ').toUpperCase()}
+                                </span>
+                            </div>
+
+                            {job.status === 'pending' && (
+                                <div className="mt-6 flex gap-4 flex-wrap">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedJobForOnsite(job)
+                                            setShowOnsiteModal(true)
+                                        }}
+                                        className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-700 transition"
+                                    >
+                                        Request Onsite Check
+                                    </button>
+                                    <button
+                                        onClick={() => setJobToQuote(job)}
+                                        className="bg-naijaGreen text-white px-6 py-3 rounded-lg font-bold hover:bg-darkGreen transition"
+                                    >
+                                        Send Quote Now
+                                    </button>
+                                </div>
+                            )}
+
+                            {job.status === 'onsite_pending' && (
+                                <div className="mt-6 p-4 bg-orange-100 border border-orange-500 rounded-xl">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-bold text-orange-800">Onsite Check Requested</p>
+                                            <p className="text-orange-600 text-sm mt-1">
+                                                Waiting for customer confirmation. Once onsite check is done, send your quote.
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => setJobToQuote(job)}
+                                            className="bg-naijaGreen text-white px-6 py-3 rounded-lg font-bold hover:bg-darkGreen transition"
+                                        >
+                                            Onsite Done - Send Quote
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {job.status === 'price_set' && (
+                                <div className="mt-6 p-4 bg-blue-100 border border-blue-500 rounded-xl">
+                                    <p className="font-bold text-blue-800 text-lg">
+                                        Quote Sent: ₦{Number(job.quoted_price).toLocaleString()}
+                                    </p>
+                                    <p className="text-blue-600">Waiting for customer to accept and pay 50% deposit...</p>
+                                    {job.company_notes && (
+                                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-sm font-medium text-blue-700">Your Notes:</p>
+                                            <p className="text-blue-600">{job.company_notes}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* FIXED: Proper QuoteForm props */}
+                            {jobToQuote?.id === job.id && (
+                                <div className="mt-6">
+                                    <QuoteForm
+                                        jobId={jobToQuote.id}
+                                        companyId={user?.id}
+                                        onQuoteSubmitted={() => {
+                                            setJobToQuote(null);
+                                            loadJobs(); // Refresh jobs after quote submission
+                                        }}
+                                        onCancel={() => setJobToQuote(null)}
+                                    />
+                                </div>
+                            )}
+
+                            {/* FIXED: Replace the old deposit_paid section with new work completion button */}
+                            {job.status === 'deposit_paid' && (
+                                <div className="mt-6 p-4 bg-green-100 border border-green-500 rounded-xl">
+                                    <p className="font-bold text-xl text-green-800">Deposit Paid — Work Ongoing!</p>
+                                    <p className="text-lg mt-2">
+                                        Agreed Price: ₦{Number(job.quoted_price).toLocaleString()}
+                                    </p>
+                                    <p className="text-lg font-bold mt-2">
+                                        Customer Phone: <span className="text-green-700">{job.customer?.phone || 'N/A'}</span>
+                                    </p>
+
+                                    {/* Payment breakdown information */}
+                                    <div className="mt-4 p-3 bg-green-50 border border-green-300 rounded-lg">
+                                        <p className="font-bold text-green-700 mb-2">Payment Structure:</p>
+                                        <div className="text-sm text-green-600 space-y-1">
+                                            <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Already Paid)</p>
+                                            <p>⏳ Remaining Balance: ₦{(job.quoted_price * 0.5).toLocaleString()}</p>
+                                            <p className="font-medium mt-2">Options for remaining balance:</p>
+                                            <ul className="list-disc pl-5 mt-1">
+                                                <li>Request 30% now for materials (customer pays 30%, you get materials)</li>
+                                                <li>Complete work and get 50% final payment</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {/* Request Intermediate Payment Button */}
+                                        <button
+                                            onClick={() => requestIntermediatePayment(job.id)}
+                                            className="bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                        >
+                                            <span>💰</span>
+                                            <span>Request 30% for Materials</span>
+                                        </button>
+
+                                        {/* Mark as Completed Button */}
+                                        <button
+                                            onClick={() => markWorkAsCompleted(job.id)}
+                                            className="bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2"
+                                        >
+                                            <span>✅</span>
+                                            <span>Mark Work as Completed</span>
+                                        </button>
+                                    </div>
+
+                                    <p className="text-xs text-gray-600 mt-3 text-center">
+                                        Need materials? Request 30% advance. Otherwise, mark as completed when done.
+                                    </p>
+                                </div>
+                            )}
+
+                            {job.status === 'work_ongoing' && (
+                                <div className="mt-6 p-4 bg-blue-100 border border-blue-500 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <span className="text-2xl">⏳</span>
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                            <p className="font-bold text-xl text-blue-800">Intermediate Payment Requested</p>
+                                            <p className="text-blue-700 mt-2">
+                                                You have requested a 30% intermediate payment (₦{(job.quoted_price * 0.30).toLocaleString()}) for materials.
+                                            </p>
+                                            <p className="text-lg font-bold mt-3">
+                                                Customer Phone: <span className="text-blue-700">{job.customer?.phone || 'N/A'}</span>
+                                            </p>
+
+                                            <div className="mt-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
+                                                <p className="font-medium text-blue-800 mb-2">Waiting for customer to pay:</p>
+                                                <div className="text-blue-700 space-y-1">
+                                                    <p>• 30% Intermediate: ₦{(job.quoted_price * 0.30).toLocaleString()} (for materials)</p>
+                                                    <p>• Remaining after payment: 20% final payment</p>
+                                                    <p className="text-sm mt-2">Once customer pays, you'll receive notification to purchase materials.</p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => markWorkAsCompleted(job.id)}
+                                                className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                                disabled={true}
+                                            >
+                                                <span>⏳</span>
+                                                <span>Waiting for Intermediate Payment</span>
+                                            </button>
+
+                                            <p className="text-xs text-blue-600 mt-2 text-center">
+                                                You can mark work as completed after customer pays the intermediate payment.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {job.status === 'intermediate_paid' && (
+                                <div className="mt-6 p-4 bg-purple-100 border border-purple-500 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <span className="text-2xl">💰</span>
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                            <p className="font-bold text-xl text-purple-800">Intermediate Payment Received!</p>
+                                            <p className="text-purple-700 mt-2">
+                                                Customer has paid 30% intermediate payment (₦{(job.quoted_price * 0.30).toLocaleString()}) for materials.
+                                            </p>
+                                            <p className="text-lg font-bold mt-3">
+                                                Customer Phone: <span className="text-purple-700">{job.customer?.phone || 'N/A'}</span>
+                                            </p>
+
+                                            <div className="mt-4 p-3 bg-purple-50 border border-purple-300 rounded-lg">
+                                                <p className="font-medium text-purple-800 mb-2">Payment Status:</p>
+                                                <div className="text-purple-700 space-y-1">
+                                                    <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Paid)</p>
+                                                    <p>✅ 30% Intermediate: ₦{(job.quoted_price * 0.30).toLocaleString()} (Paid for materials)</p>
+                                                    <p>⏳ 20% Final: ₦{(job.quoted_price * 0.20).toLocaleString()} (Due upon completion)</p>
+                                                    <p className="font-bold mt-2">You can now purchase materials and continue work.</p>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={() => markWorkAsCompleted(job.id)}
+                                                className="mt-4 w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2"
+                                            >
+                                                <span>✅</span>
+                                                <span>Mark Work as Completed</span>
+                                            </button>
+
+                                            <p className="text-xs text-purple-600 mt-2 text-center">
+                                                After completion, customer will pay final 20% balance.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* FIXED: Added work_completed status display */}
+                            {job.status === 'work_completed' && (
+                                <div className="mt-6 p-4 bg-orange-100 border border-orange-500 rounded-xl">
+                                    <p className="font-bold text-xl text-orange-800">Work Marked as Completed!</p>
+                                    <p className="text-lg mt-2">
+                                        Waiting for customer to review and approve final payment.
+                                    </p>
+                                    <p className="text-lg font-bold mt-2">
+                                        Balance Due: <span className="text-orange-700">₦{(job.quoted_price * 0.5).toLocaleString()}</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {job.status === 'declined_by_customer' && (
+                                <div className="mt-6 p-4 bg-red-100 border border-red-500 rounded-xl">
+                                    <p className="font-bold text-xl text-red-700">Job Cancelled by Customer</p>
+                                </div>
+                            )}
+
+                            {job.status === 'completed_paid' && (
+                                <div className="mt-6 p-4 bg-green-100 border border-green-500 rounded-xl">
+                                    <p className="font-bold text-xl text-green-700">Payment Finalized!</p>
+                                    <p className="mt-2 text-lg">
+                                        Total Earned: ₦{Number(job.quoted_price || 0).toLocaleString()}
+                                    </p>
+                                </div>
+
+                            )}
+
+                            {job.status === 'work_disputed' && (
+                                <div className="mt-6 p-4 bg-red-100 border border-red-500 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <span className="text-2xl">⚠️</span>
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                            <p className="font-bold text-xl text-red-800">Customer Reported Issue</p>
+                                            <p className="text-red-700 mt-2">
+                                                Customer is not satisfied with the work and has requested a review.
+                                            </p>
+
+                                            {job.dispute_reason && (
+                                                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                                                    <p className="font-medium text-red-800 mb-1">Customer's Issue:</p>
+                                                    <p className="text-red-700">{job.dispute_reason}</p>
+                                                </div>
+                                            )}
+
+                                            <div className="mt-4 bg-white p-4 rounded-lg border border-red-300">
+                                                <p className="font-medium text-gray-800 mb-2">Customer Contact:</p>
+                                                <p className="text-gray-700">
+                                                    <span className="font-medium">Name:</span> {job.customer?.customer_name || 'Customer'}
+                                                </p>
+                                                <p className="text-gray-700 mt-1">
+                                                    <span className="font-medium">Phone:</span>
+                                                    <strong className="ml-2 text-red-700">{job.customer?.phone || 'Check job details'}</strong>
+                                                </p>
+                                            </div>
+
+                                            <div className="mt-4 flex gap-4">
+                                                <button
+                                                    onClick={async () => {
+                                                        // Get company name from job data or fetch it
+                                                        const companyNameToUse = job.company_name || job.companies?.company_name || 'Your company';
+
+                                                        if (!confirm(`Have you contacted the customer and fixed the issue?\n\nThis will mark the work as rectified and notify the customer to review.`)) return;
+
+                                                        try {
+                                                            // Update status to work_rectified
+                                                            const { error } = await supabase
+                                                                .from('jobs')
+                                                                .update({
+                                                                    status: 'work_rectified',
+                                                                    company_notes: `Issue addressed: ${job.dispute_reason?.substring(0, 100)}...`,
+                                                                    updated_at: new Date().toISOString()
+                                                                })
+                                                                .eq('id', job.id);
+
+                                                            if (error) throw error;
+
+                                                            // Notify customer
+                                                            await supabase.from('notifications').insert({
+                                                                user_id: job.customer_id,
+                                                                job_id: job.id,
+                                                                type: 'work_rectified',
+                                                                title: 'Issue Fixed ✅',
+                                                                message: `${companyNameToUse} has addressed your concerns and fixed the work. Please review and approve for final payment.`,
+                                                                read: false
+                                                            });
+
+                                                            alert('Work marked as fixed! Customer has been notified to review.');
+                                                            loadJobs();
+
+                                                        } catch (error) {
+                                                            console.error('Error marking work as fixed:', error);
+                                                            alert('Failed to update status. Please try again.');
+                                                        }
+                                                    }}
+                                                    className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700"
+                                                >
+                                                    ✅ Issue Fixed - Notify Customer
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        // Option to add notes or escalate
+                                                        const notes = prompt('Add internal notes about this dispute:');
+                                                        if (notes) {
+                                                            // Save notes to job or separate table
+                                                            alert('Notes saved. Continue working with customer.');
+                                                        }
+                                                    }}
+                                                    className="flex-1 border-2 border-gray-400 text-gray-700 px-4 py-3 rounded-lg font-bold hover:bg-gray-50"
+                                                >
+                                                    📝 Add Notes
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {job.status === 'work_rectified' && (
+                                <div className="mt-6 p-4 bg-yellow-100 border border-yellow-500 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <span className="text-2xl">🔄</span>
+                                        </div>
+                                        <div className="ml-4">
+                                            <p className="font-bold text-xl text-yellow-800">Waiting for Customer Review</p>
+                                            <p className="text-yellow-700 mt-2">
+                                                You've fixed the reported issue. Waiting for customer to review and approve final payment.
+                                            </p>
+                                            <p className="text-sm text-yellow-600 mt-3">
+                                                Customer will be prompted to pay the remaining 50% balance.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}

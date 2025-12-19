@@ -1,0 +1,30 @@
+{
+    "name": "Mount - Nigeria's Trusted Home Services",
+    "short_name": "Mount",
+    "description": "Nigeria's trusted home services marketplace connecting verified service professionals with homeowners",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#10B981",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "categories": [
+        "business",
+        "lifestyle",
+        "shopping"
+    ],
+    "icons": [
+        {
+            "src": "/icons/logo192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/logo512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
