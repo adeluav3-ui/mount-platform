@@ -222,13 +222,66 @@ export default function CompanyDashboard() {
           table: 'jobs',
           filter: `company_id=eq.${user.id}`
         },
-        () => {
+        (payload) => {
+          console.log('🔔 REAL-TIME EVENT TRIGGERED:', {
+            event: 'INSERT',
+            table: 'jobs',
+            payload: payload,
+            companyId: user.id,
+            timestamp: new Date().toISOString()
+          });
+
+          // Log the actual job data
+          const newJob = payload.new;
+          console.log('📋 NEW JOB DETAILS:', {
+            id: newJob.id,
+            category: newJob.category,
+            sub_service: newJob.sub_service,
+            customer_id: newJob.customer_id,
+            status: newJob.status
+          });
+
+          // Send notification immediately
+          console.log('🚀 Attempting to send browser notification...');
+
+          if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+            navigator.serviceWorker.ready
+              .then(registration => {
+                console.log('✅ Service Worker ready, showing notification...');
+
+                registration.showNotification('🔧 Mount: New Job!', {
+                  body: `${newJob.category} - ${newJob.sub_service}`,
+                  icon: '/icons/logo192.png',
+                  badge: '/icons/logo192.png',
+                  tag: `job-${newJob.id}`,
+                  data: {
+                    url: `/company/jobs/${newJob.id}`,
+                    jobId: newJob.id
+                  },
+                  vibrate: [200, 100, 200],
+                  actions: [
+                    {
+                      action: 'view',
+                      title: 'View Job'
+                    }
+                  ]
+                })
+                  .then(() => console.log('✅ Browser notification shown successfully'))
+                  .catch(err => console.error('❌ Failed to show notification:', err));
+              })
+              .catch(err => console.error('❌ Service Worker not ready:', err));
+          } else {
+            console.log('⚠️ Cannot send notification - missing permission or service worker');
+          }
+
+          // Rest of existing code (increment count, refresh stats)
           setPendingJobCount(prev => {
             const newCount = prev + 1
             setHasNewJobs(true)
             setTimeout(() => setHasNewJobs(false), 10000)
             return newCount
-          })
+          });
+
           // Refresh company data to update stats
           supabase
             .from('companies')
@@ -244,7 +297,6 @@ export default function CompanyDashboard() {
         }
       )
       .subscribe()
-
     // ADD real-time subscription for notifications to update read status
     const notificationChannel = supabase
       .channel(`company-notifications-${user.id}`)
