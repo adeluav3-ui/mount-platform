@@ -44,7 +44,61 @@ export default function CompanyDashboard() {
     } catch (error) {
       console.error('Error loading notifications:', error)
     }
+
   }, [user, supabase])
+
+  // Add this function inside your CompanyDashboard component, before the return statement
+  const sendJobNotification = async (companyId, jobId, jobDetails) => {
+    try {
+      // 1. Create database notification (you already do this elsewhere)
+      const { error } = await supabase.from('notifications').insert({
+        user_id: companyId,
+        title: '🔧 New Job Assignment',
+        message: `New job: ${jobDetails?.category || 'Home Service'} - ${jobDetails?.sub_service || 'General'}`,
+        type: 'job_assigned',
+        read: false
+      });
+
+      if (error) throw error;
+
+      // 2. Send browser push notification
+      if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(registration => {
+          registration.showNotification('🔧 Mount: New Job!', {
+            body: `${jobDetails?.category || 'Home Service'} - ${jobDetails?.sub_service || 'General'}`,
+            icon: '/icons/logo192.png',
+            badge: '/icons/logo192.png',
+            tag: `job-${jobId}`,
+            data: {
+              url: `/company/jobs/${jobId}`,
+              jobId: jobId
+            },
+            vibrate: [200, 100, 200],
+            actions: [
+              {
+                action: 'view',
+                title: 'View Job'
+              }
+            ]
+          });
+        });
+      }
+
+      // 3. Play sound notification
+      try {
+        const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
+        audio.volume = 0.3;
+        audio.play().catch(e => console.log('Audio play failed:', e));
+      } catch (soundError) {
+        console.log('Sound notification error:', soundError);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+      return false;
+    }
+  };
 
   // Load company data with correct rating
   useEffect(() => {
@@ -116,6 +170,18 @@ export default function CompanyDashboard() {
       loadNotifications()
     }
   }, [user, loadNotifications])
+
+  // Request notification permission on login
+  useEffect(() => {
+    if (user && company && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          console.log('✅ Notification permission granted');
+          // Register for push notifications here
+        }
+      });
+    }
+  }, [user, company]);
 
   // REAL-TIME JOB COUNT
   useEffect(() => {

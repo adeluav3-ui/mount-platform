@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react' // Added useEffect
 
 const ogunLocations = [
     'Abeokuta', 'Sango-Ota', 'Ijebu-Ode', 'Sagamu',
-    'Ota', 'Mowe', 'Ibafo', 'Redemption Camp', 'Others'
+    'Ota', 'Mowe-Ibafo', 'Ewekoro', 'Ilaro', 'Ifo', 'Owode', 'Odeda', 'Others'
 ]
 
 export default function Step1Form({

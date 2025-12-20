@@ -102,7 +102,7 @@ export default function Login() {
                 throw customerError
             }
 
-            alert('Signup complete! You can now log in.');
+            alert('Signup complete! Please check your email to confirm signup.');
 
         } catch (err) {
             setError(err.message);

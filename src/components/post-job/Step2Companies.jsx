@@ -127,7 +127,35 @@ export default function Step2Companies({
             </div>
         )
     }
+    const sendJobNotification = async (companyId, jobId, jobDetails) => {
+        try {
+            // 1. Database notification
+            await supabase.from('notifications').insert({
+                user_id: companyId,
+                title: '🔧 New Job Assignment',
+                message: `New ${jobDetails.category} job: ${jobDetails.sub_service}`,
+                type: 'job_assigned',
+                read: false
+            });
 
+            // 2. Browser push notification
+            if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification('🔧 Mount: New Job!', {
+                        body: `${jobDetails.category} - ${jobDetails.sub_service}`,
+                        icon: '/icons/logo192.png',
+                        tag: `job-${jobId}`,
+                        data: { url: `/company/jobs/${jobId}` }
+                    });
+                });
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Notification error:', error);
+            return false;
+        }
+    };
     const sendJobToCompany = async (company) => {
         if (isSending) return // Prevent multiple clicks
 
@@ -175,7 +203,7 @@ export default function Step2Companies({
             }
 
             // Save job with better error handling
-            const { error: jobError } = await supabase.from('jobs').insert({
+            const { error: jobError, data: jobData } = await supabase.from('jobs').insert({
                 customer_id: user.id,
                 company_id: company.id,
                 category: job.category,
@@ -187,9 +215,56 @@ export default function Step2Companies({
                 photos: photoUrls,
                 status: 'pending',
                 created_at: new Date().toISOString()
-            })
+            }).select('id').single();
 
             if (jobError) throw jobError
+
+            const newJobId = jobData.id;
+
+            try {
+                // 1. Create database notification
+                const { error: notificationError } = await supabase.from('notifications').insert({
+                    user_id: company.id,
+                    title: '🔧 New Job Assignment',
+                    message: `New ${job.category} job: ${job.sub_service} in ${job.location}`,
+                    type: 'job_assigned',
+                    read: false,
+                    created_at: new Date().toISOString()
+                });
+
+                if (notificationError) console.error('Notification DB error:', notificationError);
+
+                // 2. Send browser push notification
+                if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        registration.showNotification('🔧 Mount: New Job!', {
+                            body: `${job.category} - ${job.sub_service} in ${job.location}`,
+                            icon: '/icons/logo192.png',
+                            badge: '/icons/logo192.png',
+                            tag: `job-${newJobId}`, // Use newJobId here
+                            data: {
+                                url: `/company/jobs/${newJobId}`, // Use newJobId here
+                                jobId: newJobId, // Use newJobId here
+                                companyId: company.id
+                            },
+                            vibrate: [200, 100, 200],
+                            actions: [{ action: 'view', title: 'View Job' }]
+                        });
+                    }).catch(err => console.log('Push notification error:', err));
+                }
+
+                // 3. Play sound
+                try {
+                    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
+                    audio.volume = 0.3;
+                    audio.play().catch(e => console.log('Audio play failed:', e));
+                } catch (soundError) {
+                    console.log('Sound notification error:', soundError);
+                }
+
+            } catch (notifError) {
+                console.error('Notification sending failed:', notifError);
+            }
 
             // Success — go to step 3
             setSelectedCompany(company)
@@ -212,6 +287,8 @@ export default function Step2Companies({
             alert(errorMessage)
         }
     }
+
+
 
     // Star rating display function for company cards
     const renderCompanyStars = (rating) => {
