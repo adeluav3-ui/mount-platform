@@ -296,7 +296,25 @@ export default function CompanyDashboard() {
             })
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Supabase Channel Status:', status);
+
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Successfully subscribed to job changes');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Channel error');
+        } else if (status === 'TIMED_OUT') {
+          console.error('❌ Channel timeout');
+        } else if (status === 'CLOSED') {
+          console.warn('⚠️ Channel closed');
+        }
+      })
+
+
+    // TEST: Log channel info
+    console.log('📡 Channel created:', `company-jobs-${user.id}`);
+    console.log('👤 Company ID:', user.id);
+
     // ADD real-time subscription for notifications to update read status
     const notificationChannel = supabase
       .channel(`company-notifications-${user.id}`)
