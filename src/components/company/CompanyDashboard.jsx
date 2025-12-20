@@ -268,6 +268,43 @@ export default function CompanyDashboard() {
       supabase.removeChannel(notificationChannel)
     }
   }, [user, supabase, loadNotifications])
+  // Check Service Worker Registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration()
+        .then(reg => {
+          if (reg) {
+            console.log('✅ Service Worker Registered:', reg);
+            console.log('🔗 Service Worker Scope:', reg.scope);
+
+            // Also check if service worker is controlling the page
+            if (navigator.serviceWorker.controller) {
+              console.log('✅ Service Worker is controlling the page');
+            } else {
+              console.log('⚠️ Service Worker installed but not controlling');
+            }
+          } else {
+            console.log('❌ No Service Worker registered');
+          }
+        })
+        .catch(err => console.error('❌ Service Worker check error:', err));
+    } else {
+      console.log('❌ Service Workers not supported');
+    }
+    // Add notification permission check
+    console.log('🔔 Notification Permission:', Notification.permission);
+
+    // Detailed permission state
+    if (Notification.permission === 'granted') {
+      console.log('✅ Notifications are granted');
+    } else if (Notification.permission === 'denied') {
+      console.log('❌ Notifications are blocked');
+    } else {
+      console.log('⚠️ Notifications not requested yet (default state)');
+    }
+  }, []);
+
+
 
   // Function to mark all notifications as read
   const markAllAsRead = async () => {
