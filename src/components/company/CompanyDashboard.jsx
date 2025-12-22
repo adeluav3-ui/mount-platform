@@ -47,6 +47,19 @@ export default function CompanyDashboard() {
 
   }, [user, supabase])
 
+  console.log('🖥️ Browser focus state:', {
+    isFocused: document.hasFocus(),
+    visibilityState: document.visibilityState,
+    hidden: document.hidden
+  });
+
+  // Some browsers suppress notifications when tab is focused
+  if (document.hasFocus()) {
+    console.log('⚠️ Browser tab is focused - some browsers suppress notifications');
+  } else {
+    console.log('✅ Browser tab is not focused - notification should show');
+  }
+
   // Add this function inside your CompanyDashboard component, before the return statement
   const sendJobNotification = async (companyId, jobId, jobDetails) => {
     try {
@@ -79,8 +92,12 @@ export default function CompanyDashboard() {
                 action: 'view',
                 title: 'View Job'
               }
-            ]
-          });
+            ],
+
+            // ADD THIS: Force notification even when window is focused
+            requireInteraction: false,
+            silent: false
+          })
         });
       }
 
