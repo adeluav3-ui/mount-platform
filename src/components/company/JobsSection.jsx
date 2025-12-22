@@ -3,6 +3,52 @@ import React from 'react'
 import { useState, useEffect } from 'react'
 import QuoteForm from './QuoteForm'
 
+// Add this component at the top, after imports
+const CustomerVerificationBadge = ({ verificationLevel, idType }) => {
+    const getBadgeDetails = () => {
+        switch (verificationLevel) {
+            case 'verified':
+                return {
+                    icon: '✅',
+                    text: 'Verified Customer',
+                    color: '#10B981',
+                    bgColor: '#D1FAE5',
+                    tooltip: idType ? `Verified with ${idType}` : 'Verified customer'
+                };
+            case 'pending':
+                return {
+                    icon: '⏳',
+                    text: 'Verification Pending',
+                    color: '#F59E0B',
+                    bgColor: '#FEF3C7',
+                    tooltip: 'Verification under review'
+                };
+            default: // 'basic'
+                return {
+                    icon: '🔒',
+                    text: 'Basic Account',
+                    color: '#6B7280',
+                    bgColor: '#F3F4F6',
+                    tooltip: 'Not verified - basic account'
+                };
+        }
+    };
+
+    const badge = getBadgeDetails();
+
+    return (
+        <span
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium"
+            style={{ backgroundColor: badge.bgColor, color: badge.color }}
+            title={badge.tooltip}
+        >
+            <span>{badge.icon}</span>
+            <span>{badge.text}</span>
+        </span>
+    );
+};
+
+
 export default function JobsSection({
     showJobs,
     setShowJobs,
@@ -41,9 +87,9 @@ export default function JobsSection({
                     try {
                         const { data: customer } = await supabase
                             .from('customers')
-                            .select('customer_name, phone, email')
+                            .select('customer_name, phone, email, verification_level, id_verified_at, id_type')
                             .eq('id', job.customer_id)
-                            .single()
+                            .single();
 
                         customerDetails = customer
                     } catch (error) {
@@ -558,7 +604,16 @@ export default function JobsSection({
                                 </div>
 
                                 <div className="mt-4 p-4 bg-gray-100 rounded-xl">
-                                    <p className="font-bold text-gray-800 mb-2">Customer Contact:</p>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <p className="font-bold text-gray-800">Customer Contact:</p>
+                                        {/* Add verification badge here */}
+                                        {job.customer?.verification_level && (
+                                            <CustomerVerificationBadge
+                                                verificationLevel={job.customer.verification_level}
+                                                idType={job.customer.id_type}
+                                            />
+                                        )}
+                                    </div>
                                     <p className="text-gray-700">
                                         <span className="font-medium">Name:</span> {job.customer?.customer_name || 'N/A'}
                                     </p>
@@ -569,6 +624,13 @@ export default function JobsSection({
                                     <p className="text-gray-700 mt-1">
                                         <span className="font-medium">Email:</span> {job.customer?.email || 'N/A'}
                                     </p>
+
+                                    {/* Optional: Show verification details */}
+                                    {job.customer?.verification_level === 'verified' && job.customer?.id_verified_at && (
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Verified on: {new Date(job.customer.id_verified_at).toLocaleDateString('en-NG')}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
