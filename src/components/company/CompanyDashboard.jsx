@@ -73,7 +73,81 @@ export default function CompanyDashboard() {
         read: false
       });
       if (error) throw error;
+      // Request notification permission on login
+      useEffect(() => {
+        if (user && company && Notification.permission === 'default') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              console.log('✅ Notification permission granted');
 
+              // Register for push notifications
+              registerPushNotifications();
+            }
+          });
+        } else if (Notification.permission === 'granted') {
+          // Already have permission, register push
+          registerPushNotifications();
+        }
+      }, [user, company]);
+
+      // Function to register for push notifications
+      const registerPushNotifications = async () => {
+        if ('serviceWorker' in navigator && 'PushManager' in window) {
+          try {
+            const registration = await navigator.serviceWorker.ready;
+
+            // Check current subscription
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+              // Subscribe to push notifications
+              // NOTE: You need a VAPID key for production
+              const response = await fetch('/api/vapid-public-key'); // You need to create this endpoint
+              const vapidPublicKey = await response.text();
+              const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+              subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: convertedVapidKey
+              });
+
+              // Save subscription to your database
+              await savePushSubscription(subscription);
+            }
+
+            console.log('✅ Push notification subscription:', subscription);
+          } catch (error) {
+            console.error('❌ Push registration failed:', error);
+          }
+        }
+      };
+
+      // Helper function for VAPID key
+      const urlBase64ToUint8Array = (base64String) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+          .replace(/\-/g, '+')
+          .replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      };
+
+      // Save subscription to database
+      const savePushSubscription = async (subscription) => {
+        try {
+          await supabase.from('push_subscriptions').insert({
+            user_id: user.id,
+            subscription: JSON.stringify(subscription),
+            created_at: new Date().toISOString()
+          });
+        } catch (error) {
+          console.error('Error saving push subscription:', error);
+        }
+      };
       // 2. Send browser push notification
       if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then(registration => {

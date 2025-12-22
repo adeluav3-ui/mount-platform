@@ -1,0 +1,49 @@
+.verification-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.badge-small {
+    padding: 2px 8px;
+    font-size: 12px;
+    gap: 4px;
+}
+
+.badge-large {
+    padding: 6px 14px;
+    font-size: 16px;
+    gap: 8px;
+}
+
+.badge-icon {
+    font-size: 14px;
+}
+
+.badge-small .badge-icon {
+    font-size: 12px;
+}
+
+.badge-large .badge-icon {
+    font-size: 16px;
+}
+
+.badge-text {
+    white-space: nowrap;
+}
+
+/* Hover effect for clickable badges */
+.verification-badge.clickable {
+    cursor: pointer;
+}
+
+.verification-badge.clickable:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}

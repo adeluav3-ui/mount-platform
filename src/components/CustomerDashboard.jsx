@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react'
 import MyJobs from "./MyJobs";
 import { Link } from 'react-router-dom';
 import logo from '../assets/logo.png';
+import VerificationBadge from '../components/VerificationBadge';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
 const BellIcon = (props) => (
@@ -73,29 +74,6 @@ export default function CustomerDashboard() {
     const [loadingJobs, setLoadingJobs] = useState(true);
 
     const [currentView, setCurrentView] = useState('dashboard');
-
-    // Add this function inside CustomerDashboard component
-    const handleFindAndTestPayment = async () => {
-        try {
-            // Find any job
-            const { data: job } = await supabase
-                .from('jobs')
-                .select('id, quoted_price, status, category')
-                .limit(1)
-                .single();
-
-            if (job) {
-                // Open in new tab
-                window.open(`/payment/${job.id}`, '_blank');
-            } else {
-                alert('No jobs found at all. Please create a job first.');
-            }
-        } catch (error) {
-            console.error('Error finding job:', error);
-            // Even if error, try with a test ID
-            window.open('/payment/test-job-123', '_blank');
-        }
-    };
 
     // Helper to play notification sound
     const playNotificationSound = () => {
@@ -415,13 +393,19 @@ export default function CustomerDashboard() {
 
     // Dashboard render function
     const renderDashboard = () => (
+
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-10 mb-8 sm:mb-12 border-b-8 border-naijaGreen">
                 <h3 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
                     👋 Hi there, <span className="text-naijaGreen">
                         {loadingName ? '...' : userName}!
                     </span>
+                    <div className="customer-info">
+                        <h2>{userName}</h2>
+                        <VerificationBadge verificationLevel={verificationLevel} />
+                    </div>
                 </h3>
+
                 <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">
                     Ready to find a trusted expert for your home fix?
                 </p>

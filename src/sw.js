@@ -31,4 +31,51 @@ self.addEventListener('notificationclick', event => {
                 }
             })
     );
+
+    // In your sw.js file, add:
+    self.addEventListener('push', function (event) {
+        console.log('🔔 Push event received:', event);
+
+        const data = event.data ? event.data.json() : {};
+        const title = data.title || 'Mount Platform';
+        const options = {
+            body: data.body || 'You have a new notification',
+            icon: data.icon || '/logo.png',
+            badge: data.badge || '/logo.png',
+            tag: data.tag || 'mount-notification',
+            data: data.data || {},
+            vibrate: [200, 100, 200],
+            requireInteraction: true // So it stays visible
+        };
+
+        event.waitUntil(
+            self.registration.showNotification(title, options)
+        );
+    });
+
+    self.addEventListener('notificationclick', function (event) {
+        console.log('Notification clicked:', event.notification.tag);
+        event.notification.close();
+
+        const urlToOpen = event.notification.data.url || '/company/dashboard';
+
+        event.waitUntil(
+            clients.matchAll({
+                type: 'window',
+                includeUncontrolled: true
+            }).then(function (clientList) {
+                // Check if there's already a window open
+                for (let i = 0; i < clientList.length; i++) {
+                    const client = clientList[i];
+                    if (client.url === urlToOpen && 'focus' in client) {
+                        return client.focus();
+                    }
+                }
+                // Otherwise open a new window
+                if (clients.openWindow) {
+                    return clients.openWindow(urlToOpen);
+                }
+            })
+        );
+    });
 });
