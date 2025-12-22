@@ -1,13 +1,13 @@
 // src/components/CustomerDashboard.jsx — SIMPLIFIED VERSION (NO BADGES)
-import React from 'react';
-import { useSupabase } from '../context/SupabaseContext'
-import PostJob from "./post-job/PostJob"
-import CustomerNotifications from "./notifications/CustomerNotifications"
-import { useState, useEffect } from 'react'
-import MyJobs from "./MyJobs";
+// Replace your existing imports section with this:
+import React, { useState, useEffect } from 'react';
+import { useSupabase } from '../context/SupabaseContext';
 import { Link } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import PostJob from "./post-job/PostJob";
+import CustomerNotifications from "./notifications/CustomerNotifications";
+import MyJobs from "./MyJobs";
 import VerificationBadge from '../components/VerificationBadge';
+import logo from '../assets/logo.png';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
 const BellIcon = (props) => (
@@ -72,6 +72,9 @@ export default function CustomerDashboard() {
     const [userName, setUserName] = useState('Customer');
     const [loadingName, setLoadingName] = useState(true);
     const [loadingJobs, setLoadingJobs] = useState(true);
+    const [verificationLevel, setVerificationLevel] = useState('basic');
+    const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [customerData, setCustomerData] = useState(null);
 
     const [currentView, setCurrentView] = useState('dashboard');
 
@@ -221,15 +224,31 @@ export default function CustomerDashboard() {
         setCurrentView(view);
     };
 
-    // Fetch user name
+    // Fetch user name AND verification data
     useEffect(() => {
-        const fetchUserName = async () => {
+        const fetchUserData = async () => {
             if (!user?.id || !supabase) {
                 console.log('No user or supabase available');
                 return;
             }
 
             try {
+                // Try to fetch from customers table first (this should have verification data)
+                const { data: customer, error: customerError } = await supabase
+                    .from('customers')
+                    .select('customer_name, verification_level, id_verified_at')
+                    .eq('id', user.id)
+                    .single();
+
+                if (customer) {
+                    setUserName(customer.customer_name || 'Customer');
+                    setVerificationLevel(customer.verification_level || 'basic');
+                    setCustomerData(customer);
+                    setLoadingName(false);
+                    return;
+                }
+
+                // Fallback to profiles table
                 const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('full_name')
@@ -242,36 +261,26 @@ export default function CustomerDashboard() {
                     return;
                 }
 
-                const { data: customer, error: customerError } = await supabase
-                    .from('customers')
-                    .select('customer_name')
-                    .eq('id', user.id)
-                    .single();
-
-                if (customer?.customer_name) {
-                    setUserName(customer.customer_name);
-                    setLoadingName(false);
-                    return;
-                }
-
+                // Fallback to user metadata
                 if (user.user_metadata?.name) {
                     setUserName(user.user_metadata.name);
                     setLoadingName(false);
                     return;
                 }
 
+                // Final fallback
                 const emailName = user.email?.split('@')[0] || 'Customer';
                 setUserName(emailName);
 
             } catch (error) {
-                console.error('❌ Error fetching user name:', error);
+                console.error('❌ Error fetching user data:', error);
                 setUserName(user.email?.split('@')[0] || 'Customer');
             } finally {
                 setLoadingName(false);
             }
         };
 
-        fetchUserName();
+        fetchUserData();
     }, [user, supabase]);
 
     // Load jobs
@@ -396,15 +405,36 @@ export default function CustomerDashboard() {
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
             <div className="bg-white rounded-3xl shadow-xl p-6 sm:p-10 mb-8 sm:mb-12 border-b-8 border-naijaGreen">
-                <h3 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-3 sm:mb-4">
-                    👋 Hi there, <span className="text-naijaGreen">
-                        {loadingName ? '...' : userName}!
-                    </span>
-                    <div className="customer-info">
-                        <h2>{userName}</h2>
-                        <VerificationBadge verificationLevel={verificationLevel} />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-2">
+                            👋 Hi there, <span className="text-naijaGreen">
+                                {loadingName ? '...' : userName}!
+                            </span>
+                        </h3>
+
+                        {/* Verification Badge - Clickable if basic */}
+                        <div className="flex items-center gap-3">
+                            <VerificationBadge
+                                verificationLevel={verificationLevel}
+                                size="medium"
+                                onClick={() => {
+                                    if (verificationLevel === 'basic') {
+                                        setShowVerificationModal(true);
+                                    }
+                                }}
+                            />
+                            {verificationLevel === 'basic' && (
+                                <button
+                                    onClick={() => setShowVerificationModal(true)}
+                                    className="text-sm text-naijaGreen hover:text-darkGreen underline font-medium"
+                                >
+                                    Get Verified →
+                                </button>
+                            )}
+                        </div>
                     </div>
-                </h3>
+                </div>
 
                 <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">
                     Ready to find a trusted expert for your home fix?
@@ -416,16 +446,6 @@ export default function CustomerDashboard() {
                     <HammerIcon className="w-5 sm:w-6 h-5 sm:h-6" />
                     I need to fix something!
                 </button>
-            </div>
-            <div className="dashboard">
-                <div className="customer-profile">
-                    <h2>Welcome, {customerData?.customer_name || 'Customer'}</h2>
-                    <VerificationBadge
-                        verificationLevel={customerData?.verification_level || 'basic'}
-                        size="medium"
-                        onClick={() => setShowVerificationModal(true)} // We'll create this modal next
-                    />
-                </div>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
@@ -644,6 +664,50 @@ export default function CustomerDashboard() {
                             </svg>
                             <span className="text-xs">Post Job</span>
                         </button>
+                    </div>
+                </div>
+            )}
+            {/* Temporary Verification Modal Placeholder */}
+            {showVerificationModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-bold text-gray-800">Get Verified</h3>
+                            <button
+                                onClick={() => setShowVerificationModal(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <p className="text-gray-600 mb-4">
+                            Verify your identity to build trust with service providers. This is optional but recommended.
+                        </p>
+                        <div className="space-y-3">
+                            <p className="font-medium">Benefits:</p>
+                            <ul className="list-disc pl-5 text-gray-600 space-y-1">
+                                <li>Companies prioritize verified customers</li>
+                                <li>Higher trust score on the platform</li>
+                                <li>Faster job matching</li>
+                            </ul>
+                        </div>
+                        <div className="mt-6 flex gap-3">
+                            <button
+                                onClick={() => setShowVerificationModal(false)}
+                                className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
+                            >
+                                Maybe Later
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowVerificationModal(false);
+                                    alert('We\'ll build the full verification flow in Step 3!');
+                                }}
+                                className="flex-1 py-3 bg-naijaGreen text-white rounded-xl font-medium hover:bg-darkGreen"
+                            >
+                                Start Verification
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
