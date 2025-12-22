@@ -8,6 +8,7 @@ import CustomerNotifications from "./notifications/CustomerNotifications";
 import MyJobs from "./MyJobs";
 import VerificationBadge from '../components/VerificationBadge';
 import logo from '../assets/logo.png';
+import VerificationModal from './VerificationModal';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
 const BellIcon = (props) => (
@@ -78,6 +79,11 @@ export default function CustomerDashboard() {
 
     const [currentView, setCurrentView] = useState('dashboard');
 
+    const handleVerificationSubmitted = (newStatus) => {
+        setVerificationLevel(newStatus);
+        // You might want to refresh user data here
+        console.log('Verification submitted, new status:', newStatus);
+    };
     // Helper to play notification sound
     const playNotificationSound = () => {
         try {
@@ -236,7 +242,7 @@ export default function CustomerDashboard() {
                 // Try to fetch from customers table first (this should have verification data)
                 const { data: customer, error: customerError } = await supabase
                     .from('customers')
-                    .select('customer_name, verification_level, id_verified_at')
+                    .select('customer_name, verification_level, id_verified_at, id_type, id_number, id_front_url, id_back_url, trust_score')
                     .eq('id', user.id)
                     .single();
 
@@ -667,50 +673,12 @@ export default function CustomerDashboard() {
                     </div>
                 </div>
             )}
-            {/* Temporary Verification Modal Placeholder */}
-            {showVerificationModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold text-gray-800">Get Verified</h3>
-                            <button
-                                onClick={() => setShowVerificationModal(false)}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <p className="text-gray-600 mb-4">
-                            Verify your identity to build trust with service providers. This is optional but recommended.
-                        </p>
-                        <div className="space-y-3">
-                            <p className="font-medium">Benefits:</p>
-                            <ul className="list-disc pl-5 text-gray-600 space-y-1">
-                                <li>Companies prioritize verified customers</li>
-                                <li>Higher trust score on the platform</li>
-                                <li>Faster job matching</li>
-                            </ul>
-                        </div>
-                        <div className="mt-6 flex gap-3">
-                            <button
-                                onClick={() => setShowVerificationModal(false)}
-                                className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
-                            >
-                                Maybe Later
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowVerificationModal(false);
-                                    alert('We\'ll build the full verification flow in Step 3!');
-                                }}
-                                className="flex-1 py-3 bg-naijaGreen text-white rounded-xl font-medium hover:bg-darkGreen"
-                            >
-                                Start Verification
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Verification Modal */}
+            <VerificationModal
+                isOpen={showVerificationModal}
+                onClose={() => setShowVerificationModal(false)}
+                onVerificationSubmitted={handleVerificationSubmitted}
+            />
         </div>
     );
 }
