@@ -417,7 +417,16 @@ export default function CustomerDashboard() {
                     I need to fix something!
                 </button>
             </div>
-
+            <div className="dashboard">
+                <div className="customer-profile">
+                    <h2>Welcome, {customerData?.customer_name || 'Customer'}</h2>
+                    <VerificationBadge
+                        verificationLevel={customerData?.verification_level || 'basic'}
+                        size="medium"
+                        onClick={() => setShowVerificationModal(true)} // We'll create this modal next
+                    />
+                </div>
+            </div>
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
                     <h4 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-3">
