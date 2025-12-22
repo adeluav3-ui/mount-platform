@@ -18,22 +18,21 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         { value: 'passport', label: 'International Passport' }
     ];
 
-    const handleImageUpload = (e, setImageFunction) => {
+    const handleImageUpload = (e, setImageFunction, fieldName) => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                setError('File size must be less than 5MB');
+                setError(`${fieldName} file size must be less than 5MB`);
                 return;
             }
             if (!file.type.startsWith('image/')) {
-                setError('Please upload an image file');
+                setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
                 return;
             }
             setImageFunction(file);
             setError('');
         }
     };
-
     const uploadToStorage = async (file, path) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
@@ -53,8 +52,9 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
     };
 
     const handleSubmit = async () => {
-        if (!idType || !idNumber) {
-            setError('Please fill in all required fields');
+        if (!idType) {
+            setError('Please select an ID type');
+            setStep(1);
             return;
         }
 
@@ -78,7 +78,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                 .insert({
                     customer_id: user.id,
                     id_type: idType,
-                    id_number: idNumber,
+                    id_number: idNumber || null, // Make optional
                     front_url: frontUrl,
                     back_url: backUrl,
                     selfie_url: selfieUrl,
@@ -101,7 +101,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
             // Show success message
             setTimeout(() => {
                 onClose();
-                alert('Verification submitted successfully! Our team will review it within 24 hours.');
+                alert('✅ Verification submitted successfully! Our team will review it within 24 hours.');
             }, 2000);
 
         } catch (err) {
@@ -136,28 +136,36 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
             </div>
 
             <div className="mb-6">
-                <label className="block text-gray-700 mb-2">ID Number</label>
+                <label className="block text-gray-700 mb-2">
+                    ID Number <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
                 <input
                     type="text"
                     value={idNumber}
                     onChange={(e) => setIdNumber(e.target.value)}
                     className="w-full p-3 border border-gray-300 rounded-xl"
-                    placeholder="Enter your ID number"
+                    placeholder="Enter your ID number (optional)"
                 />
+                <p className="text-sm text-gray-500 mt-1">
+                    Providing your ID number helps speed up verification
+                </p>
             </div>
 
             <div className="bg-yellow-50 p-4 rounded-xl mb-6">
                 <h4 className="font-bold text-yellow-800 mb-2">📋 Required Documents:</h4>
                 <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• Clear photo of ID front</li>
-                    <li>• Clear photo of ID back (if applicable)</li>
+                    <li>• Clear photo of ID front <span className="text-red-500">(Required)</span></li>
+                    <li>• Clear photo of ID back <span className="text-gray-600">(If applicable)</span></li>
                     <li>• Optional: Selfie with ID (speeds up verification)</li>
                 </ul>
+                <p className="text-xs text-yellow-600 mt-2">
+                    Your documents are securely stored and only visible to our admin team
+                </p>
             </div>
 
             <div className="flex justify-end">
                 <button
-                    onClick={() => idType && idNumber ? setStep(2) : setError('Please select ID type and enter ID number')}
+                    onClick={() => idType ? setStep(2) : setError('Please select an ID type')}
                     className="bg-naijaGreen text-white px-6 py-3 rounded-xl font-medium hover:bg-darkGreen"
                 >
                     Next: Upload Documents →
@@ -165,7 +173,19 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
             </div>
         </div>
     );
-
+    const handleClose = () => {
+        if (!uploading) {
+            // Reset form state
+            setIdType('');
+            setIdNumber('');
+            setFrontImage(null);
+            setBackImage(null);
+            setSelfieImage(null);
+            setStep(1);
+            setError('');
+            onClose();
+        }
+    };
     const renderStep2 = () => (
         <div>
             <h3 className="text-xl font-bold text-gray-800 mb-4">Step 2: Upload Documents</h3>
@@ -174,7 +194,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                 {/* Front of ID */}
                 <div>
                     <label className="block text-gray-700 mb-2">
-                        Front of ID <span className="text-red-500">*</span>
+                        Front of ID <span className="text-red-500">* Required</span>
                     </label>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
                         {frontImage ? (
@@ -201,7 +221,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    onChange={(e) => handleImageUpload(e, setFrontImage)}
+                                    onChange={(e) => handleImageUpload(e, setFrontImage, 'Front ID')}
                                     className="hidden"
                                     id="front-upload"
                                 />
@@ -341,7 +361,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                         <p className="text-gray-600">Get verified to build trust with service providers</p>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={handleClose}
                         className="text-gray-500 hover:text-gray-700 text-2xl"
                         disabled={uploading}
                     >
