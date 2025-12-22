@@ -38,11 +38,23 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
         const filePath = `${path}/${fileName}`;
 
+        // ADD THIS: Check if user is authenticated
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (!currentUser) {
+            throw new Error('User not authenticated');
+        }
+
         const { error: uploadError } = await supabase.storage
             .from('verification-docs')
-            .upload(filePath, file);
+            .upload(filePath, file, {
+                cacheControl: '3600',
+                upsert: false // Important: don't overwrite existing files
+            });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+            console.error('Upload error details:', uploadError);
+            throw uploadError;
+        }
 
         const { data: { publicUrl } } = supabase.storage
             .from('verification-docs')
