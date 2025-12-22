@@ -66,12 +66,12 @@ export default function CompanyDashboard() {
       // 1. Create database notification (you already do this elsewhere)
       const { error } = await supabase.from('notifications').insert({
         user_id: companyId,
+        job_id: jobId, // ADD THIS
         title: '🔧 New Job Assignment',
         message: `New job: ${jobDetails?.category || 'Home Service'} - ${jobDetails?.sub_service || 'General'}`,
         type: 'job_assigned',
         read: false
       });
-
       if (error) throw error;
 
       // 2. Send browser push notification

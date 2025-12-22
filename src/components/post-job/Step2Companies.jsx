@@ -230,9 +230,10 @@ export default function Step2Companies({
             const newJobId = jobData.id;
 
             try {
-                // 1. Create database notification TO COMPANY ONLY
+                // 1. Create database notification WITH job_id
                 const { error: notificationError } = await supabase.from('notifications').insert({
-                    user_id: company.id, // IMPORTANT: company.id, NOT user.id
+                    user_id: company.id,
+                    job_id: newJobId, // ADD THIS - use the job ID we just created
                     title: '🔧 New Job Assignment',
                     message: `New ${job.category} job: ${job.sub_service} in ${job.location}`,
                     type: 'job_assigned',
