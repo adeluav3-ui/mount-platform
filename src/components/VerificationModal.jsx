@@ -45,7 +45,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         }
 
         const { error: uploadError } = await supabase.storage
-            .from('verification-docs')
+            .from('verification-uploads')
             .upload(filePath, file, {
                 cacheControl: '3600',
                 upsert: false // Important: don't overwrite existing files
@@ -57,7 +57,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         }
 
         const { data: { publicUrl } } = supabase.storage
-            .from('verification-docs')
+            .from('verification-uploads')
             .getPublicUrl(filePath);
 
         return publicUrl;
