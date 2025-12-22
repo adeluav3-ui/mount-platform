@@ -79,9 +79,10 @@ const VerificationBadge = ({ verificationLevel, showText = true, size = 'medium'
         fontSize: currentSize.iconSize
     };
 
+    // In VerificationBadge.jsx, the handleClick function should be:
     const handleClick = () => {
         if (onClick && verificationLevel === 'basic') {
-            onClick();
+            onClick(); // This should call setShowVerificationModal(true)
         }
     };
 
