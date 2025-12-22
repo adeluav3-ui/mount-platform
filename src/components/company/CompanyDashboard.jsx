@@ -473,7 +473,35 @@ export default function CompanyDashboard() {
                 <p className="text-xs text-gray-500">Company Dashboard</p>
               </div>
             </div>
-
+            {/* Add this button in the header with other buttons */}
+            <button
+              onClick={() => {
+                console.log('🧪 Testing notification...');
+                if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+                  navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification('🔧 TEST: Mount Notification', {
+                      body: 'This is a test notification from Mount',
+                      icon: '/logo.png', // Use your main logo
+                      badge: '/logo.png',
+                      tag: 'test-' + Date.now(),
+                      requireInteraction: false,
+                      silent: false,
+                      vibrate: [200, 100, 200]
+                    })
+                      .then(() => console.log('✅ Test notification shown'))
+                      .catch(err => console.error('❌ Test notification failed:', err));
+                  });
+                } else {
+                  console.log('❌ Cannot test - permissions or service worker missing');
+                }
+              }}
+              className="p-2 text-gray-600 hover:text-naijaGreen transition-colors"
+              title="Test Notification"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               {/* Jobs Button - ONLY shows pending jobs */}
