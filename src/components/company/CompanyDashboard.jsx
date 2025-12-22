@@ -78,13 +78,14 @@ export default function CompanyDashboard() {
       if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then(registration => {
           registration.showNotification('🔧 Mount: New Job!', {
-            body: `${jobDetails?.category || 'Home Service'} - ${jobDetails?.sub_service || 'General'}`,
-            icon: '/icons/logo192.png',
-            badge: '/icons/logo192.png',
-            tag: `job-${jobId}`,
+            body: `${newJob.category} - ${newJob.sub_service}`,
+            icon: '/logo.png',
+            badge: '/logo.png',
+            tag: `job-${newJob.id}-${Date.now()}`, // Add timestamp to make it unique
             data: {
-              url: `/company/jobs/${jobId}`,
-              jobId: jobId
+              url: `/company/jobs/${newJob.id}`,
+              jobId: newJob.id,
+              timestamp: Date.now()
             },
             vibrate: [200, 100, 200],
             actions: [
@@ -93,14 +94,56 @@ export default function CompanyDashboard() {
                 title: 'View Job'
               }
             ],
-
-            // ADD THIS: Force notification even when window is focused
             requireInteraction: false,
-            silent: false
+            silent: false,
+            // ADD THESE OPTIONS:
+            renotify: true, // Allow re-notification with same tag
+            timestamp: Date.now(), // Explicit timestamp
+            // Add a small delay to ensure service worker is ready
           })
+            .then(() => {
+              console.log('✅ Browser notification shown successfully for job:', newJob.id);
+
+              // Also log to service worker console
+              if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                  type: 'NOTIFICATION_SHOWN',
+                  jobId: newJob.id,
+                  timestamp: Date.now()
+                });
+              }
+            })
+            .catch(err => console.error('❌ Failed to show notification:', err));
         });
       }
+      // Send notification immediately
+      console.log('🚀 Attempting to send browser notification...');
 
+      // Add small delay to ensure stability
+      setTimeout(() => {
+        if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.ready
+            .then(registration => {
+              console.log('✅ Service Worker ready, showing notification...');
+
+              // ... the showNotification code goes here
+            })
+            .catch(err => console.error('❌ Service Worker not ready:', err));
+        } else {
+          console.log('⚠️ Cannot send notification - missing permission or service worker');
+        }
+      }, 500); // 500ms delay
+
+      self.addEventListener('notificationclick', function (event) {
+        console.log('Notification clicked:', event.notification.tag);
+        event.notification.close();
+
+        // Handle click action
+        if (event.action === 'view') {
+          const url = event.notification.data.url;
+          event.waitUntil(clients.openWindow(url));
+        }
+      });
       // 3. Play sound notification
       try {
         const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
