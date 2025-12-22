@@ -234,33 +234,6 @@ export default function Step2Companies({
 
                 if (notificationError) console.error('Notification DB error:', notificationError);
 
-                // 2. Send browser push notification
-                if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
-                    navigator.serviceWorker.ready.then(registration => {
-                        registration.showNotification('🔧 Mount: New Job!', {
-                            body: `${job.category} - ${job.sub_service} in ${job.location}`,
-                            icon: '/icons/logo192.png',
-                            badge: '/icons/logo192.png',
-                            tag: `job-${newJobId}`, // Use newJobId here
-                            data: {
-                                url: `/company/jobs/${newJobId}`, // Use newJobId here
-                                jobId: newJobId, // Use newJobId here
-                                companyId: company.id
-                            },
-                            vibrate: [200, 100, 200],
-                            actions: [{ action: 'view', title: 'View Job' }]
-                        });
-                    }).catch(err => console.log('Push notification error:', err));
-                }
-
-                // 3. Play sound
-                try {
-                    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
-                    audio.volume = 0.3;
-                    audio.play().catch(e => console.log('Audio play failed:', e));
-                } catch (soundError) {
-                    console.log('Sound notification error:', soundError);
-                }
 
             } catch (notifError) {
                 console.error('Notification sending failed:', notifError);
