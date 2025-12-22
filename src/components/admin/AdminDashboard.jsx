@@ -9,11 +9,13 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const location = useLocation();
+    const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
 
     // Navigation items
     const navItems = [
         { path: '/admin', label: 'Overview', icon: '📊' },
         { path: '/admin/approvals', label: 'Approvals', icon: '✅' },
+        { path: '/admin/verifications', label: 'ID Verifications', icon: '🆔' },
         { path: '/admin/payouts', label: 'Payouts', icon: '💸' },
         { path: '/admin/payments', label: 'Payments', icon: '💰' },
         { path: '/admin/jobs', label: 'Jobs', icon: '🔧' },
@@ -48,7 +50,34 @@ const AdminDashboard = () => {
             setLoading(false);
         }
     };
+    // Add this effect to fetch pending count:
+    useEffect(() => {
+        if (isAdmin && supabase) {
+            const fetchPendingCount = async () => {
+                const { count, error } = await supabase
+                    .from('id_verifications')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('status', 'pending');
 
+                if (!error && count) {
+                    setPendingVerificationsCount(count);
+                }
+            };
+
+            fetchPendingCount();
+            // Set up real-time subscription
+            const channel = supabase
+                .channel('admin-verification-updates')
+                .on('postgres_changes', {
+                    event: '*',
+                    schema: 'public',
+                    table: 'id_verifications'
+                }, fetchPendingCount)
+                .subscribe();
+
+            return () => supabase.removeChannel(channel);
+        }
+    }, [isAdmin, supabase]);
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -132,6 +161,11 @@ const AdminDashboard = () => {
                                 >
                                     <span>{item.icon}</span>
                                     <span className="font-medium">{item.label}</span>
+                                    {item.path === '/admin/verifications' && pendingVerificationsCount > 0 && (
+                                        <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                                            {pendingVerificationsCount}
+                                        </span>
+                                    )}
                                 </Link>
                             );
                         })}
@@ -149,14 +183,18 @@ const AdminDashboard = () => {
                                         <Link
                                             key={item.path}
                                             to={item.path}
-                                            onClick={() => setMobileMenuOpen(false)}
-                                            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${isActive
+                                            className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-colors whitespace-nowrap ${isActive
                                                 ? 'bg-green-600 text-white'
                                                 : 'text-gray-300 hover:bg-gray-700'
                                                 }`}
                                         >
-                                            <span className="text-lg">{item.icon}</span>
+                                            <span>{item.icon}</span>
                                             <span className="font-medium">{item.label}</span>
+                                            {item.path === '/admin/verifications' && pendingVerificationsCount > 0 && (
+                                                <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                                                    {pendingVerificationsCount}
+                                                </span>
+                                            )}
                                         </Link>
                                     );
                                 })}

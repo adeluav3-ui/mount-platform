@@ -21,6 +21,7 @@ import CompanyReviewsPage from './components/company/CompanyReviewsPage';
 import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
+import VerificationReview from './components/admin/VerificationReview';
 
 // Move AppRoutes inside the Providers
 function AppRoutes() {
@@ -88,6 +89,7 @@ function AppRoutes() {
         <Route path="stats" element={<AdminStats />} />
         <Route path="approvals" element={<PendingApprovals />} />
         <Route path="payments" element={<AdminPaymentVerification />} />
+        <Route path="verifications" element={<VerificationReview />} />
         <Route path="disbursements" element={<DisbursementRequests />} />
         <Route path="payouts" element={<PayoutManagement />} />
         <Route path="jobs" element={<JobManagement />} />
