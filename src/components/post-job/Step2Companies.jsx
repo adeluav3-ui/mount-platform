@@ -157,6 +157,14 @@ export default function Step2Companies({
         }
     };
     const sendJobToCompany = async (company) => {
+        console.log('📝 Sending job to company:', {
+            companyId: company.id,
+            companyName: company.company_name,
+            customerId: user.id,
+            customerName: user.email,
+            timestamp: new Date().toISOString()
+        });
+
         if (isSending) return // Prevent multiple clicks
 
         setIsSending(true)
@@ -222,9 +230,9 @@ export default function Step2Companies({
             const newJobId = jobData.id;
 
             try {
-                // 1. Create database notification
+                // 1. Create database notification TO COMPANY ONLY
                 const { error: notificationError } = await supabase.from('notifications').insert({
-                    user_id: company.id,
+                    user_id: company.id, // IMPORTANT: company.id, NOT user.id
                     title: '🔧 New Job Assignment',
                     message: `New ${job.category} job: ${job.sub_service} in ${job.location}`,
                     type: 'job_assigned',
@@ -234,6 +242,8 @@ export default function Step2Companies({
 
                 if (notificationError) console.error('Notification DB error:', notificationError);
 
+                // REMOVED: Browser push notification code
+                // REMOVED: Sound notification code
 
             } catch (notifError) {
                 console.error('Notification sending failed:', notifError);
