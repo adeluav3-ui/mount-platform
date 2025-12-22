@@ -144,6 +144,97 @@ export default function CompanyDashboard() {
           event.waitUntil(clients.openWindow(url));
         }
       });
+
+      // Check if we should show notification (based on focus state)
+      const shouldShowNotification = !document.hasFocus() || true; // Set to true to always show
+
+      if (shouldShowNotification) {
+        registration.showNotification('🔧 Mount: New Job!', {
+          body: `${newJob.category} - ${newJob.sub_service}`,
+          icon: '/logo.png',
+          badge: '/logo.png',
+          tag: `job-${newJob.id}-${Date.now()}`,
+          data: {
+            url: `/company/jobs/${newJob.id}`,
+            jobId: newJob.id
+          },
+          vibrate: [200, 100, 200],
+          actions: [
+            {
+              action: 'view',
+              title: 'View Job'
+            }
+          ],
+          requireInteraction: true, // Changed to true - forces notification to stay
+          silent: false,
+          renotify: true
+        })
+          .then(() => console.log('✅ Notification shown (tab focused:', document.hasFocus(), ')'))
+          .catch(err => console.error('❌ Notification failed:', err));
+      } else {
+        console.log('⏸️ Notification skipped - tab is focused and browser suppresses');
+
+        // Show an in-app notification instead
+        const event = new CustomEvent('show-toast', {
+          detail: {
+            message: `New job: ${newJob.category} - ${newJob.sub_service}`,
+            type: 'success'
+          }
+        });
+        window.dispatchEvent(event);
+      }
+
+
+      // Add toast notification system
+      useEffect(() => {
+        const handleToast = (e) => {
+          // Create toast element
+          const toast = document.createElement('div');
+          toast.id = 'app-toast';
+          toast.innerHTML = `
+      <div style="position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 16px; border-radius: 8px; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.1); animation: slideIn 0.3s ease;">
+        <strong>🔔 ${e.detail.type === 'success' ? 'New Job!' : 'Alert'}</strong><br>
+        ${e.detail.message}
+      </div>
+    `;
+
+          // Add styles
+          const style = document.createElement('style');
+          style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+          document.head.appendChild(style);
+
+          document.body.appendChild(toast);
+
+          // Remove after 5 seconds
+          setTimeout(() => {
+            if (toast.firstChild) {
+              toast.firstChild.style.animation = 'slideOut 0.3s ease';
+              setTimeout(() => {
+                if (document.body.contains(toast)) {
+                  document.body.removeChild(toast);
+                }
+              }, 300);
+            }
+          }, 5000);
+        };
+
+        window.addEventListener('show-toast', handleToast);
+
+        return () => {
+          window.removeEventListener('show-toast', handleToast);
+        };
+      }, []);
+
+
       // 3. Play sound notification
       try {
         const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
