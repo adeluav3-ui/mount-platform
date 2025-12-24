@@ -1,9 +1,9 @@
 // src/App.jsx - UPDATED WITH AUTHCHECK
-import React from 'react';
+import React, { useEffect } from 'react'; // ADD useEffect here!
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SupabaseProvider, useSupabase } from './context/SupabaseContext';
 import { SettingsProvider } from './context/SettingsContext';
-import AuthCheck from './components/AuthCheck'; // ADD THIS IMPORT
+import AuthCheck from './components/AuthCheck';
 import WelcomeScreen from './components/WelcomeScreen';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
@@ -24,24 +24,38 @@ import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
 import OneSignal from 'react-onesignal';
 
-
-
-useEffect(() => {
-  OneSignal.init({
-    appId: "YOUR_ONESIGNAL_APP_ID",
-    allowLocalhostAsSecureOrigin: true,
-    serviceWorkerParam: { scope: "/" },
-    serviceWorkerPath: "OneSignalSDKWorker.js"
-  });
-
-  // Set external user ID (your user's ID)
-  OneSignal.setExternalUserId(userId);
-}, []);
-
-
 // Move AppRoutes inside the Providers
 function AppRoutes() {
   const { user, loading } = useSupabase();
+
+  // ADD OneSignal initialization HERE, inside the component
+  useEffect(() => {
+    // Only initialize OneSignal if we have an App ID
+    const appId = process.env.REACT_APP_ONESIGNAL_APP_ID;
+
+    if (appId && appId !== "YOUR_ONESIGNAL_APP_ID") {
+      console.log('Initializing OneSignal with App ID:', appId);
+
+      OneSignal.init({
+        appId: appId,
+        allowLocalhostAsSecureOrigin: true,
+        serviceWorkerParam: { scope: "/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js"
+      }).then(() => {
+        console.log('OneSignal initialized successfully');
+
+        // Set external user ID if we have a user
+        if (user?.id) {
+          OneSignal.setExternalUserId(user.id);
+          console.log('Set OneSignal external user ID:', user.id);
+        }
+      }).catch(error => {
+        console.error('OneSignal initialization failed:', error);
+      });
+    } else {
+      console.warn('OneSignal App ID not configured');
+    }
+  }, [user]); // Re-run when user changes
 
   console.log('AppRoutes render:', {
     user,
