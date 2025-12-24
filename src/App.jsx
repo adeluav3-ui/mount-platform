@@ -31,7 +31,7 @@ function AppRoutes() {
   // ADD OneSignal initialization HERE, inside the component
   useEffect(() => {
     // Only initialize OneSignal if we have an App ID
-    const appId = process.env.REACT_APP_ONESIGNAL_APP_ID;
+    const appId = process.env.VITE_ONESIGNAL_APP_ID;
 
     if (appId && appId !== "YOUR_ONESIGNAL_APP_ID") {
       console.log('Initializing OneSignal with App ID:', appId);

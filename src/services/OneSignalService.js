@@ -4,42 +4,62 @@ import OneSignal from 'react-onesignal';
 class OneSignalService {
     static async initialize(userId) {
         try {
-            // Get from environment variable
-            const appId = process.env.REACT_APP_ONESIGNAL_APP_ID;
+            // Get from environment variable (works in Vite/React)
+            const appId = import.meta.env.VITE_ONESIGNAL_APP_ID || process.env.VITE_ONESIGNAL_APP_ID;
 
-            if (!appId) {
-                console.error('OneSignal App ID not found in environment variables');
+            console.log('🔍 OneSignal App ID from env:', appId);
+
+            if (!appId || appId === "YOUR_ONESIGNAL_APP_ID") {
+                console.error('OneSignal App ID not configured properly');
                 return false;
             }
 
-            console.log('Initializing OneSignal with App ID:', appId);
+            console.log('🚀 Initializing OneSignal...');
+
+            // Initialize OneSignal
             await OneSignal.init({
-                appId: process.env.REACT_APP_ONESIGNAL_APP_ID,
+                appId: appId,
                 allowLocalhostAsSecureOrigin: true,
                 serviceWorkerParam: { scope: "/" },
-                serviceWorkerPath: "OneSignalSDKWorker.js"
+                serviceWorkerPath: "/OneSignalSDKWorker.js"
             });
 
-            // Set user ID for targeting
-            await OneSignal.setExternalUserId(userId);
+            console.log('✅ OneSignal initialized');
 
-            // Subscribe to notifications
-            await OneSignal.registerForPushNotifications();
+            // Set external user ID
+            if (userId) {
+                await OneSignal.setExternalUserId(userId);
+                console.log('✅ Set external user ID:', userId);
+            }
 
-            console.log('OneSignal initialized for user:', userId);
+            // Register for push notifications
+            await OneSignal.showSlidedownPrompt();
+
             return true;
         } catch (error) {
-            console.error('OneSignal initialization failed:', error);
+            console.error('❌ OneSignal initialization failed:', error);
             return false;
         }
     }
 
     static async getPlayerId() {
-        return new Promise((resolve) => {
-            OneSignal.getUserId((userId) => {
-                resolve(userId);
-            });
-        });
+        try {
+            // Use the correct OneSignal method
+            const subscription = await OneSignal.User.PushSubscription.id;
+            return subscription || null;
+        } catch (error) {
+            console.error('Error getting player ID:', error);
+            return null;
+        }
+    }
+
+    static async isSubscribed() {
+        try {
+            return await OneSignal.User.PushSubscription.optedIn;
+        } catch (error) {
+            console.error('Error checking subscription:', error);
+            return false;
+        }
     }
 }
 

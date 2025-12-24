@@ -48,6 +48,46 @@ export default function CompanyDashboard() {
 
   }, [user, supabase])
 
+  // In CompanyDashboard.jsx, update the OneSignal section:
+  useEffect(() => {
+    const setupOneSignal = async () => {
+      if (!user?.id) return;
+
+      console.log('🔔 Setting up OneSignal for user:', user.id);
+
+      // Check if OneSignal is available
+      if (typeof OneSignal === 'undefined') {
+        console.warn('OneSignal not loaded yet');
+        return;
+      }
+
+      try {
+        // Initialize OneSignal
+        const initialized = await OneSignalService.initialize(user.id);
+
+        if (initialized) {
+          console.log('✅ OneSignal setup complete');
+
+          // Get player ID (optional)
+          const playerId = await OneSignalService.getPlayerId();
+          if (playerId) {
+            console.log('📱 OneSignal Player ID:', playerId);
+
+            // Save to database if needed
+            await supabase
+              .from('companies')
+              .update({ onesignal_player_id: playerId })
+              .eq('id', user.id);
+          }
+        }
+      } catch (error) {
+        console.error('❌ OneSignal setup failed:', error);
+      }
+    };
+
+    setupOneSignal();
+  }, [user, supabase]);
+
   useEffect(() => {
     if (user?.id) {
       // Initialize OneSignal

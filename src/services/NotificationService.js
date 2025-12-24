@@ -57,8 +57,8 @@ class NotificationService {
 
     static async sendOneSignalPush(playerId, jobData, companyName) {
         try {
-            const appId = process.env.REACT_APP_ONESIGNAL_APP_ID;
-            const apiKey = process.env.REACT_APP_ONESIGNAL_REST_API_KEY; // Updated name
+            const appId = process.env.VITE_ONESIGNAL_APP_ID;
+            const apiKey = process.env.VITE_ONESIGNAL_REST_API_KEY; // Updated name
             const response = await fetch('https://onesignal.com/api/v1/notifications', {
                 method: 'POST',
                 headers: {
@@ -66,7 +66,7 @@ class NotificationService {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    app_id: process.env.REACT_APP_ONESIGNAL_APP_ID,
+                    app_id: process.env.VITE_ONESIGNAL_APP_ID,
                     include_player_ids: [playerId],
                     headings: { en: `🚨 New ${jobData.category} Job!` },
                     contents: { en: `${jobData.location} • ₦${Number(jobData.budget).toLocaleString()}` },
