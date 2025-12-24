@@ -81,9 +81,29 @@ export default defineConfig({
                 ]
             },
             devOptions: {
-                enabled: false // Enable PWA in development if you want to test
+                enabled: false
             }
         })
-
-    ]
+    ],
+    // ADD THIS SECTION for SPA routing:
+    build: {
+        rollupOptions: {
+            input: {
+                main: './index.html'
+            }
+        },
+        // Generate sourcemaps for better debugging
+        sourcemap: true
+    },
+    // This enables the history API fallback in development
+    server: {
+        historyApiFallback: true,
+        port: 3000,
+        host: true // Listen on all addresses
+    },
+    // Optimize for Vercel
+    preview: {
+        port: 3000,
+        host: true
+    }
 })
