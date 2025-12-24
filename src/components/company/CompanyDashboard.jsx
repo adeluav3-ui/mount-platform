@@ -49,36 +49,33 @@ export default function CompanyDashboard() {
   }, [user, supabase])
 
   // In CompanyDashboard.jsx, update the OneSignal section:
+  // In CompanyDashboard.jsx, update the OneSignal useEffect:
   useEffect(() => {
     const setupOneSignal = async () => {
       if (!user?.id) return;
 
       console.log('🔔 Setting up OneSignal for user:', user.id);
 
-      // Check if OneSignal is available
-      if (typeof OneSignal === 'undefined') {
-        console.warn('OneSignal not loaded yet');
-        return;
-      }
+      // Add delay to prevent race conditions
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       try {
-        // Initialize OneSignal
         const initialized = await OneSignalService.initialize(user.id);
 
         if (initialized) {
           console.log('✅ OneSignal setup complete');
 
-          // Get player ID (optional)
-          const playerId = await OneSignalService.getPlayerId();
-          if (playerId) {
-            console.log('📱 OneSignal Player ID:', playerId);
-
-            // Save to database if needed
-            await supabase
-              .from('companies')
-              .update({ onesignal_player_id: playerId })
-              .eq('id', user.id);
-          }
+          // Optional: Save player ID to database
+          setTimeout(async () => {
+            const playerId = await OneSignalService.getPlayerId();
+            if (playerId) {
+              console.log('📱 OneSignal Player ID:', playerId);
+              await supabase
+                .from('companies')
+                .update({ onesignal_player_id: playerId })
+                .eq('id', user.id);
+            }
+          }, 3000); // Wait longer for OneSignal to be ready
         }
       } catch (error) {
         console.error('❌ OneSignal setup failed:', error);

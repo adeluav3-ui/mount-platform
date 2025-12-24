@@ -22,40 +22,11 @@ import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
-import OneSignal from 'react-onesignal';
 
 // Move AppRoutes inside the Providers
 function AppRoutes() {
   const { user, loading } = useSupabase();
 
-  // ADD OneSignal initialization HERE, inside the component
-  useEffect(() => {
-    // Only initialize OneSignal if we have an App ID
-    const appId = process.env.VITE_ONESIGNAL_APP_ID;
-
-    if (appId && appId !== "YOUR_ONESIGNAL_APP_ID") {
-      console.log('Initializing OneSignal with App ID:', appId);
-
-      OneSignal.init({
-        appId: appId,
-        allowLocalhostAsSecureOrigin: true,
-        serviceWorkerParam: { scope: "/" },
-        serviceWorkerPath: "OneSignalSDKWorker.js"
-      }).then(() => {
-        console.log('OneSignal initialized successfully');
-
-        // Set external user ID if we have a user
-        if (user?.id) {
-          OneSignal.setExternalUserId(user.id);
-          console.log('Set OneSignal external user ID:', user.id);
-        }
-      }).catch(error => {
-        console.error('OneSignal initialization failed:', error);
-      });
-    } else {
-      console.warn('OneSignal App ID not configured');
-    }
-  }, [user]); // Re-run when user changes
 
   console.log('AppRoutes render:', {
     user,
