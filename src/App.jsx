@@ -22,6 +22,22 @@ import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
+import OneSignal from 'react-onesignal';
+
+
+
+useEffect(() => {
+  OneSignal.init({
+    appId: "YOUR_ONESIGNAL_APP_ID",
+    allowLocalhostAsSecureOrigin: true,
+    serviceWorkerParam: { scope: "/" },
+    serviceWorkerPath: "OneSignalSDKWorker.js"
+  });
+
+  // Set external user ID (your user's ID)
+  OneSignal.setExternalUserId(userId);
+}, []);
+
 
 // Move AppRoutes inside the Providers
 function AppRoutes() {

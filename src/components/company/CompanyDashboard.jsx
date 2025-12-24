@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import ProfileSection from './ProfileSection'
 import JobsSection from './JobsSection'
 import logo from '../../assets/logo.png';
+import OneSignalService from "../../services/OneSignalService";
 
 export default function CompanyDashboard() {
   const { user, signOut, supabase } = useSupabase()
@@ -46,6 +47,78 @@ export default function CompanyDashboard() {
     }
 
   }, [user, supabase])
+
+  useEffect(() => {
+    if (user?.id) {
+      // Initialize OneSignal
+      OneSignalService.initialize(user.id);
+
+      // Save player ID to database
+      const savePlayerId = async () => {
+        const playerId = await OneSignalService.getPlayerId();
+        if (playerId) {
+          await supabase
+            .from('companies')
+            .update({ onesignal_player_id: playerId })
+            .eq('id', user.id);
+        }
+      };
+
+      setTimeout(savePlayerId, 2000); // Wait for initialization
+    }
+  }, [user]);
+
+  const NotificationSettings = () => {
+    const [preferences, setPreferences] = useState({
+      push: true,
+      email: true,
+      browser: true
+    });
+
+    const updatePreferences = async (key, value) => {
+      const newPrefs = { ...preferences, [key]: value };
+      setPreferences(newPrefs);
+
+      await supabase
+        .from('companies')
+        .update({ notification_preferences: newPrefs })
+        .eq('id', user.id);
+    };
+
+    return (
+      <div className="bg-white rounded-xl p-6 shadow">
+        <h3 className="text-lg font-bold mb-4">Notification Settings</h3>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Push Notifications</p>
+              <p className="text-sm text-gray-500">Instant alerts when app is closed</p>
+            </div>
+            <button
+              onClick={() => updatePreferences('push', !preferences.push)}
+              className={`w-12 h-6 rounded-full transition ${preferences.push ? 'bg-green-500' : 'bg-gray-300'}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full transform transition ${preferences.push ? 'translate-x-7' : 'translate-x-1'} mt-0.5`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Email Notifications</p>
+              <p className="text-sm text-gray-500">Backup alerts to your email</p>
+            </div>
+            <button
+              onClick={() => updatePreferences('email', !preferences.email)}
+              className={`w-12 h-6 rounded-full transition ${preferences.email ? 'bg-green-500' : 'bg-gray-300'}`}
+            >
+              <div className={`w-5 h-5 bg-white rounded-full transform transition ${preferences.email ? 'translate-x-7' : 'translate-x-1'} mt-0.5`} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   console.log('🖥️ Browser focus state:', {
     isFocused: document.hasFocus(),
