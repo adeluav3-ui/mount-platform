@@ -12,22 +12,23 @@
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     OneSignalDeferred.push(async function (OneSignal) {
+      // Set service worker configuration
+      OneSignal.SERVICE_WORKER_PARAM = {
+        scope: '/OneSignalSDKWorker.js/'
+      };
+      OneSignal.SERVICE_WORKER_PATH = '/OneSignalSDKWorker.js';
+
       try {
         console.log('🚀 Starting OneSignal initialization...');
 
-        // Initialize with CORRECT service worker paths
         await OneSignal.init({
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
-
-          // CRITICAL FIX: Remove serviceWorkerPath parameter
-          // Let OneSignal use its default CDN service workers
-          // serviceWorkerPath: "OneSignalSDKWorker.js", // REMOVE THIS LINE
 
           // Auto-prompt settings
           promptOptions: {
             slidedown: {
               enabled: true,
-              autoPrompt: true,
+              autoPrompt: false, // Disable for now to debug
               timeDelay: 1,
               pageViews: 1
             }
@@ -47,7 +48,6 @@
         console.log('✅ OneSignal initialized successfully');
         console.log('Initial permission:', Notification.permission);
 
-        // Make it globally available
         window._OneSignal = OneSignal;
 
       } catch (error) {
