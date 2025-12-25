@@ -1,6 +1,5 @@
 {
     "rewrites": [
-        // OneSignal service worker routes - MUST COME FIRST
         {
             "source": "/OneSignalSDKWorker.js",
             "destination": "https://cdn.onesignal.com/sdks/OneSignalSDKWorker.js"
@@ -25,7 +24,6 @@
             "source": "/OneSignalSDK.sw.js/:path*",
             "destination": "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js"
         },
-        // Your existing SPA route - KEEP THIS LAST
         {
             "source": "/(.*)",
             "destination": "/index.html"
