@@ -23,11 +23,13 @@
         await OneSignal.init({
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
 
-          // IMPORTANT: Disable auto-prompt while debugging
+          // In index.html, update the promptOptions:
           promptOptions: {
             slidedown: {
-              enabled: false, // Disable completely for now
-              autoPrompt: false
+              enabled: true, // CHANGE BACK TO TRUE
+              autoPrompt: true, // ENABLE AUTO-PROMPT
+              timeDelay: 3, // Show after 3 seconds
+              pageViews: 1 // Show on first page view
             }
           },
 
@@ -74,8 +76,8 @@
   <meta name="msapplication-TileColor" content="#10B981" />
   <meta name="msapplication-config" content="/browserconfig.xml" />
 
-  <!-- Manifest (COMMENTED OUT TEMPORARILY) -->
-  <!-- <link rel="manifest" href="/manifest.json" /> -->
+  <!-- Manifest -->
+  <link rel="manifest" href="/manifest.json" />
 
   <title>Mount - Nigeria's Trusted Home Services</title>
   <base href="/">
