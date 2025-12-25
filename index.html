@@ -12,23 +12,22 @@
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     OneSignalDeferred.push(async function (OneSignal) {
-      // Set service worker configuration
-      OneSignal.SERVICE_WORKER_PATH = "/OneSignalSDKWorker.js";
-      OneSignal.SERVICE_WORKER_PARAM = { scope: "/" };
+      // Use local service worker files
+      OneSignal.SERVICE_WORKER_UPDATER_PATH = '/OneSignalSDKUpdaterWorker.js';
+      OneSignal.SERVICE_WORKER_PATH = '/OneSignalSDKWorker.js';
+      OneSignal.SERVICE_WORKER_PARAM = { scope: '/' };
 
       try {
-        console.log('🚀 Starting OneSignal initialization...');
+        console.log('🚀 Starting OneSignal initialization with local workers...');
 
         await OneSignal.init({
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
 
-          // Auto-prompt settings
+          // IMPORTANT: Disable auto-prompt while debugging
           promptOptions: {
             slidedown: {
-              enabled: true,
-              autoPrompt: false, // Disable for now to debug
-              timeDelay: 1,
-              pageViews: 1
+              enabled: false, // Disable completely for now
+              autoPrompt: false
             }
           },
 
@@ -46,9 +45,9 @@
         console.log('✅ OneSignal initialized successfully');
         console.log('Initial permission:', Notification.permission);
 
-        // Check subscription state
-        console.log('User opted in:', await OneSignal.User.PushSubscription.optedIn);
-        console.log('Player ID:', await OneSignal.User.PushSubscription.id);
+        // Check subscription
+        const playerId = await OneSignal.User.PushSubscription.id;
+        console.log('Player ID:', playerId);
 
         window._OneSignal = OneSignal;
 
