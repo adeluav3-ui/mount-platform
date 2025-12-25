@@ -6,54 +6,56 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <link rel="icon" type="image/png" href="/logo.png" />
 
-  <!-- OneSignal SDK (MUST BE IN HEAD, BEFORE OTHER SCRIPTS) -->
+  <!-- OneSignal SDK v16 -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-    // Set up OneSignal configuration
-    OneSignalDeferred.push(function (OneSignal) {
-      // Set the correct Safari web ID if you have it
-      OneSignal.SERVICE_WORKER_PARAM = { scope: '/' };
-      OneSignal.SERVICE_WORKER_PATH = 'OneSignalSDKWorker.js';
-
-      OneSignal.init({
+    OneSignalDeferred.push(async function (OneSignal) {
+      // Initialize OneSignal
+      await OneSignal.init({
         appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
-        safari_web_id: "web.onesignal.auto.xxx", // If you have this from OneSignal dashboard
 
-        // Notification prompt settings
-        notifyButton: {
-          enable: false,
-        },
+        // IMPORTANT: Enable auto-prompt for notifications
+        allowLocalhostAsSecureOrigin: true,
 
-        // Prompt settings
+        // Auto-prompt settings (shows prompt automatically)
         promptOptions: {
-          /* 
-          Customize if you want automatic prompts
-          Example:
           slidedown: {
             enabled: true,
             autoPrompt: true,
-            timeDelay: 3
+            timeDelay: 1,
+            pageViews: 1,
+            forceUnmodified: true
           }
-          */
         },
 
-        // Important: Allow your new domain
-        allowLocalhostAsSecureOrigin: true,
-        httpPermissionRequest: {
-          enable: true
+        // Service worker configuration
+        serviceWorkerParam: { scope: "/" },
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+
+        // Notify button (optional)
+        notifyButton: {
+          enable: false
         },
 
-        persistNotification: false,
+        // Welcome notification
+        welcomeNotification: {
+          disable: false
+        },
+
+        persistNotification: false
       });
 
-      console.log('📢 OneSignal SDK initialized for mountltd.com');
+      console.log('✅ OneSignal SDK v16 initialized for mountltd.com');
 
-      // Check current user ID
-      OneSignal.getUserId().then(function (userId) {
-        console.log('👤 Current Player ID:', userId);
-      });
+      // Log current state
+      console.log('Initial permission:', Notification.permission);
+      console.log('User opted in:', await OneSignal.User.PushSubscription.optedIn);
+      console.log('Player ID:', await OneSignal.User.PushSubscription.id);
+
+      // Make OneSignal globally available
+      window._OneSignal = OneSignal;
     });
   </script>
 

@@ -1,96 +1,76 @@
-// src/services/OneSignalService.js - SIMPLIFIED WORKING VERSION
+// src/services/OneSignalService.js - SIMPLIFIED v16
 class OneSignalService {
+    static onSubscriptionSuccess = null;
+
+    // Simple initialization
     static async initialize(userId = null) {
         try {
-            console.log('🔔 Starting OneSignal initialization');
+            console.log('🔔 OneSignalService: Waiting for SDK...');
 
-            // Wait for OneSignal to be available
+            // Wait for OneSignal to be ready
             await this.waitForOneSignal();
 
-            if (!window.OneSignal) {
+            if (!window._OneSignal && !window.OneSignal) {
                 console.error('❌ OneSignal not available');
                 return false;
             }
 
-            console.log('✅ OneSignal is available');
+            const oneSignal = window._OneSignal || window.OneSignal;
 
-            const oneSignal = window.OneSignal;
+            console.log('✅ OneSignal SDK ready');
 
-            // DEBUG: Log OneSignal object structure
-            console.log('🔍 OneSignal structure:', {
-                hasUser: !!oneSignal.User,
-                hasLogin: typeof oneSignal.login === 'function',
-                hasRegisterForPush: typeof oneSignal.registerForPushNotifications === 'function'
+            // Get current subscription state
+            const playerId = await this.getPlayerId();
+            const optedIn = await oneSignal.User.PushSubscription.optedIn;
+
+            console.log('📊 Current state:', {
+                playerId,
+                optedIn,
+                permission: Notification.permission
             });
 
-            // First, try to get current subscription state
-            const playerId = await this.getPlayerId();
-            console.log('📱 Current Player ID:', playerId);
-
-            // If no player ID and permission is granted, try to subscribe
-            if (!playerId && Notification.permission === 'granted') {
-                console.log('🔄 Attempting to subscribe to push notifications...');
-
-                // METHOD 1: Try registerForPushNotifications if available
-                if (typeof oneSignal.registerForPushNotifications === 'function') {
-                    try {
-                        await oneSignal.registerForPushNotifications();
-                        console.log('✅ registerForPushNotifications called');
-                    } catch (error) {
-                        console.log('⚠️ registerForPushNotifications failed:', error.message);
-                    }
-                }
-
-                // METHOD 2: Wait a bit and check if subscription happened
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-                const newPlayerId = await this.getPlayerId();
-                console.log('📱 Player ID after subscription attempt:', newPlayerId);
-
-                if (newPlayerId) {
-                    console.log('🎉 Successfully subscribed!');
-
-                    // Now set external user ID if we have one
-                    if (userId) {
-                        await this.setExternalUserId(userId);
-                    }
-
-                    return true;
-                }
+            // Set external user ID if we have playerId
+            if (userId && playerId) {
+                await this.setExternalUserId(oneSignal, userId);
             }
 
-            // If we already have a player ID, just set external user ID
-            if (playerId && userId) {
-                await this.setExternalUserId(userId);
-            }
+            // Setup subscription monitoring
+            this.monitorSubscription();
 
             return !!playerId;
 
         } catch (error) {
-            console.error('❌ OneSignal initialization error:', error);
+            console.error('❌ OneSignalService error:', error);
             return false;
         }
     }
 
     static async waitForOneSignal(maxWait = 10000) {
         return new Promise((resolve) => {
-            if (window.OneSignal) {
+            // Check if OneSignal is ready (either global or _OneSignal)
+            const checkOneSignal = () => {
+                return (window.OneSignal && window.OneSignal.User) ||
+                    (window._OneSignal && window._OneSignal.User);
+            };
+
+            if (checkOneSignal()) {
                 resolve(true);
                 return;
             }
 
             let elapsed = 0;
-            const interval = 100;
+            const interval = 200;
             const timer = setInterval(() => {
                 elapsed += interval;
 
-                if (window.OneSignal) {
+                if (checkOneSignal()) {
                     clearInterval(timer);
                     resolve(true);
                 }
 
                 if (elapsed >= maxWait) {
                     clearInterval(timer);
+                    console.warn('⚠️ OneSignal not ready after timeout');
                     resolve(false);
                 }
             }, interval);
@@ -99,80 +79,92 @@ class OneSignalService {
 
     static async getPlayerId() {
         try {
-            if (!window.OneSignal) return null;
+            const oneSignal = window._OneSignal || window.OneSignal;
+            if (!oneSignal || !oneSignal.User) return null;
 
-            const oneSignal = window.OneSignal;
-            let playerId = null;
-
-            // Try different ways to get player ID based on OneSignal SDK version
-            if (oneSignal.User && oneSignal.User.PushSubscription && oneSignal.User.PushSubscription.id) {
-                playerId = await oneSignal.User.PushSubscription.id;
-            } else if (oneSignal.User && oneSignal.User.id) {
-                playerId = await oneSignal.User.id;
-            } else if (typeof oneSignal.getUserId === 'function') {
-                playerId = await new Promise(resolve => oneSignal.getUserId(resolve));
-            }
-
-            return playerId;
+            return await oneSignal.User.PushSubscription.id;
         } catch (error) {
             console.error('Error getting player ID:', error);
             return null;
         }
     }
 
-    static async setExternalUserId(userId) {
+    static async setExternalUserId(oneSignal, userId) {
         try {
-            if (!window.OneSignal || !userId) return false;
-
-            const oneSignal = window.OneSignal;
-
             if (typeof oneSignal.setExternalUserId === 'function') {
                 await oneSignal.setExternalUserId(userId);
-                console.log('✅ External user ID set:', userId);
+                console.log('✅ External ID set:', userId);
                 return true;
             }
-
             return false;
         } catch (error) {
-            console.error('Error setting external user ID:', error);
+            console.error('Error setting external ID:', error);
             return false;
         }
     }
 
-    // Manual trigger for subscription
-    static async triggerSubscription() {
-        console.log('🔔 Manually triggering subscription...');
+    // Monitor subscription changes
+    static monitorSubscription() {
+        console.log('👀 Monitoring subscription changes...');
 
-        // Check permission first
+        let lastPlayerId = null;
+        let checkCount = 0;
+        const maxChecks = 30; // Check for 30 seconds
+
+        const checkInterval = setInterval(async () => {
+            checkCount++;
+
+            const playerId = await this.getPlayerId();
+
+            // If we got a player ID
+            if (playerId && playerId !== lastPlayerId) {
+                console.log('🎉 SUBSCRIPTION DETECTED! Player ID:', playerId);
+                lastPlayerId = playerId;
+
+                clearInterval(checkInterval);
+
+                // Trigger success callback
+                if (typeof this.onSubscriptionSuccess === 'function') {
+                    this.onSubscriptionSuccess(playerId);
+                }
+            }
+
+            // Stop checking after max attempts
+            if (checkCount >= maxChecks) {
+                clearInterval(checkInterval);
+                console.log('⏹️ Stopped subscription monitoring');
+            }
+        }, 1000); // Check every second
+    }
+
+    // Manual trigger (for testing)
+    static async triggerSubscription() {
+        console.log('🔔 Manual subscription trigger');
+
+        const oneSignal = window._OneSignal || window.OneSignal;
+        if (!oneSignal) {
+            console.error('OneSignal not available');
+            return false;
+        }
+
+        // If permission is default, request it
         if (Notification.permission === 'default') {
-            console.log('📝 Requesting notification permission...');
             const permission = await Notification.requestPermission();
-            console.log('📝 Permission result:', permission);
+            console.log('Permission result:', permission);
 
             if (permission !== 'granted') {
-                console.log('❌ Permission not granted');
                 return false;
             }
         }
 
-        // Wait for OneSignal
-        await this.waitForOneSignal();
-
-        if (!window.OneSignal) {
-            console.error('❌ OneSignal not available');
-            return false;
-        }
-
-        const oneSignal = window.OneSignal;
-
-        // Try to trigger subscription slidedown
-        if (oneSignal.Slidedown && typeof oneSignal.Slidedown.promptPush === 'function') {
-            console.log('🔄 Showing subscription prompt...');
+        // Try to trigger the slidedown
+        if (oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
+            console.log('🔄 Triggering slidedown prompt...');
             oneSignal.Slidedown.promptPush();
             return true;
         }
 
-        console.log('⚠️ No subscription prompt method available');
+        console.log('⚠️ Could not trigger subscription');
         return false;
     }
 }

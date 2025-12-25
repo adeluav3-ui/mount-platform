@@ -51,52 +51,19 @@ export default function CompanyDashboard() {
   // In CompanyDashboard.jsx, update the OneSignal section:
   useEffect(() => {
     const setupOneSignal = async () => {
-      if (!user?.id) {
-        console.log('⏳ Waiting for user ID...');
-        return;
-      }
+      if (!user?.id) return;
 
       console.log('🔔 Setting up OneSignal for user:', user.id);
 
-      // Add a small delay to ensure OneSignal SDK is loaded
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait a bit for SDK to load
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      try {
-        // STEP 1: Initialize OneSignal
-        console.log('🔄 Step 1: Initializing OneSignal...');
-        const initialized = await OneSignalService.initialize(user.id);
+      // Set subscription success callback
+      OneSignalService.onSubscriptionSuccess = async (playerId) => {
+        console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);
 
-        if (initialized) {
-          console.log('✅ Step 1: OneSignal initialized successfully');
-        } else {
-          console.log('⚠️ Step 1: OneSignal not fully initialized');
-        }
-
-        // STEP 2: Wait a bit and get player ID
-        console.log('🔄 Step 2: Getting player ID...');
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const playerId = await OneSignalService.getPlayerId();
-        console.log('📱 Player ID:', playerId);
-
-        // STEP 3: Debug info
-        console.log('=== ONESIGNAL DEBUG INFO ===');
-        console.log('Notification Permission:', Notification.permission);
-        console.log('OneSignal Available:', !!window.OneSignal);
-        console.log('Player ID Obtained:', !!playerId);
-
-        if (window.OneSignal) {
-          const oneSignal = window.OneSignal;
-          console.log('OneSignal.User exists:', !!oneSignal.User);
-          if (oneSignal.User) {
-            console.log('User.id:', await oneSignal.User.id);
-            console.log('PushSubscription exists:', !!oneSignal.User.PushSubscription);
-          }
-        }
-
-        // STEP 4: Save player ID to database if we have it
-        if (playerId) {
-          console.log('💾 Saving player ID to database...');
+        // Save to database
+        if (user?.id) {
           const { error } = await supabase
             .from('companies')
             .update({ onesignal_player_id: playerId })
@@ -105,37 +72,24 @@ export default function CompanyDashboard() {
           if (error) {
             console.error('❌ Error saving player ID:', error);
           } else {
-            console.log('✅ Player ID saved to database');
-          }
-        } else {
-          console.log('⚠️ No player ID available to save');
-
-          // If permission is granted but no player ID, try manual trigger
-          if (Notification.permission === 'granted') {
-            console.log('🔄 Permission granted but no player ID, trying manual trigger...');
-            await OneSignalService.triggerSubscription();
-
-            // Wait and check again
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            const newPlayerId = await OneSignalService.getPlayerId();
-
-            if (newPlayerId) {
-              console.log('🎉 Got player ID after manual trigger:', newPlayerId);
-              // Save the new player ID
-              await supabase
-                .from('companies')
-                .update({ onesignal_player_id: newPlayerId })
-                .eq('id', user.id);
-            }
+            console.log('💾 Player ID saved to database');
           }
         }
+      };
 
-      } catch (error) {
-        console.error('❌ OneSignal setup failed:', error);
+      // Initialize OneSignal
+      const initialized = await OneSignalService.initialize(user.id);
+      console.log('OneSignal initialized:', initialized);
+
+      // If not initialized, try manual trigger after delay
+      if (!initialized) {
+        setTimeout(async () => {
+          console.log('🔄 Trying manual subscription after delay...');
+          await OneSignalService.triggerSubscription();
+        }, 3000);
       }
     };
 
-    // Only run once when user is available
     if (user?.id) {
       setupOneSignal();
     }
