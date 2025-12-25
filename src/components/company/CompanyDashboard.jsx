@@ -49,79 +49,97 @@ export default function CompanyDashboard() {
   }, [user, supabase])
 
   // In CompanyDashboard.jsx, update the OneSignal section:
-  // In CompanyDashboard.jsx, update the OneSignal useEffect:
   useEffect(() => {
     const setupOneSignal = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.log('⏳ Waiting for user ID...');
+        return;
+      }
 
       console.log('🔔 Setting up OneSignal for user:', user.id);
 
-      // Add delay to prevent race conditions
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add a small delay to ensure OneSignal SDK is loaded
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       try {
+        // STEP 1: Initialize OneSignal
+        console.log('🔄 Step 1: Initializing OneSignal...');
         const initialized = await OneSignalService.initialize(user.id);
 
         if (initialized) {
-          console.log('✅ OneSignal setup complete');
-          // After OneSignal initialization
-          const oneSignalSuccess = await OneSignalService.initialize(userId);
-          if (!oneSignalSuccess) {
-            console.log('⚠️ OneSignal not ready, trying manual subscription...');
-            await OneSignalService.subscribeUser();
-          }
-          const debugOneSignal = async () => {
-            console.log('=== ONESIGNAL DEBUG ===');
-            console.log('Window.OneSignal:', window.OneSignal);
-            console.log('Notification.permission:', Notification.permission);
+          console.log('✅ Step 1: OneSignal initialized successfully');
+        } else {
+          console.log('⚠️ Step 1: OneSignal not fully initialized');
+        }
 
-            if (window.OneSignal) {
-              const oneSignal = window.OneSignal;
-              console.log('OneSignal.User:', oneSignal.User);
-              console.log('OneSignal.User.id:', await oneSignal.User.id);
-              console.log('OneSignal.User.PushSubscription:', oneSignal.User.PushSubscription);
-              console.log('OneSignal.User.PushSubscription.id:', await oneSignal.User.PushSubscription.id);
-            }
-          };
-          // Optional: Save player ID to database
-          setTimeout(async () => {
-            const playerId = await OneSignalService.getPlayerId();
-            if (playerId) {
-              console.log('📱 OneSignal Player ID:', playerId);
+        // STEP 2: Wait a bit and get player ID
+        console.log('🔄 Step 2: Getting player ID...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const playerId = await OneSignalService.getPlayerId();
+        console.log('📱 Player ID:', playerId);
+
+        // STEP 3: Debug info
+        console.log('=== ONESIGNAL DEBUG INFO ===');
+        console.log('Notification Permission:', Notification.permission);
+        console.log('OneSignal Available:', !!window.OneSignal);
+        console.log('Player ID Obtained:', !!playerId);
+
+        if (window.OneSignal) {
+          const oneSignal = window.OneSignal;
+          console.log('OneSignal.User exists:', !!oneSignal.User);
+          if (oneSignal.User) {
+            console.log('User.id:', await oneSignal.User.id);
+            console.log('PushSubscription exists:', !!oneSignal.User.PushSubscription);
+          }
+        }
+
+        // STEP 4: Save player ID to database if we have it
+        if (playerId) {
+          console.log('💾 Saving player ID to database...');
+          const { error } = await supabase
+            .from('companies')
+            .update({ onesignal_player_id: playerId })
+            .eq('id', user.id);
+
+          if (error) {
+            console.error('❌ Error saving player ID:', error);
+          } else {
+            console.log('✅ Player ID saved to database');
+          }
+        } else {
+          console.log('⚠️ No player ID available to save');
+
+          // If permission is granted but no player ID, try manual trigger
+          if (Notification.permission === 'granted') {
+            console.log('🔄 Permission granted but no player ID, trying manual trigger...');
+            await OneSignalService.triggerSubscription();
+
+            // Wait and check again
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const newPlayerId = await OneSignalService.getPlayerId();
+
+            if (newPlayerId) {
+              console.log('🎉 Got player ID after manual trigger:', newPlayerId);
+              // Save the new player ID
               await supabase
                 .from('companies')
-                .update({ onesignal_player_id: playerId })
+                .update({ onesignal_player_id: newPlayerId })
                 .eq('id', user.id);
             }
-          }, 3000); // Wait longer for OneSignal to be ready
+          }
         }
+
       } catch (error) {
         console.error('❌ OneSignal setup failed:', error);
       }
     };
 
-    setupOneSignal();
-  }, [user, supabase]);
-
-  useEffect(() => {
+    // Only run once when user is available
     if (user?.id) {
-      // Initialize OneSignal
-      OneSignalService.initialize(user.id);
-
-      // Save player ID to database
-      const savePlayerId = async () => {
-        const playerId = await OneSignalService.getPlayerId();
-        if (playerId) {
-          await supabase
-            .from('companies')
-            .update({ onesignal_player_id: playerId })
-            .eq('id', user.id);
-        }
-      };
-
-      setTimeout(savePlayerId, 2000); // Wait for initialization
+      setupOneSignal();
     }
-  }, [user]);
+  }, [user, supabase]); // Only depend on user and supabase
 
   const NotificationSettings = () => {
     const [preferences, setPreferences] = useState({
