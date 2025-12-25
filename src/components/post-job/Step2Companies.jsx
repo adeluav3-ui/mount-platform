@@ -2,6 +2,7 @@
 import React from 'react';
 import { useState, useEffect } from 'react'
 import { useSupabase } from '../../context/SupabaseContext'
+import NotificationService from '../../services/NotificationService';
 
 export default function Step2Companies({
     companies,
@@ -182,7 +183,7 @@ export default function Step2Companies({
                         const fileName = `${user.id}/jobs/${Date.now()}_${Math.random().toString(36).slice(2, 9)}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`
 
                         const { error } = await supabase.storage
-                            .from('job-photos') // Fixed bucket name
+                            .from('job-photos')
                             .upload(fileName, file, {
                                 cacheControl: '3600',
                                 upsert: false
@@ -210,7 +211,7 @@ export default function Step2Companies({
                     .map(result => result.value)
             }
 
-            // Save job with better error handling
+            // 1. FIRST: Save the job to get job ID
             const { error: jobError, data: jobData } = await supabase.from('jobs').insert({
                 customer_id: user.id,
                 company_id: company.id,
@@ -229,11 +230,12 @@ export default function Step2Companies({
 
             const newJobId = jobData.id;
 
+            // 2. SECOND: Send all notifications (now we have jobId)
             try {
-                // 1. Create database notification WITH job_id
+                // Create database notification
                 const { error: notificationError } = await supabase.from('notifications').insert({
                     user_id: company.id,
-                    job_id: newJobId, // ADD THIS - use the job ID we just created
+                    job_id: newJobId,
                     title: '🔧 New Job Assignment',
                     message: `New ${job.category} job: ${job.sub_service} in ${job.location}`,
                     type: 'job_assigned',
@@ -243,8 +245,20 @@ export default function Step2Companies({
 
                 if (notificationError) console.error('Notification DB error:', notificationError);
 
-                // REMOVED: Browser push notification code
-                // REMOVED: Sound notification code
+                // Send hybrid notifications (Push + Email)
+                const notificationResult = await NotificationService.notifyCompanyNewJob(
+                    company.id,
+                    {
+                        id: newJobId,
+                        category: job.category,
+                        sub_service: job.sub_service,
+                        location: job.location,
+                        budget: Number(job.price) || 0,
+                        description: job.description
+                    }
+                );
+
+                console.log('📢 Notification result:', notificationResult);
 
             } catch (notifError) {
                 console.error('Notification sending failed:', notifError);
