@@ -64,7 +64,25 @@ export default function CompanyDashboard() {
 
         if (initialized) {
           console.log('✅ OneSignal setup complete');
+          // After OneSignal initialization
+          const oneSignalSuccess = await OneSignalService.initialize(userId);
+          if (!oneSignalSuccess) {
+            console.log('⚠️ OneSignal not ready, trying manual subscription...');
+            await OneSignalService.subscribeUser();
+          }
+          const debugOneSignal = async () => {
+            console.log('=== ONESIGNAL DEBUG ===');
+            console.log('Window.OneSignal:', window.OneSignal);
+            console.log('Notification.permission:', Notification.permission);
 
+            if (window.OneSignal) {
+              const oneSignal = window.OneSignal;
+              console.log('OneSignal.User:', oneSignal.User);
+              console.log('OneSignal.User.id:', await oneSignal.User.id);
+              console.log('OneSignal.User.PushSubscription:', oneSignal.User.PushSubscription);
+              console.log('OneSignal.User.PushSubscription.id:', await oneSignal.User.PushSubscription.id);
+            }
+          };
           // Optional: Save player ID to database
           setTimeout(async () => {
             const playerId = await OneSignalService.getPlayerId();
