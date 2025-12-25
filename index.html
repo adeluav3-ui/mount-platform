@@ -6,7 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <link rel="icon" type="image/png" href="/logo.png" />
 
-  <!-- OneSignal SDK v16 - FIXED VERSION -->
+  <!-- OneSignal SDK v16 -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -48,6 +48,10 @@
         console.log('✅ OneSignal initialized successfully');
         console.log('Initial permission:', Notification.permission);
 
+        // Check subscription state
+        console.log('User opted in:', await OneSignal.User.PushSubscription.optedIn);
+        console.log('Player ID:', await OneSignal.User.PushSubscription.id);
+
         window._OneSignal = OneSignal;
 
       } catch (error) {
@@ -56,7 +60,7 @@
     });
   </script>
 
-  <!-- PWA Meta Tags -->
+  <!-- PWA Meta Tags (keeping for future) -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#10B981" />
   <meta name="description"
@@ -73,8 +77,8 @@
   <meta name="msapplication-TileColor" content="#10B981" />
   <meta name="msapplication-config" content="/browserconfig.xml" />
 
-  <!-- Manifest -->
-  <link rel="manifest" href="/manifest.json" />
+  <!-- Manifest (COMMENTED OUT TEMPORARILY) -->
+  <!-- <link rel="manifest" href="/manifest.json" /> -->
 
   <title>Mount - Nigeria's Trusted Home Services</title>
   <base href="/">

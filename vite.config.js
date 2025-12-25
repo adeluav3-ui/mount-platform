@@ -80,28 +80,26 @@ export default defineConfig({
                     }
                 ]
             },
+            // CRITICAL FIX: Disable auto service worker registration
+            injectRegister: null, // This prevents VitePWA from registering its own service worker
             devOptions: {
                 enabled: false
             }
         })
     ],
-    // ADD THIS SECTION for SPA routing:
     build: {
         rollupOptions: {
             input: {
                 main: './index.html'
             }
         },
-        // Generate sourcemaps for better debugging
         sourcemap: true
     },
-    // This enables the history API fallback in development
     server: {
         historyApiFallback: true,
         port: 3000,
-        host: true // Listen on all addresses
+        host: true
     },
-    // Optimize for Vercel
     preview: {
         port: 3000,
         host: true
