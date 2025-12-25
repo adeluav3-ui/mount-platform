@@ -10,16 +10,50 @@
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+    // Set up OneSignal configuration
     OneSignalDeferred.push(function (OneSignal) {
+      // Set the correct Safari web ID if you have it
+      OneSignal.SERVICE_WORKER_PARAM = { scope: '/' };
+      OneSignal.SERVICE_WORKER_PATH = 'OneSignalSDKWorker.js';
+
       OneSignal.init({
         appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
+        safari_web_id: "web.onesignal.auto.xxx", // If you have this from OneSignal dashboard
+
+        // Notification prompt settings
         notifyButton: {
-          enable: false, // Set to true if you want a bell icon
+          enable: false,
         },
+
+        // Prompt settings
+        promptOptions: {
+          /* 
+          Customize if you want automatic prompts
+          Example:
+          slidedown: {
+            enabled: true,
+            autoPrompt: true,
+            timeDelay: 3
+          }
+          */
+        },
+
+        // Important: Allow your new domain
         allowLocalhostAsSecureOrigin: true,
+        httpPermissionRequest: {
+          enable: true
+        },
+
         persistNotification: false,
       });
-      console.log('📢 OneSignal SDK initialized from index.html');
+
+      console.log('📢 OneSignal SDK initialized for mountltd.com');
+
+      // Check current user ID
+      OneSignal.getUserId().then(function (userId) {
+        console.log('👤 Current Player ID:', userId);
+      });
     });
   </script>
 
