@@ -1,27 +1,18 @@
-// src/services/NotificationService.js
-import { sendJobNotificationEmail } from './EmailService';
+// src/services/NotificationService.js - FIXED
+import { EmailService } from './EmailService'; // Changed from sendJobNotificationEmail to EmailService
 
 class NotificationService {
     static async notifyCompanyNewJob(companyId, jobData) {
-        const notifications = [];
+        // ... your code
 
-        // 1. Get company details
-        const { data: company } = await supabase
-            .from('companies')
-            .select('email, onesignal_player_id, company_name')
-            .eq('id', companyId)
-            .single();
-
-        if (!company) return { success: false, error: 'Company not found' };
-
-        // 2. Send OneSignal Push (Instant)
-        if (company.onesignal_player_id) {
-            const pushResult = await this.sendOneSignalPush(
-                company.onesignal_player_id,
+        // 3. Send Email (Backup)
+        if (company.email) {
+            const emailResult = await EmailService.sendJobNotificationEmail( // Use class.staticMethod
+                company.email,
                 jobData,
                 company.company_name
             );
-            notifications.push({ type: 'push', success: pushResult.success });
+            notifications.push({ type: 'email', success: emailResult.success });
         }
 
         // 3. Send Email (Backup)
