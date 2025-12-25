@@ -1,81 +1,52 @@
-// src/services/OneSignalService.js
-import OneSignal from 'react-onesignal';
-
+// src/services/OneSignalService.js - SIMPLIFIED VERSION
 class OneSignalService {
-    static isInitialized = false;
-
     static async initialize(userId) {
-        // Prevent duplicate initialization
-        if (this.isInitialized) {
-            console.log('✅ OneSignal already initialized');
-            return true;
-        }
-
         try {
-            const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
+            console.log('🔔 Starting OneSignal initialization');
 
-            console.log('🔍 OneSignal App ID from env:', appId);
+            // Wait for global OneSignal
+            if (!window.OneSignal) {
+                console.log('⏳ Waiting for OneSignal to load...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
 
-            if (!appId || appId === "YOUR_ONESIGNAL_APP_ID") {
-                console.warn('OneSignal App ID not configured properly');
+            if (!window.OneSignal) {
+                console.error('❌ OneSignal not available');
                 return false;
             }
 
-            console.log('🚀 Initializing OneSignal...');
+            console.log('✅ OneSignal is available');
 
-            // Check if already initialized globally
-            if (window.OneSignal) {
-                console.log('✅ OneSignal already initialized globally');
-                this.isInitialized = true;
-                return true;
+            // Set external user ID if provided
+            if (userId && window.OneSignal.setExternalUserId) {
+                await window.OneSignal.setExternalUserId(userId);
+                console.log('✅ Set user ID:', userId);
             }
 
-            await OneSignal.init({
-                appId: appId,
-                allowLocalhostAsSecureOrigin: true,
-                serviceWorkerParam: { scope: "/" },
-                serviceWorkerPath: "/OneSignalSDKWorker.js"
-            });
-
-            this.isInitialized = true;
-            console.log('✅ OneSignal initialized');
-
-            // Set external user ID
-            if (userId) {
-                await OneSignal.setExternalUserId(userId);
-                console.log('✅ Set external user ID:', userId);
-            }
-
-            // Show permission prompt if not already granted
-            const permission = await OneSignal.Notifications.permission;
-            if (permission === 'default') {
-                await OneSignal.Notifications.requestPermission();
-            }
+            // Check subscription status
+            const playerId = await this.getPlayerId();
+            console.log('📱 Player ID:', playerId);
 
             return true;
-        } catch (error) {
-            // If "already initialized" error, still count as success
-            if (error.message.includes('already initialized')) {
-                console.log('⚠️ OneSignal was already initialized');
-                this.isInitialized = true;
-                return true;
-            }
 
-            console.error('❌ OneSignal initialization failed:', error);
+        } catch (error) {
+            console.error('❌ OneSignal error:', error);
             return false;
         }
     }
 
     static async getPlayerId() {
         try {
-            if (!this.isInitialized) {
-                console.warn('OneSignal not initialized');
-                return null;
-            }
+            if (!window.OneSignal) return null;
 
-            // Get push subscription ID
-            const pushSubscription = await OneSignal.User.PushSubscription;
-            return pushSubscription.id || null;
+            // Try to get player ID
+            return await new Promise((resolve) => {
+                if (window.OneSignal.getUserId) {
+                    window.OneSignal.getUserId(resolve);
+                } else {
+                    resolve(null);
+                }
+            });
         } catch (error) {
             console.error('Error getting player ID:', error);
             return null;
