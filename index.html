@@ -13,10 +13,8 @@
 
     OneSignalDeferred.push(async function (OneSignal) {
       // Set service worker configuration
-      OneSignal.SERVICE_WORKER_PARAM = {
-        scope: '/OneSignalSDKWorker.js/'
-      };
-      OneSignal.SERVICE_WORKER_PATH = '/OneSignalSDKWorker.js';
+      OneSignal.SERVICE_WORKER_PATH = "OneSignalSDKWorker.js";
+      OneSignal.SERVICE_WORKER_PARAM = { scope: "/" };
 
       try {
         console.log('🚀 Starting OneSignal initialization...');
