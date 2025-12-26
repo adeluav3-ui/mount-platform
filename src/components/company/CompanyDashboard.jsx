@@ -389,7 +389,89 @@ export default function CompanyDashboard() {
         }, 5000);
       }
     };
+    const handleEnableNotifications = async () => {
+      try {
+        console.log('📱 Mobile notification button clicked');
 
+        // Get OneSignal instance
+        const oneSignal = window.OneSignal || window._OneSignal;
+
+        if (!oneSignal) {
+          alert('❌ OneSignal not loaded. Please refresh page.');
+          return;
+        }
+
+        // Check current permission
+        if (oneSignal.Notifications && oneSignal.Notifications.permissionNative) {
+          const currentPermission = await oneSignal.Notifications.permissionNative;
+          console.log('Current permission:', currentPermission);
+
+          if (currentPermission === 'granted') {
+            alert('✅ Notifications already enabled!');
+            return;
+          }
+        }
+
+        // Request permission using the correct method
+        console.log('Requesting notification permission...');
+        const permission = await oneSignal.Notifications.requestPermission();
+        console.log('Permission result:', permission);
+
+        if (permission === 'granted') {
+          alert('✅ Notifications enabled! You will now receive job alerts.');
+
+          // Wait a moment, then check Player ID
+          setTimeout(async () => {
+            const playerId = await OneSignalService.getPlayerId();
+            console.log('New Player ID:', playerId);
+
+            if (playerId) {
+              // Save to database
+              await OneSignalService.saveDevice(user?.id, playerId);
+              alert('✅ Device registered successfully!');
+            }
+          }, 2000);
+        } else {
+          alert('❌ Notifications not enabled. Please allow notifications to get job alerts.');
+        }
+
+      } catch (error) {
+        console.error('❌ Error enabling notifications:', error);
+        alert('❌ Error: ' + error.message);
+      }
+    };
+
+    useEffect(() => {
+      const checkAndPromptMobile = async () => {
+        if (!isMobileDevice || !user?.id) return;
+
+        // Wait for OneSignal to load
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        const oneSignal = window.OneSignal || window._OneSignal;
+        if (!oneSignal || !oneSignal.Notifications) return;
+
+        try {
+          // Check current permission
+          const permission = await oneSignal.Notifications.permissionNative;
+          console.log('📱 Mobile permission check:', permission);
+
+          if (permission === 'default') {
+            // Permission not requested yet
+            console.log('📱 Mobile needs permission request');
+            // Don't auto-prompt - let user click button
+          } else if (permission === 'granted') {
+            // Already granted - check Player ID
+            const playerId = await OneSignalService.getPlayerId();
+            console.log('📱 Mobile Player ID:', playerId);
+          }
+        } catch (error) {
+          console.error('📱 Mobile check error:', error);
+        }
+      };
+
+      checkAndPromptMobile();
+    }, [isMobileDevice, user]);
     // Function to show mobile subscription prompt
     const showMobileSubscriptionPrompt = () => {
       // Check if prompt already exists
@@ -1178,6 +1260,27 @@ export default function CompanyDashboard() {
                   )}
                 </button>
               </div>
+              {isMobileDevice && (
+                <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl shadow-lg z-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-xl">🔔</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold">Enable Job Notifications</h4>
+                        <p className="text-sm opacity-90">Get instant alerts for new jobs on your phone</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleEnableNotifications}
+                      className="bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                    >
+                      Enable
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Company Name with Profile Picture */}
               <div className="hidden md:flex items-center space-x-3">
                 {/* Profile Picture */}
