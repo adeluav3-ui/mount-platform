@@ -104,65 +104,30 @@ export default function CompanyDashboard() {
       OneSignalService.onSubscriptionSuccess = async (playerId) => {
         console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);
         console.log('👤 Will save to user ID:', user.id);
+        // Get current Player ID from database
+        const { data: company, error } = await supabase
+          .from('companies')
+          .select('onesignal_player_id')
+          .eq('id', user.id)
+          .single();
 
-        // IMPORTANT CHECK: Is this Clouddiamond?
-        const isClouddiamond = user.id === '2e3af016-40f4-4302-9bc3-e44a6f77f1c9';
+        if (!error && company) {
+          // Save device to company_devices table
+          const { error: deviceError } = await supabase
+            .from('company_devices')
+            .upsert({
+              company_id: user.id,
+              player_id: playerId,
+              device_type: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+              device_name: OneSignalService.generateDeviceName(),
+              is_active: true,
+              last_active: new Date().toISOString()
+            }, { onConflict: 'player_id' });
 
-        if (isClouddiamond) {
-          console.log('🏢 CLOUDDIAMOND DETECTED');
-
-          // Get current Player ID from database
-          const { data: company, error } = await supabase
-            .from('companies')
-            .select('onesignal_player_id')
-            .eq('id', user.id)
-            .single();
-
-          if (!error && company) {
-            const correctPlayerId = company.onesignal_player_id;
-
-            if (playerId === correctPlayerId) {
-              console.log('✅ This is the correct Clouddiamond device');
-
-              // Save to company_devices
-              const { error: deviceError } = await supabase
-                .from('company_devices')
-                .upsert({
-                  company_id: user.id,
-                  player_id: playerId,
-                  device_type: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-                  device_name: 'Clouddiamond Primary Device',
-                  is_active: true,
-                  last_active: new Date().toISOString()
-                }, { onConflict: 'player_id' });
-
-              if (deviceError) {
-                console.error('❌ Error saving device:', deviceError);
-              } else {
-                console.log('✅ Device saved as primary');
-              }
-
-            } else {
-              console.warn('⚠️ Different device detected for Clouddiamond');
-              console.warn('   Database has:', correctPlayerId);
-              console.warn('   This device:', playerId);
-
-              // Just save as additional device
-              const { error: deviceError } = await supabase
-                .from('company_devices')
-                .upsert({
-                  company_id: user.id,
-                  player_id: playerId,
-                  device_type: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-                  device_name: 'Additional Device',
-                  is_active: true,
-                  last_active: new Date().toISOString()
-                }, { onConflict: 'player_id' });
-
-              if (!deviceError) {
-                console.log('📱 Saved as additional device');
-              }
-            }
+          if (deviceError) {
+            console.error('❌ Error saving device:', deviceError);
+          } else {
+            console.log('✅ Device saved successfully');
           }
         }
       };
