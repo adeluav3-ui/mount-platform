@@ -244,7 +244,15 @@ export default function Step2Companies({
                 });
 
                 if (notificationError) console.error('Notification DB error:', notificationError);
-
+                // In the sendJobToCompany function, right before calling NotificationService:
+                console.log('🔍 [DEBUG] Company object for notifications:', {
+                    companyId: company.id,
+                    companyName: company.company_name,
+                    playerId: company.onesignal_player_id,
+                    hasPlayerId: !!company.onesignal_player_id,
+                    playerIdLength: company.onesignal_player_id?.length,
+                    playerIdFormat: company.onesignal_player_id
+                });
                 // Send hybrid notifications (Push + Email)
                 const notificationResult = await NotificationService.notifyCompanyNewJob(
                     company, // Pass the FULL company object, not just ID
