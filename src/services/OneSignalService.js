@@ -235,8 +235,8 @@ class OneSignalService {
 
                             // Check if this is a company user (simplified check)
                             // You might need to adjust this based on your user type detection
-                            const isCompanyUser = currentUser.user?.email?.includes('@company.') || // Adjust domain
-                                currentUser.user?.user_metadata?.user_type === 'company' ||
+                            const isCompanyUser = await this.isCompanyAccount(userId); // Adjust domain
+                            currentUser.user?.user_metadata?.user_type === 'company' ||
                                 currentUser.user?.app_metadata?.user_type === 'company';
 
                             if (isCompanyUser) {
@@ -353,6 +353,54 @@ class OneSignalService {
 
         console.log('⚠️ Could not trigger subscription');
         return false;
+    }
+
+    // Add this method to check if user is a company
+    static async isCompanyAccount(userId) {
+        try {
+            console.log('🔍 Checking if user is a company:', userId);
+
+            // Method 1: Check if user exists in companies table
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            const { data: company, error } = await supabase
+                .from('companies')
+                .select('id')
+                .eq('id', userId)
+                .single();
+
+            if (!error && company) {
+                console.log('✅ User is a company account');
+                return true;
+            }
+
+            // Method 2: Check user metadata (fallback)
+            const currentUser = JSON.parse(
+                localStorage.getItem('sb-zaupoobfkajpdaqglqwh-auth-token') || '{}'
+            );
+
+            const userType = currentUser.user?.user_metadata?.user_type ||
+                currentUser.user?.app_metadata?.user_type;
+
+            if (userType === 'company') {
+                console.log('✅ User metadata says company');
+                return true;
+            }
+
+            // Method 3: Check email pattern (last resort)
+            const email = currentUser.user?.email || '';
+            if (email.includes('@company.') || email.includes('@clouddiamond')) {
+                console.log('✅ Email pattern suggests company');
+                return true;
+            }
+
+            console.log('❌ User is NOT a company account');
+            return false;
+
+        } catch (error) {
+            console.error('❌ Error checking company account:', error);
+            return false;
+        }
     }
 
     // New method: Check subscription status

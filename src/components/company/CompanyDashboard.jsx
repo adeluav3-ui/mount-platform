@@ -105,49 +105,99 @@ export default function CompanyDashboard() {
         console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);
         console.log('👤 Will save to user ID:', user.id);
 
-        // Save to database with retry logic
-        let saved = false;
-        let retryCount = 0;
-        const maxRetries = 3;
+        // IMPORTANT CHECK: Is this Clouddiamond?
+        const isClouddiamond = user.id === '2e3af016-40f4-4302-9bc3-e44a6f77f1c9';
 
-        while (!saved && retryCount < maxRetries) {
-          try {
-            console.log(`🔄 Attempt ${retryCount + 1} to save Player ID...`);
+        if (isClouddiamond) {
+          console.log('🏢 CLOUDDIAMOND DETECTED - Special handling');
 
+          // Clouddiamond should only have these Player IDs
+          const correctLaptopId = '448f98d4-b6d4-4d18-8942-50e9b41819a1';
+          const correctMobileId = '9cc588d0-c37c-40fa-bc91-5f6b98e900ca';
+
+          // Check if this is one of the correct devices
+          if (playerId === correctLaptopId || playerId === correctMobileId) {
+            console.log('✅ Valid Clouddiamond device');
+
+            // Save to company_devices table (not companies table!)
+            const { error: deviceError } = await supabase
+              .from('company_devices')
+              .upsert({
+                company_id: user.id,
+                player_id: playerId,
+                device_type: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+                device_name: playerId === correctLaptopId ? 'Clouddiamond Laptop' : 'Clouddiamond Mobile',
+                is_active: true,
+                last_active: new Date().toISOString()
+              }, {
+                onConflict: 'player_id'
+              });
+
+            if (deviceError) {
+              console.error('❌ Error saving to company_devices:', deviceError);
+            } else {
+              console.log('✅ Device saved to company_devices table');
+
+              // Only update companies table if it's the laptop
+              if (playerId === correctLaptopId) {
+                const { error: companyError } = await supabase
+                  .from('companies')
+                  .update({
+                    onesignal_player_id: playerId
+                  })
+                  .eq('id', user.id);
+
+                if (companyError) {
+                  console.error('❌ Error updating companies table:', companyError);
+                } else {
+                  console.log('✅ Updated Clouddiamond primary Player ID');
+                }
+              }
+            }
+          } else {
+            console.warn('⚠️ WRONG DEVICE for Clouddiamond!');
+            console.warn('   Current device:', playerId);
+            console.warn('   Should be:', {
+              laptop: correctLaptopId,
+              mobile: correctMobileId
+            });
+
+            // Save as additional device only
             const { error } = await supabase
-              .from('companies')
-              .update({
-                onesignal_player_id: playerId
-              })
-              .eq('id', user.id);
+              .from('company_devices')
+              .upsert({
+                company_id: user.id,
+                player_id: playerId,
+                device_type: 'desktop',
+                device_name: 'Additional Testing Device',
+                is_active: true,
+                last_active: new Date().toISOString()
+              }, {
+                onConflict: 'player_id'
+              });
 
             if (error) {
-              console.error(`❌ Attempt ${retryCount + 1} failed:`, error.message);
-              retryCount++;
-
-              // Wait before retrying (exponential backoff)
-              await new Promise(resolve =>
-                setTimeout(resolve, 1000 * Math.pow(2, retryCount))
-              );
+              console.error('❌ Error saving additional device:', error);
             } else {
-              saved = true;
-              console.log('✅ Player ID saved to database successfully!');
-              console.log('📊 Database record updated for user:', user.id);
-
-              // Verify the save
-              await verifyPlayerIdSave(playerId);
+              console.log('📱 Saved as additional device (not primary)');
             }
-          } catch (error) {
-            console.error(`❌ Exception on attempt ${retryCount + 1}:`, error);
-            retryCount++;
-            await new Promise(resolve => setTimeout(resolve, 1000));
           }
-        }
+        } else {
+          // For other companies, save normally
+          console.log('🏢 Other company - saving normally');
 
-        if (!saved) {
-          console.error('❌ FAILED to save Player ID after', maxRetries, 'attempts');
-          console.log('⚠️ Player ID that needs saving:', playerId);
-          console.log('⚠️ User ID to save to:', user.id);
+          const { error } = await supabase
+            .from('companies')
+            .update({
+              onesignal_player_id: playerId
+            })
+            .eq('id', user.id);
+
+          if (error) {
+            console.error('❌ Error saving Player ID:', error);
+          } else {
+            console.log('✅ Player ID saved to database successfully!');
+          }
         }
       };
 
@@ -171,11 +221,20 @@ export default function CompanyDashboard() {
             match: data.onesignal_player_id === expectedPlayerId
           });
 
-          if (data.onesignal_player_id !== expectedPlayerId) {
-            console.error('❌ MISMATCH! Database has wrong Player ID');
-          } else {
-            console.log('✅ Player ID matches database!');
+          // For Clouddiamond, check if it's correct
+          if (user.id === '2e3af016-40f4-4302-9bc3-e44a6f77f1c9') {
+            const correctLaptopId = '448f98d4-b6d4-4d18-8942-50e9b41819a1';
+            const correctMobileId = '9cc588d0-c37c-40fa-bc91-5f6b98e900ca';
+
+            if (data.onesignal_player_id === correctLaptopId) {
+              console.log('✅ CORRECT: Clouddiamond has laptop Player ID');
+            } else if (data.onesignal_player_id === correctMobileId) {
+              console.log('⚠️ WARNING: Clouddiamond has mobile as primary (should be laptop)');
+            } else {
+              console.error('❌ ERROR: Clouddiamond has WRONG Player ID!');
+            }
           }
+
         } catch (error) {
           console.error('❌ Verification failed:', error);
         }
