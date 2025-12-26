@@ -1436,30 +1436,26 @@ export default function CompanyDashboard() {
                                 New
                               </span>
                             )}
-                            {isMobileDevice && (
-                              <div className="fixed bottom-20 left-4 right-4 bg-blue-500 text-white p-4 rounded-xl shadow-xl z-40">
+                            {isMobileDevice && showEnableNotifications && (
+                              <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-4 rounded-xl shadow-xl z-50 animate-bounce">
                                 <div className="flex items-center justify-between">
-                                  <div>
-                                    <h4 className="font-bold">📱 Mobile Push Test</h4>
-                                    <p className="text-sm opacity-90">Fix OneSignal subscription</p>
+                                  <div className="flex items-center">
+                                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                                      <span className="text-xl">🔔</span>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-bold">Enable Job Alerts</h4>
+                                      <p className="text-sm opacity-90">Get instant notifications for new jobs</p>
+                                    </div>
                                   </div>
                                   <button
                                     onClick={async () => {
-                                      console.log('📱 Testing mobile OneSignal...');
-                                      const { MobileOneSignalFix } = await import('../../services/MobileOneSignalFix');
-                                      const playerId = await MobileOneSignalFix.getPlayerIdWithRetry();
-
-                                      if (playerId) {
-                                        alert(`✅ Success! Player ID: ${playerId}`);
-                                        // Save to database
-                                        OneSignalService.onSubscriptionSuccess(playerId);
-                                      } else {
-                                        alert('❌ Failed to get Player ID');
-                                      }
+                                      await OneSignalService.ensureSubscription(user?.id);
+                                      setShowEnableNotifications(false);
                                     }}
-                                    className="bg-white text-blue-500 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                                    className="bg-white text-yellow-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
                                   >
-                                    Test Fix
+                                    Enable
                                   </button>
                                 </div>
                               </div>
