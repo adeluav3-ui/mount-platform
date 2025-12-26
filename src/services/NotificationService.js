@@ -1,59 +1,51 @@
-// src/services/NotificationService.js - FIXED
-import { EmailService } from './EmailService'; // Changed from sendJobNotificationEmail to EmailService
-
+// src/services/NotificationService.js - UPDATED
 class NotificationService {
-    static async notifyCompanyNewJob(companyId, jobData) {
-        // ... your code
+    // Accept company OBJECT instead of just ID
+    static async notifyCompanyNewJob(company, jobData) {
+        const notifications = [];
 
-        // 3. Send Email (Backup)
-        if (company.email) {
-            const emailResult = await EmailService.sendJobNotificationEmail( // Use class.staticMethod
-                company.email,
+        console.log('🔔 Sending notifications for:', {
+            company: company.company_name,
+            companyId: company.id,
+            jobId: jobData.id
+        });
+
+        if (!company) {
+            return { success: false, error: 'Company not provided' };
+        }
+
+        // 2. Send OneSignal Push (Instant)
+        if (company.onesignal_player_id) {
+            const pushResult = await this.sendOneSignalPush(
+                company.onesignal_player_id,
                 jobData,
                 company.company_name
             );
-            notifications.push({ type: 'email', success: emailResult.success });
+            notifications.push({ type: 'push', success: pushResult.success });
+        } else {
+            console.log('⚠️ Company has no OneSignal player ID:', company.company_name);
+            notifications.push({ type: 'push', success: false, reason: 'no_player_id' });
         }
 
-        // 3. Send Email (Backup)
+        // 3. Send Email (Backup) - SKIP FOR NOW
         if (company.email) {
-            const emailResult = await sendJobNotificationEmail(
-                company.email,
-                jobData,
-                company.company_name
-            );
-            notifications.push({ type: 'email', success: emailResult.success });
+            console.log('📧 Email available but skipping for now:', company.email);
+            notifications.push({ type: 'email', success: false, reason: 'not_configured' });
         }
 
-        // 4. Database Notification (Real-time)
-        const dbResult = await supabase
-            .from('notifications')
-            .insert({
-                user_id: companyId,
-                job_id: jobData.id,
-                title: 'New Job Available',
-                message: `New ${jobData.category} job in ${jobData.location}`,
-                type: 'new_job',
-                read: false,
-                created_at: new Date().toISOString()
-            });
-        notifications.push({ type: 'database', success: !dbResult.error });
+        // Note: Database notification is already done in Step2Companies.jsx
+        // So we don't need to do it here
 
         return {
             success: notifications.some(n => n.success),
             notifications,
-            company
+            company: company.company_name
         };
     }
 
     static async sendOneSignalPush(playerId, jobData, companyName) {
         try {
-            console.log('🚀 SENDING PUSH NOTIFICATION:', {
-                playerId: playerId ? '✅ Has ID' : '❌ Missing ID',
-                company: companyName,
-                jobId: jobData.id,
-                time: new Date().toISOString()
-            });
+            console.log('🚀 Sending push to player ID:', playerId);
 
             const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
             const apiKey = import.meta.env.VITE_ONESIGNAL_REST_API_KEY;
@@ -64,11 +56,9 @@ class NotificationService {
             }
 
             if (!playerId) {
-                console.error('❌ No player ID for company:', companyName);
+                console.error('❌ No player ID provided');
                 return { success: false, error: 'No player ID' };
             }
-
-            console.log('📤 Sending to OneSignal API...');
 
             const response = await fetch('https://onesignal.com/api/v1/notifications', {
                 method: 'POST',
@@ -93,10 +83,11 @@ class NotificationService {
             });
 
             const result = await response.json();
-            console.log('📥 OneSignal API response:', {
+
+            console.log('📥 OneSignal response:', {
                 success: response.ok,
                 status: response.status,
-                result: result
+                resultId: result.id
             });
 
             return {

@@ -247,7 +247,7 @@ export default function Step2Companies({
 
                 // Send hybrid notifications (Push + Email)
                 const notificationResult = await NotificationService.notifyCompanyNewJob(
-                    company.id,
+                    company, // Pass the FULL company object, not just ID
                     {
                         id: newJobId,
                         category: job.category,
