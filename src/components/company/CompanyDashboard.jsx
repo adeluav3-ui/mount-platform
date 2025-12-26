@@ -449,7 +449,56 @@ export default function CompanyDashboard() {
       setupOneSignalForUser();
     }
   }, [user, supabase]); // Only depend on user and supabase
+  const checkOneSignalStatus = async () => {
+    try {
+      console.log('Checking OneSignal status...');
 
+      // Check if OneSignal is loaded
+      if (!window.OneSignal) {
+        console.log('❌ OneSignal not loaded');
+        return { loaded: false };
+      }
+
+      // Check current Player ID
+      const playerId = await window.OneSignal.getUserId();
+      console.log('Player ID:', playerId);
+
+      // Check permission
+      const permission = await window.OneSignal.Notifications.permission;
+      console.log('Permission:', permission);
+
+      return {
+        loaded: true,
+        playerId,
+        permission,
+        OneSignal: window.OneSignal
+      };
+    } catch (error) {
+      console.error('Check error:', error);
+      return { loaded: false, error: error.message };
+    }
+  };
+
+  // Call it when button is clicked
+  const handleEnableNotifications = async () => {
+    const status = await checkOneSignalStatus();
+    console.log('OneSignal Status:', status);
+
+    if (!status.loaded) {
+      alert('❌ OneSignal not loaded. Please refresh the page.');
+      return;
+    }
+
+    if (!status.playerId) {
+      // Try to subscribe
+      if (status.OneSignal && status.OneSignal.registerForPushNotifications) {
+        await status.OneSignal.registerForPushNotifications();
+        alert('✅ Subscription requested!');
+      }
+    } else {
+      alert('✅ Already subscribed! Player ID: ' + status.playerId.substring(0, 8) + '...');
+    }
+  };
   const NotificationSettings = () => {
     const [preferences, setPreferences] = useState({
       push: true,
@@ -1192,13 +1241,39 @@ export default function CompanyDashboard() {
                     </div>
                     <button
                       onClick={async () => {
-                        if (window.triggerOneSignalSubscription) {
-                          const success = await window.triggerOneSignalSubscription();
-                          if (success) {
-                            alert('✅ Notifications enabled! You will now receive job alerts.');
+                        try {
+                          console.log('📱 Mobile notification button clicked');
+
+                          // Try multiple methods to trigger subscription
+                          let success = false;
+
+                          // Method 1: Direct browser permission request
+                          if (Notification.permission === 'default') {
+                            const permission = await Notification.requestPermission();
+                            console.log('Permission result:', permission);
+                            success = permission === 'granted';
                           }
-                        } else {
-                          await OneSignalService.triggerSubscription();
+
+                          // Method 2: Use OneSignalService
+                          if (!success && OneSignalService && OneSignalService.triggerSubscription) {
+                            success = await OneSignalService.triggerSubscription();
+                          }
+
+                          // Method 3: Direct OneSignal SDK call
+                          if (!success && window.OneSignal && window.OneSignal.Slidedown) {
+                            window.OneSignal.Slidedown.promptPush();
+                            success = true;
+                          }
+
+                          if (success) {
+                            alert('✅ Notification permission requested! Please allow notifications in the browser prompt.');
+                          } else {
+                            alert('⚠️ Could not trigger notification request. Please check browser settings.');
+                          }
+
+                        } catch (error) {
+                          console.error('❌ Error enabling notifications:', error);
+                          alert('❌ Error: ' + error.message);
                         }
                       }}
                       className="bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
