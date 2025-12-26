@@ -1,19 +1,41 @@
-// src/services/OneSignalService.js - SIMPLIFIED
-import DeviceService from './DeviceService.js';
-
+// src/services/OneSignalService.js - FIXED VERSION
 class OneSignalService {
-    static onSubscriptionSuccess = null;
-    static isInitializing = false;
+    static isInitialized = false;
+    static initializationPromise = null;
 
     static async initialize(userId = null) {
-        if (this.isInitializing) return false;
+        // If already initialized, return
+        if (this.isInitialized) {
+            console.log('✅ OneSignal already initialized');
+            return true;
+        }
 
-        this.isInitializing = true;
+        // If initializing, wait for promise
+        if (this.initializationPromise) {
+            return await this.initializationPromise;
+        }
 
+        this.initializationPromise = this._initialize(userId);
+        return await this.initializationPromise;
+    }
+
+    static async _initialize(userId = null) {
         try {
             console.log('🔔 Initializing OneSignal...');
 
-            await this.waitForOneSignal();
+            // Check if OneSignal is already initialized globally
+            if (window.OneSignalDeferred && window.OneSignalDeferred.length > 0) {
+                console.log('⚠️ OneSignalDeferred detected - SDK will initialize automatically');
+                this.isInitialized = true;
+                return true;
+            }
+
+            // Wait for SDK to load
+            const sdkLoaded = await this.waitForOneSignal();
+            if (!sdkLoaded) {
+                console.error('❌ OneSignal SDK failed to load');
+                return false;
+            }
 
             const oneSignal = window._OneSignal || window.OneSignal;
             if (!oneSignal) {
@@ -21,26 +43,41 @@ class OneSignalService {
                 return false;
             }
 
+            // Check if already initialized
+            if (oneSignal.initialized) {
+                console.log('✅ OneSignal already initialized by index.html');
+                this.isInitialized = true;
+                return true;
+            }
+
             // Initialize with minimal settings
             await oneSignal.init({
                 appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
                 allowLocalhostAsSecureOrigin: true,
                 autoRegister: false,
-                notifyButton: { enable: false }
+                notifyButton: { enable: false },
+                serviceWorkerParam: { scope: '/' }
             });
 
             console.log('✅ OneSignal initialized');
+            this.isInitialized = true;
 
-            // Monitor for subscription
+            // Start monitoring subscription
             this.monitorSubscription(userId);
 
             return true;
 
         } catch (error) {
             console.error('❌ OneSignal initialization error:', error);
+
+            // If error is "already initialized", mark as initialized
+            if (error.message.includes('already initialized') ||
+                error.message.includes('SDK already initialized')) {
+                this.isInitialized = true;
+                return true;
+            }
+
             return false;
-        } finally {
-            this.isInitializing = false;
         }
     }
 
@@ -60,15 +97,8 @@ class OneSignalService {
                     clearInterval(interval);
                     console.log('🎉 Subscription detected:', playerId.substring(0, 20) + '...');
 
-                    // Register device with DeviceService
-                    if (userId) {
-                        await DeviceService.registerDevice(userId, playerId);
-                    }
-
-                    // Call success callback if exists
-                    if (typeof this.onSubscriptionSuccess === 'function') {
-                        this.onSubscriptionSuccess(playerId);
-                    }
+                    // Save device
+                    await this.saveDevice(userId, playerId);
                 }
 
                 if (checkCount >= maxChecks) {
@@ -82,6 +112,75 @@ class OneSignalService {
         }, 1000);
     }
 
+    static async saveDevice(userId, playerId) {
+        try {
+            if (!userId) return;
+
+            console.log('💾 Saving device for user:', userId);
+
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            // Check if this device already exists
+            const { data: existingDevice } = await supabase
+                .from('company_devices')
+                .select('id, is_primary')
+                .eq('player_id', playerId)
+                .maybeSingle();
+
+            if (existingDevice) {
+                // Update existing
+                await supabase
+                    .from('company_devices')
+                    .update({
+                        last_active: new Date().toISOString(),
+                        is_active: true
+                    })
+                    .eq('player_id', playerId);
+                console.log('✅ Existing device updated');
+                return;
+            }
+
+            // Check if company has any devices
+            const { data: companyDevices } = await supabase
+                .from('company_devices')
+                .select('id')
+                .eq('company_id', userId)
+                .eq('is_active', true);
+
+            const isFirstDevice = !companyDevices || companyDevices.length === 0;
+
+            // Save new device
+            const deviceData = {
+                company_id: userId,
+                player_id: playerId,
+                device_type: this.getDeviceType(),
+                device_name: this.generateDeviceName(),
+                is_primary: isFirstDevice,
+                is_active: true,
+                last_active: new Date().toISOString()
+            };
+
+            const { error } = await supabase
+                .from('company_devices')
+                .upsert(deviceData, { onConflict: 'player_id' });
+
+            if (error) throw error;
+
+            console.log(`✅ Device saved (${isFirstDevice ? 'Primary' : 'Additional'})`);
+
+            // If first device, update companies table
+            if (isFirstDevice) {
+                await supabase
+                    .from('companies')
+                    .update({ onesignal_player_id: playerId })
+                    .eq('id', userId);
+            }
+
+        } catch (error) {
+            console.error('❌ Error saving device:', error);
+        }
+    }
+
     static async getPlayerId() {
         try {
             const oneSignal = window._OneSignal || window.OneSignal;
@@ -89,7 +188,8 @@ class OneSignalService {
                 return null;
             }
 
-            return await oneSignal.User.PushSubscription.id;
+            const playerId = await oneSignal.User.PushSubscription.id;
+            return playerId || null;
         } catch (error) {
             console.error('Error getting Player ID:', error);
             return null;
@@ -124,6 +224,31 @@ class OneSignalService {
                 }
             }, interval);
         });
+    }
+
+    static getDeviceType() {
+        const ua = navigator.userAgent;
+        if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+        if (/Android/i.test(ua)) return 'android';
+        return 'desktop';
+    }
+
+    static generateDeviceName() {
+        const deviceType = this.getDeviceType();
+        const browser = this.getBrowserName();
+        return `${this.capitalizeFirst(deviceType)} ${browser}`;
+    }
+
+    static getBrowserName() {
+        const ua = navigator.userAgent;
+        if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) return 'Chrome';
+        if (/Firefox/i.test(ua)) return 'Firefox';
+        if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return 'Safari';
+        return 'Browser';
+    }
+
+    static capitalizeFirst(string) {
+        return string.charAt(0).toUpperCase() + string.slice(1);
     }
 }
 

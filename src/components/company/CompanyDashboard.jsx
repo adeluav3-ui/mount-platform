@@ -281,20 +281,6 @@ export default function CompanyDashboard() {
             match: data.onesignal_player_id === expectedPlayerId
           });
 
-          // For Clouddiamond, check if it's correct
-          if (user.id === '2e3af016-40f4-4302-9bc3-e44a6f77f1c9') {
-            const correctLaptopId = '448f98d4-b6d4-4d18-8942-50e9b41819a1';
-            const correctMobileId = '9cc588d0-c37c-40fa-bc91-5f6b98e900ca';
-
-            if (data.onesignal_player_id === correctLaptopId) {
-              console.log('✅ CORRECT: Clouddiamond has laptop Player ID');
-            } else if (data.onesignal_player_id === correctMobileId) {
-              console.log('⚠️ WARNING: Clouddiamond has mobile as primary (should be laptop)');
-            } else {
-              console.error('❌ ERROR: Clouddiamond has WRONG Player ID!');
-            }
-          }
-
         } catch (error) {
           console.error('❌ Verification failed:', error);
         }
@@ -313,36 +299,33 @@ export default function CompanyDashboard() {
       let optedIn = false;
 
       // Try initialization up to 3 times
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          console.log(`🔄 Initialization attempt ${attempt}/3`);
-          initialized = await OneSignalService.initialize(user.id);
+      // Initialize OneSignal (only once)
+      try {
+        console.log('🔔 Setting up OneSignal...');
 
-          if (initialized) {
-            playerId = await OneSignalService.getPlayerId();
-            optedIn = await OneSignalService.isOptedIn();
+        // Set up subscription success callback
+        OneSignalService.onSubscriptionSuccess = async (playerId) => {
+          console.log('🎉 OneSignal subscription successful:', playerId);
 
-            console.log('📊 Initialization result:', {
-              initialized,
-              playerId,
-              optedIn,
-              permission: Notification.permission
-            });
+          // The device is automatically saved by OneSignalService
+          // No need for additional logic here
+        };
 
-            if (playerId && optedIn) {
-              console.log('✅ OneSignal fully initialized and subscribed');
-              // Save existing Player ID
-              OneSignalService.onSubscriptionSuccess(playerId);
-              break;
-            }
-          }
+        // Initialize OneSignal
+        const initialized = await OneSignalService.initialize(user.id);
 
-          // Wait before next attempt
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        console.log('📊 OneSignal initialization result:', { initialized });
 
-        } catch (error) {
-          console.error(`❌ Initialization attempt ${attempt} failed:`, error);
+        if (initialized) {
+          // Check current subscription
+          const playerId = await OneSignalService.getPlayerId();
+          const optedIn = await OneSignalService.isOptedIn?.(); // Optional chaining
+
+          console.log('📱 Current subscription:', { playerId, optedIn });
         }
+
+      } catch (error) {
+        console.error('❌ OneSignal setup error:', error);
       }
 
       // STEP 2: Handle mobile-specific subscription issues
