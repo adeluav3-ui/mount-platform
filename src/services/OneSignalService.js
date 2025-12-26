@@ -136,6 +136,46 @@ class OneSignalService {
             }
         }, 1000); // Check every second
     }
+    // src/services/OneSignalService.js - Add this method
+    // Replace this entire function in OneSignalService.js:
+    static async syncPlayerIdToDatabase(userId) {
+        try {
+            if (!userId) {
+                console.log('❌ No user ID provided for sync');
+                return false;
+            }
+
+            // Get current Player ID
+            const playerId = await this.getPlayerId();
+            if (!playerId) {
+                console.log('⚠️ No Player ID available yet');
+                return false;
+            }
+
+            console.log('🔄 Syncing Player ID to database:', {
+                userId,
+                playerId
+            });
+
+            // We need to get supabase client from somewhere
+            // For now, return success but log the data
+            console.log('📝 Player ID to save:', {
+                user_id: userId,
+                onesignal_player_id: playerId,
+                onesignal_updated_at: new Date().toISOString()
+            });
+
+            // IMPORTANT: This needs to be called with proper supabase client
+            // We'll fix this in the next step
+            console.log('✅ Player ID ready for database sync');
+            return playerId; // Return the playerId for saving
+
+        } catch (error) {
+            console.error('❌ Sync error:', error);
+            return false;
+        }
+    }
+
 
     // Manual trigger (for testing)
     static async triggerSubscription() {

@@ -8,6 +8,10 @@ import logo from '../../assets/logo.png';
 import OneSignalService from "../../services/OneSignalService";
 
 export default function CompanyDashboard() {
+  console.log('🏢 CompanyDashboard loaded - checking environment:');
+  console.log('🔔 Notification permission:', Notification.permission);
+  console.log('🌐 HTTPS:', window.location.protocol === 'https:');
+  console.log('🔧 OneSignal in window:', !!window.OneSignal || !!window._OneSignal);
   const { user, signOut, supabase } = useSupabase()
   const [company, setCompany] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -50,36 +54,113 @@ export default function CompanyDashboard() {
 
   // In CompanyDashboard.jsx, update the OneSignal section:
   useEffect(() => {
+    // Replace the entire setupOneSignal function in the useEffect:
     const setupOneSignal = async () => {
       if (!user?.id) return;
 
       console.log('🔔 Setting up OneSignal for user:', user.id);
+      console.log('📊 Current user ID for saving:', user.id);
 
       // Wait a bit for SDK to load
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Set subscription success callback
+      // Set subscription success callback WITH RETRY LOGIC
       OneSignalService.onSubscriptionSuccess = async (playerId) => {
         console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);
+        console.log('👤 Will save to user ID:', user.id);
 
-        // Save to database
-        if (user?.id) {
-          const { error } = await supabase
+        // Save to database with retry logic
+        let saved = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (!saved && retryCount < maxRetries) {
+          try {
+            console.log(`🔄 Attempt ${retryCount + 1} to save Player ID...`);
+
+            const { error } = await supabase
+              .from('companies')
+              .update({
+                onesignal_player_id: playerId,
+                onesignal_updated_at: new Date().toISOString()
+              })
+              .eq('id', user.id);
+
+            if (error) {
+              console.error(`❌ Attempt ${retryCount + 1} failed:`, error.message);
+              retryCount++;
+
+              // Wait before retrying (exponential backoff)
+              await new Promise(resolve =>
+                setTimeout(resolve, 1000 * Math.pow(2, retryCount))
+              );
+            } else {
+              saved = true;
+              console.log('✅ Player ID saved to database successfully!');
+              console.log('📊 Database record updated for user:', user.id);
+
+              // Verify the save
+              await verifyPlayerIdSave(playerId);
+            }
+          } catch (error) {
+            console.error(`❌ Exception on attempt ${retryCount + 1}:`, error);
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+
+        if (!saved) {
+          console.error('❌ FAILED to save Player ID after', maxRetries, 'attempts');
+          console.log('⚠️ Player ID that needs saving:', playerId);
+          console.log('⚠️ User ID to save to:', user.id);
+        }
+      };
+
+      // Function to verify the save
+      const verifyPlayerIdSave = async (expectedPlayerId) => {
+        try {
+          const { data, error } = await supabase
             .from('companies')
-            .update({ onesignal_player_id: playerId })
-            .eq('id', user.id);
+            .select('onesignal_player_id, onesignal_updated_at')
+            .eq('id', user.id)
+            .single();
 
           if (error) {
-            console.error('❌ Error saving player ID:', error);
-          } else {
-            console.log('💾 Player ID saved to database');
+            console.error('❌ Error verifying save:', error);
+            return;
           }
+
+          console.log('🔍 Verification result:', {
+            savedPlayerId: data.onesignal_player_id,
+            expectedPlayerId,
+            match: data.onesignal_player_id === expectedPlayerId,
+            updatedAt: data.onesignal_updated_at
+          });
+
+          if (data.onesignal_player_id !== expectedPlayerId) {
+            console.error('❌ MISMATCH! Database has wrong Player ID');
+          } else {
+            console.log('✅ Player ID matches database!');
+          }
+        } catch (error) {
+          console.error('❌ Verification failed:', error);
         }
       };
 
       // Initialize OneSignal
       const initialized = await OneSignalService.initialize(user.id);
       console.log('OneSignal initialized:', initialized);
+
+      // Also check for existing Player ID on init
+      if (initialized) {
+        const currentPlayerId = await OneSignalService.getPlayerId();
+        if (currentPlayerId) {
+          console.log('🔍 Found existing Player ID on init:', currentPlayerId);
+
+          // Immediately save existing Player ID
+          OneSignalService.onSubscriptionSuccess(currentPlayerId);
+        }
+      }
 
       // If not initialized, try manual trigger after delay
       if (!initialized) {
