@@ -26,52 +26,118 @@ export default function CompanyDashboard() {
   })
   const handleEnableNotifications = async () => {
     try {
-      console.log('📱 Mobile notification button clicked');
+      alert('Starting notification setup...');
 
       // Get OneSignal instance
       const oneSignal = window.OneSignal || window._OneSignal;
 
       if (!oneSignal) {
-        alert('❌ OneSignal not loaded. Please refresh page.');
+        alert('❌ OneSignal not loaded. Please refresh.');
         return;
       }
 
-      // Check current permission
-      if (oneSignal.Notifications && oneSignal.Notifications.permissionNative) {
-        const currentPermission = await oneSignal.Notifications.permissionNative;
-        console.log('Current permission:', currentPermission);
+      alert('OneSignal loaded, checking permission...');
 
-        if (currentPermission === 'granted') {
-          alert('✅ Notifications already enabled!');
-          return;
+      // STEP 1: Get or request permission
+      let permission = Notification.permission;
+
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+        alert('Permission requested: ' + permission);
+      } else {
+        alert('Current permission: ' + permission);
+      }
+
+      if (permission !== 'granted') {
+        alert('❌ Permission not granted: ' + permission);
+        return;
+      }
+
+      alert('✅ Permission granted! Creating subscription...');
+
+      // STEP 2: Try different methods to trigger subscription
+      let subscriptionCreated = false;
+
+      // Method 1: registerForPushNotifications (if available)
+      if (oneSignal.registerForPushNotifications) {
+        alert('Trying registerForPushNotifications...');
+        try {
+          await oneSignal.registerForPushNotifications();
+          subscriptionCreated = true;
+          alert('✅ registerForPushNotifications called');
+        } catch (error) {
+          alert('Method 1 failed: ' + error.message);
         }
       }
 
-      // Request permission using the correct method
-      console.log('Requesting notification permission...');
-      const permission = await oneSignal.Notifications.requestPermission();
-      console.log('Permission result:', permission);
+      // Method 2: internal.triggerSubscription (OneSignal internal)
+      if (!subscriptionCreated && oneSignal.internal && oneSignal.internal.triggerSubscription) {
+        alert('Trying internal.triggerSubscription...');
+        try {
+          oneSignal.internal.triggerSubscription();
+          subscriptionCreated = true;
+          alert('✅ internal.triggerSubscription called');
+        } catch (error) {
+          alert('Method 2 failed: ' + error.message);
+        }
+      }
 
-      if (permission === 'granted') {
-        alert('✅ Notifications enabled! You will now receive job alerts.');
+      // Method 3: Slidedown.promptPush
+      if (!subscriptionCreated && oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
+        alert('Trying Slidedown.promptPush...');
+        try {
+          oneSignal.Slidedown.promptPush();
+          subscriptionCreated = true;
+          alert('✅ Slidedown.promptPush called');
+        } catch (error) {
+          alert('Method 3 failed: ' + error.message);
+        }
+      }
 
-        // Wait a moment, then check Player ID
+      // Method 4: Direct Service Worker registration (last resort)
+      if (!subscriptionCreated) {
+        alert('Trying direct Service Worker registration...');
+        try {
+          if ('serviceWorker' in navigator) {
+            const registration = await navigator.serviceWorker.ready;
+
+            // Check existing subscription
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+              // This would require VAPID keys, but let's at least try
+              alert('No existing subscription. OneSignal should create one.');
+            } else {
+              alert('Existing subscription found');
+              subscriptionCreated = true;
+            }
+          }
+        } catch (error) {
+          alert('Method 4 failed: ' + error.message);
+        }
+      }
+
+      if (subscriptionCreated) {
+        alert('✅ Subscription process started! Checking Player ID in 5 seconds...');
+
+        // Wait and check Player ID
         setTimeout(async () => {
           const playerId = await OneSignalService.getPlayerId();
-          console.log('New Player ID:', playerId);
+          alert('Player ID after 5s: ' + (playerId || 'Still null'));
 
           if (playerId) {
             // Save to database
             await OneSignalService.saveDevice(user?.id, playerId);
-            alert('✅ Device registered successfully!');
+            alert('✅ Device registered! ID: ' + playerId.substring(0, 8) + '...');
+          } else {
+            alert('❌ Player ID still null. Try refreshing page.');
           }
-        }, 2000);
+        }, 5000);
       } else {
-        alert('❌ Notifications not enabled. Please allow notifications to get job alerts.');
+        alert('❌ Could not trigger subscription. Try: 1) Refresh page 2) Clear cache 3) Try different browser');
       }
 
     } catch (error) {
-      console.error('❌ Error enabling notifications:', error);
       alert('❌ Error: ' + error.message);
     }
   };
