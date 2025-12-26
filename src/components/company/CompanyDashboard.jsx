@@ -81,8 +81,7 @@ export default function CompanyDashboard() {
             const { error } = await supabase
               .from('companies')
               .update({
-                onesignal_player_id: playerId,
-                onesignal_updated_at: new Date().toISOString()
+                onesignal_player_id: playerId
               })
               .eq('id', user.id);
 
@@ -121,7 +120,7 @@ export default function CompanyDashboard() {
         try {
           const { data, error } = await supabase
             .from('companies')
-            .select('onesignal_player_id, onesignal_updated_at')
+            .select('onesignal_player_id')
             .eq('id', user.id)
             .single();
 
