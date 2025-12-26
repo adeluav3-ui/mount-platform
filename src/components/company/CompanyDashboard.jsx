@@ -13,6 +13,8 @@ export default function CompanyDashboard() {
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
   const [activePanel, setActivePanel] = useState('dashboard')
+  const [showEnableNotifications, setShowEnableNotifications] = useState(false);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   const [notifications, setNotifications] = useState([])
   const [stats, setStats] = useState({
     pendingJobs: 0,
@@ -48,31 +50,50 @@ export default function CompanyDashboard() {
 
   }, [user, supabase])
 
+  // Check if mobile on component mount
+  useEffect(() => {
+    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    setIsMobileDevice(mobile);
+
+    // Check subscription status periodically for mobile
+    if (mobile) {
+      const checkSubscription = async () => {
+        const playerId = await OneSignalService.getPlayerId();
+        const optedIn = await OneSignalService.isOptedIn();
+
+        if (!playerId || !optedIn) {
+          setShowEnableNotifications(true);
+        }
+      };
+
+      // Check immediately
+      checkSubscription();
+
+      // Check every 30 seconds
+      const interval = setInterval(checkSubscription, 30000);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+
+
   // In CompanyDashboard.jsx, update the OneSignal section:
   useEffect(() => {
-    const setupOneSignal = async () => {
+    const setupOneSignalForUser = async () => {
       if (!user?.id) return;
 
-      // Check if mobile
+      // Check device type
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
       console.log(`${isMobile ? '📱' : '💻'} Device detected:`, {
         isMobile,
+        isIOS,
         userAgent: navigator.userAgent,
-        permission: Notification.permission
+        permission: Notification.permission,
+        https: window.location.protocol === 'https:'
       });
 
-      // Mobile-specific: Wait longer for slow connections
-      const waitTime = isMobile ? 5000 : 2000;
-      console.log(`⏳ Waiting ${waitTime}ms for OneSignal...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-
-      console.log('🔔 Setting up OneSignal for user:', user.id);
-      console.log('📊 Current user ID for saving:', user.id);
-
-      // Wait a bit for SDK to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Set subscription success callback WITH RETRY LOGIC
+      // Set up subscription success callback
       OneSignalService.onSubscriptionSuccess = async (playerId) => {
         console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);
         console.log('👤 Will save to user ID:', user.id);
@@ -140,8 +161,7 @@ export default function CompanyDashboard() {
           console.log('🔍 Verification result:', {
             savedPlayerId: data.onesignal_player_id,
             expectedPlayerId,
-            match: data.onesignal_player_id === expectedPlayerId,
-            updatedAt: data.onesignal_updated_at
+            match: data.onesignal_player_id === expectedPlayerId
           });
 
           if (data.onesignal_player_id !== expectedPlayerId) {
@@ -154,32 +174,165 @@ export default function CompanyDashboard() {
         }
       };
 
-      // Initialize OneSignal
-      const initialized = await OneSignalService.initialize(user.id);
-      console.log('OneSignal initialized:', initialized);
+      // Mobile-specific: Wait longer for slow connections
+      const waitTime = isMobile ? 5000 : 2000;
+      console.log(`⏳ Waiting ${waitTime}ms for OneSignal SDK...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
 
-      // Also check for existing Player ID on init
-      if (initialized) {
-        const currentPlayerId = await OneSignalService.getPlayerId();
-        if (currentPlayerId) {
-          console.log('🔍 Found existing Player ID on init:', currentPlayerId);
+      // STEP 1: Initialize OneSignal with retry logic
+      console.log('🔔 Initializing OneSignal for user:', user.id);
 
-          // Immediately save existing Player ID
-          OneSignalService.onSubscriptionSuccess(currentPlayerId);
+      let initialized = false;
+      let playerId = null;
+      let optedIn = false;
+
+      // Try initialization up to 3 times
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`🔄 Initialization attempt ${attempt}/3`);
+          initialized = await OneSignalService.initialize(user.id);
+
+          if (initialized) {
+            playerId = await OneSignalService.getPlayerId();
+            optedIn = await OneSignalService.isOptedIn();
+
+            console.log('📊 Initialization result:', {
+              initialized,
+              playerId,
+              optedIn,
+              permission: Notification.permission
+            });
+
+            if (playerId && optedIn) {
+              console.log('✅ OneSignal fully initialized and subscribed');
+              // Save existing Player ID
+              OneSignalService.onSubscriptionSuccess(playerId);
+              break;
+            }
+          }
+
+          // Wait before next attempt
+          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+
+        } catch (error) {
+          console.error(`❌ Initialization attempt ${attempt} failed:`, error);
         }
       }
 
-      // If not initialized, try manual trigger after delay
+      // STEP 2: Handle mobile-specific subscription issues
+      if (isMobile) {
+        console.log('📱 MOBILE DEVICE - Checking subscription status...');
+
+        if (!playerId || !optedIn) {
+          console.log('📱 Mobile not subscribed, attempting to subscribe...');
+
+          // iOS requires special handling
+          if (isIOS) {
+            console.log('📱 iOS detected - will show manual prompt if needed');
+            // We'll handle this after a delay
+          } else {
+            // Android/other mobile: Try to auto-subscribe
+            console.log('📱 Android/other mobile - attempting auto-subscription');
+            await OneSignalService.triggerSubscription();
+          }
+
+          // Check again after delay
+          setTimeout(async () => {
+            const newPlayerId = await OneSignalService.getPlayerId();
+            const newOptedIn = await OneSignalService.isOptedIn();
+
+            if (!newPlayerId || !newOptedIn) {
+              console.log('📱 Mobile still not subscribed after auto-attempt');
+
+              // Show manual prompt for mobile
+              showMobileSubscriptionPrompt();
+            }
+          }, 8000);
+        }
+      }
+
+      // STEP 3: If not initialized at all, try manual trigger
       if (!initialized) {
+        console.log('⚠️ OneSignal not initialized, trying manual trigger...');
         setTimeout(async () => {
-          console.log('🔄 Trying manual subscription after delay...');
           await OneSignalService.triggerSubscription();
-        }, 3000);
+        }, 5000);
+      }
+
+      // STEP 4: Set up periodic subscription check for mobile
+      if (isMobile) {
+        const subscriptionCheckInterval = setInterval(async () => {
+          const currentPlayerId = await OneSignalService.getPlayerId();
+          const currentOptedIn = await OneSignalService.isOptedIn();
+
+          if (!currentPlayerId || !currentOptedIn) {
+            console.log('📱 Periodic check: Mobile not subscribed, attempting recovery...');
+            await OneSignalService.triggerSubscription();
+          }
+        }, 60000); // Check every minute
+
+        // Clean up on unmount
+        return () => clearInterval(subscriptionCheckInterval);
       }
     };
 
+    // Function to show mobile subscription prompt
+    const showMobileSubscriptionPrompt = () => {
+      // Check if prompt already exists
+      if (document.getElementById('mobile-push-prompt')) return;
+
+      const promptDiv = document.createElement('div');
+      promptDiv.id = 'mobile-push-prompt';
+      promptDiv.innerHTML = `
+            <div style="position: fixed; bottom: 20px; left: 20px; right: 20px; background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 16px; border-radius: 12px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); z-index: 9999; animation: slideUp 0.3s ease;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="background: white; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <span style="font-size: 20px; color: #10B981;">🔔</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 14px;">Enable Job Notifications</div>
+                            <div style="font-size: 12px; opacity: 0.9;">Get instant alerts for new jobs</div>
+                        </div>
+                    </div>
+                    <button id="enable-mobile-push" style="background: white; color: #10B981; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;">
+                        Enable
+                    </button>
+                </div>
+                <button id="close-mobile-prompt" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+                    ×
+                </button>
+            </div>
+            <style>
+                @keyframes slideUp {
+                    from { transform: translateY(100px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            </style>
+        `;
+
+      document.body.appendChild(promptDiv);
+
+      // Add event listeners
+      document.getElementById('enable-mobile-push').addEventListener('click', async () => {
+        await OneSignalService.triggerSubscription();
+        document.body.removeChild(promptDiv);
+      });
+
+      document.getElementById('close-mobile-prompt').addEventListener('click', () => {
+        document.body.removeChild(promptDiv);
+      });
+
+      // Auto-remove after 30 seconds
+      setTimeout(() => {
+        if (document.body.contains(promptDiv)) {
+          document.body.removeChild(promptDiv);
+        }
+      }, 30000);
+    };
+
     if (user?.id) {
-      setupOneSignal();
+      setupOneSignalForUser();
     }
   }, [user, supabase]); // Only depend on user and supabase
 
@@ -943,6 +1096,31 @@ export default function CompanyDashboard() {
                   )}
                 </div>
               </div>
+
+              {isMobileDevice && showEnableNotifications && (
+                <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-4 rounded-xl shadow-xl z-50 animate-bounce">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-xl">🔔</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold">Enable Job Alerts</h4>
+                        <p className="text-sm opacity-90">Get instant notifications for new jobs</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        await OneSignalService.ensureSubscription(user?.id);
+                        setShowEnableNotifications(false);
+                      }}
+                      className="bg-white text-yellow-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                    >
+                      Enable
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Profile Dropdown */}
               <div className="relative group">
                 <button className="flex items-center space-x-2 focus:outline-none">
