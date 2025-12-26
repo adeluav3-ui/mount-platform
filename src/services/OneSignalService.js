@@ -467,36 +467,48 @@ class OneSignalService {
             if (isClouddiamond) {
                 console.log('🏢 This is Clouddiamond company');
 
-                // Clouddiamond should have these Player IDs:
-                const correctLaptopId = '448f98d4-b6d4-4d18-8942-50e9b41819a1';
-                const correctMobileId = '9cc588d0-c37c-40fa-bc91-5f6b98e900ca';
+                // Get current correct ID from database
+                try {
+                    const { supabase } = await import('../context/SupabaseContext.jsx');
+                    const { data: company } = await supabase
+                        .from('companies')
+                        .select('onesignal_player_id')
+                        .eq('id', userId)
+                        .single();
 
-                // Check if this is one of the correct IDs
-                const isCorrectDevice = playerId === correctLaptopId || playerId === correctMobileId;
+                    if (company && company.onesignal_player_id) {
+                        // If database already has a Player ID, use it as correct
+                        const correctId = company.onesignal_player_id;
 
-                if (!isCorrectDevice) {
-                    console.warn('⚠️ WRONG DEVICE for Clouddiamond!');
-                    console.warn(`   Current device: ${playerId}`);
-                    console.warn(`   Should be either:`);
-                    console.warn(`   - Laptop: ${correctLaptopId}`);
-                    console.warn(`   - Mobile: ${correctMobileId}`);
+                        if (playerId === correctId) {
+                            console.log('✅ This is the CORRECT Clouddiamond device');
+                        } else {
+                            console.warn('⚠️ Different device for Clouddiamond');
+                            console.warn('   Current:', playerId);
+                            console.warn('   Expected:', correctId);
 
-                    // DON'T save wrong device as primary
-                    // Instead, just add to company_devices as additional device
-                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                    const deviceType = isMobile ? 'mobile' : 'desktop';
-                    const deviceName = 'Additional Device (Wrong ID)';
+                            // Ask if we should update
+                            const shouldUpdate = confirm(
+                                `Clouddiamond currently uses: ${correctId.substring(0, 20)}...\n\n` +
+                                `This device has: ${playerId.substring(0, 20)}...\n\n` +
+                                `Update Clouddiamond to use this device?`
+                            );
 
-                    const NotificationService = await import('../services/NotificationService.js');
-                    await NotificationService.default.addCompanyDevice(
-                        userId,
-                        playerId,
-                        deviceType,
-                        deviceName
-                    );
+                            if (shouldUpdate) {
+                                // Update database to use this device
+                                const { error } = await supabase
+                                    .from('companies')
+                                    .update({ onesignal_player_id: playerId })
+                                    .eq('id', userId);
 
-                    console.log('📱 Added as additional device (not primary)');
-                    return false; // Return false to indicate wrong device
+                                if (!error) {
+                                    console.log('✅ Updated Clouddiamond to use this device');
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Error checking Clouddiamond device:', error);
                 }
             }
 
