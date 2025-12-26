@@ -26,120 +26,115 @@ export default function CompanyDashboard() {
   })
   const handleEnableNotifications = async () => {
     try {
-      alert('Starting notification setup...');
+      alert('🔔 Setting up notifications...');
 
       // Get OneSignal instance
       const oneSignal = window.OneSignal || window._OneSignal;
 
       if (!oneSignal) {
-        alert('❌ OneSignal not loaded. Please refresh.');
+        alert('❌ OneSignal not loaded. Please refresh page.');
         return;
       }
 
-      alert('OneSignal loaded, checking permission...');
-
-      // STEP 1: Get or request permission
-      let permission = Notification.permission;
-
-      if (permission === 'default') {
-        permission = await Notification.requestPermission();
-        alert('Permission requested: ' + permission);
-      } else {
-        alert('Current permission: ' + permission);
-      }
-
-      if (permission !== 'granted') {
-        alert('❌ Permission not granted: ' + permission);
+      // Check if Slidedown.promptPush is available
+      if (!oneSignal.Slidedown || !oneSignal.Slidedown.promptPush) {
+        alert('❌ Slidedown.promptPush not available');
         return;
       }
 
-      alert('✅ Permission granted! Creating subscription...');
+      alert('✅ Using Slidedown.promptPush...');
 
-      // STEP 2: Try different methods to trigger subscription
-      let subscriptionCreated = false;
+      // STEP 1: Trigger the OneSignal subscription prompt
+      oneSignal.Slidedown.promptPush();
 
-      // Method 1: registerForPushNotifications (if available)
-      if (oneSignal.registerForPushNotifications) {
-        alert('Trying registerForPushNotifications...');
-        try {
-          await oneSignal.registerForPushNotifications();
-          subscriptionCreated = true;
-          alert('✅ registerForPushNotifications called');
-        } catch (error) {
-          alert('Method 1 failed: ' + error.message);
-        }
-      }
+      alert('✅ Subscription prompt shown! Please allow in the popup.');
 
-      // Method 2: internal.triggerSubscription (OneSignal internal)
-      if (!subscriptionCreated && oneSignal.internal && oneSignal.internal.triggerSubscription) {
-        alert('Trying internal.triggerSubscription...');
-        try {
-          oneSignal.internal.triggerSubscription();
-          subscriptionCreated = true;
-          alert('✅ internal.triggerSubscription called');
-        } catch (error) {
-          alert('Method 2 failed: ' + error.message);
-        }
-      }
+      // STEP 2: Check Player ID after delay
+      setTimeout(async () => {
+        alert('Checking Player ID...');
 
-      // Method 3: Slidedown.promptPush
-      if (!subscriptionCreated && oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
-        alert('Trying Slidedown.promptPush...');
-        try {
-          oneSignal.Slidedown.promptPush();
-          subscriptionCreated = true;
-          alert('✅ Slidedown.promptPush called');
-        } catch (error) {
-          alert('Method 3 failed: ' + error.message);
-        }
-      }
+        // Try to get Player ID
+        let playerId = null;
 
-      // Method 4: Direct Service Worker registration (last resort)
-      if (!subscriptionCreated) {
-        alert('Trying direct Service Worker registration...');
-        try {
-          if ('serviceWorker' in navigator) {
-            const registration = await navigator.serviceWorker.ready;
-
-            // Check existing subscription
-            let subscription = await registration.pushManager.getSubscription();
-
-            if (!subscription) {
-              // This would require VAPID keys, but let's at least try
-              alert('No existing subscription. OneSignal should create one.');
-            } else {
-              alert('Existing subscription found');
-              subscriptionCreated = true;
-            }
+        // Method 1: getUserId
+        if (oneSignal.getUserId) {
+          try {
+            playerId = await oneSignal.getUserId();
+          } catch (error) {
+            console.log('getUserId failed:', error);
           }
-        } catch (error) {
-          alert('Method 4 failed: ' + error.message);
         }
-      }
 
-      if (subscriptionCreated) {
-        alert('✅ Subscription process started! Checking Player ID in 5 seconds...');
-
-        // Wait and check Player ID
-        setTimeout(async () => {
-          const playerId = await OneSignalService.getPlayerId();
-          alert('Player ID after 5s: ' + (playerId || 'Still null'));
-
-          if (playerId) {
-            // Save to database
-            await OneSignalService.saveDevice(user?.id, playerId);
-            alert('✅ Device registered! ID: ' + playerId.substring(0, 8) + '...');
-          } else {
-            alert('❌ Player ID still null. Try refreshing page.');
+        // Method 2: User.PushSubscription.id
+        if (!playerId && oneSignal.User && oneSignal.User.PushSubscription) {
+          try {
+            playerId = await oneSignal.User.PushSubscription.id;
+          } catch (error) {
+            console.log('PushSubscription.id failed:', error);
           }
-        }, 5000);
-      } else {
-        alert('❌ Could not trigger subscription. Try: 1) Refresh page 2) Clear cache 3) Try different browser');
-      }
+        }
+
+        // Method 3: Use OneSignalService
+        if (!playerId) {
+          playerId = await OneSignalService.getPlayerId();
+        }
+
+        if (playerId) {
+          alert('🎉 SUCCESS! Player ID: ' + playerId.substring(0, 8) + '...');
+
+          // Save to database
+          await OneSignalService.saveDevice(user?.id, playerId);
+          alert('✅ Device registered in database!');
+        } else {
+          alert('⚠️ Player ID still null. The subscription may still be processing.');
+          alert('Try: 1) Wait 30 seconds 2) Refresh page 3) Check browser notifications settings');
+        }
+      }, 3000); // Wait 3 seconds for subscription to complete
 
     } catch (error) {
       alert('❌ Error: ' + error.message);
     }
+  };
+
+  const checkCurrentPlayerId = async () => {
+    const oneSignal = window.OneSignal || window._OneSignal;
+
+    if (!oneSignal) {
+      alert('OneSignal not loaded');
+      return;
+    }
+
+    let playerId = null;
+    let method = '';
+
+    // Try different methods to get Player ID
+    if (oneSignal.getUserId) {
+      try {
+        playerId = await oneSignal.getUserId();
+        method = 'getUserId';
+      } catch (error) {
+        console.log('getUserId error:', error);
+      }
+    }
+
+    if (!playerId && oneSignal.User && oneSignal.User.PushSubscription) {
+      try {
+        playerId = await oneSignal.User.PushSubscription.id;
+        method = 'User.PushSubscription.id';
+      } catch (error) {
+        console.log('PushSubscription error:', error);
+      }
+    }
+
+    if (!playerId) {
+      playerId = await OneSignalService.getPlayerId();
+      method = 'OneSignalService';
+    }
+
+    alert(`Player ID check:\n` +
+      `Method: ${method}\n` +
+      `Player ID: ${playerId || 'null'}\n` +
+      `Permission: ${Notification.permission}`);
   };
 
 
@@ -1338,18 +1333,24 @@ export default function CompanyDashboard() {
                         <p className="text-sm opacity-90">Get instant alerts for new jobs</p>
                       </div>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         onClick={handleEnableNotifications}
-                        className="flex-1 bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                        className="bg-white text-green-600 px-4 py-3 rounded-lg font-bold hover:bg-gray-100"
                       >
-                        Enable Notifications
+                        Enable
+                      </button>
+                      <button
+                        onClick={checkCurrentPlayerId}
+                        className="bg-blue-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-blue-600"
+                      >
+                        Check ID
                       </button>
                       <button
                         onClick={debugOneSignal}
-                        className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-600"
+                        className="bg-purple-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-purple-600 col-span-2"
                       >
-                        Debug
+                        Debug OneSignal
                       </button>
                     </div>
                   </div>
