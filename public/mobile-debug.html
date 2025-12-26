@@ -9,26 +9,16 @@
             padding: 20px;
         }
 
-        .status {
+        #log {
+            background: #f0f0f0;
             padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
             margin: 10px 0;
-            border-radius: 5px;
-        }
-
-        .success {
-            background: #d4edda;
-        }
-
-        .error {
-            background: #f8d7da;
-        }
-
-        .loading {
-            background: #fff3cd;
         }
 
         button {
-            padding: 15px;
+            padding: 10px;
             margin: 5px;
             font-size: 16px;
         }
@@ -36,62 +26,95 @@
 </head>
 
 <body>
-    <h2>📱 Mobile Push Debug</h2>
+    <h1>Mobile Debug Page</h1>
 
-    <div id="status" class="status loading">Loading...</div>
+    <div id="log"></div>
 
-    <button onclick="checkSubscription()">Check Status</button>
-    <button onclick="triggerSubscription()">Subscribe Now</button>
-    <button onclick="location.reload()">Reload Page</button>
+    <button onclick="testClick()">Test Click</button>
+    <button onclick="checkOneSignal()">Check OneSignal</button>
+    <button onclick="requestPermission()">Request Permission</button>
 
-    <div id="result" style="margin-top: 20px; font-family: monospace;"></div>
-
-    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
     <script>
+        const log = document.getElementById('log');
+
+        function addLog(message) {
+            const line = document.createElement('div');
+            line.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Initialize OneSignal
         window.OneSignalDeferred = window.OneSignalDeferred || [];
 
         OneSignalDeferred.push(async function (OneSignal) {
+            window.OneSignal = OneSignal;
+
             await OneSignal.init({
                 appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
                 autoRegister: false,
                 notifyButton: { enable: false }
             });
 
-            window._OneSignal = OneSignal;
-            document.getElementById('status').className = 'status success';
-            document.getElementById('status').textContent = '✅ OneSignal Loaded';
+            addLog('✅ OneSignal initialized');
+            addLog('OneSignal object: ' + (OneSignal ? 'Loaded' : 'Not loaded'));
         });
 
-        async function checkSubscription() {
-            if (!window._OneSignal) return;
-
-            const playerId = await window._OneSignal.User.PushSubscription.id;
-            const optedIn = await window._OneSignal.User.PushSubscription.optedIn;
-
-            document.getElementById('result').innerHTML = `
-                <strong>Player ID:</strong> ${playerId || 'None'}<br>
-                <strong>Opted In:</strong> ${optedIn}<br>
-                <strong>Permission:</strong> ${Notification.permission}
-            `;
+        function testClick() {
+            addLog('Test button clicked');
+            alert('Test button works!');
         }
 
-        async function triggerSubscription() {
-            if (!window._OneSignal) return;
+        async function checkOneSignal() {
+            addLog('Checking OneSignal...');
 
-            if (Notification.permission !== 'granted') {
-                const perm = await Notification.requestPermission();
-                if (perm !== 'granted') {
-                    alert('Permission denied');
-                    return;
+            if (!window.OneSignal) {
+                addLog('❌ OneSignal not loaded');
+                alert('OneSignal not loaded');
+                return;
+            }
+
+            addLog('✅ OneSignal loaded');
+            addLog('Notifications object: ' + (window.OneSignal.Notifications ? 'Yes' : 'No'));
+
+            // Check permission
+            if (window.OneSignal.Notifications && window.OneSignal.Notifications.permissionNative) {
+                const permission = await window.OneSignal.Notifications.permissionNative;
+                addLog('Permission: ' + permission);
+                alert('Permission: ' + permission);
+            } else {
+                addLog('❌ permissionNative not available');
+            }
+        }
+
+        async function requestPermission() {
+            addLog('Requesting permission...');
+
+            if (!window.OneSignal || !window.OneSignal.Notifications || !window.OneSignal.Notifications.requestPermission) {
+                addLog('❌ Cannot request permission - method not available');
+                alert('Cannot request permission');
+                return;
+            }
+
+            try {
+                const permission = await window.OneSignal.Notifications.requestPermission();
+                addLog('Permission result: ' + permission);
+                alert('Permission: ' + permission);
+
+                if (permission === 'granted') {
+                    // Get Player ID
+                    const playerId = await window.OneSignal.getUserId();
+                    addLog('Player ID: ' + (playerId || 'Not set'));
+                    alert('Player ID: ' + (playerId || 'Not set'));
                 }
-            }
-
-            if (window._OneSignal.registerForPushNotifications) {
-                await window._OneSignal.registerForPushNotifications();
-                alert('Subscription triggered! Check status in 5 seconds.');
-                setTimeout(checkSubscription, 5000);
+            } catch (error) {
+                addLog('❌ Error: ' + error.message);
+                alert('Error: ' + error.message);
             }
         }
+
+        addLog('Page loaded');
     </script>
 </body>
 

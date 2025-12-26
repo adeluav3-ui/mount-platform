@@ -1230,11 +1230,35 @@ export default function CompanyDashboard() {
                       </div>
                       <div>
                         <h4 className="font-bold">Enable Job Notifications</h4>
-                        <p className="text-sm opacity-90">Get instant alerts for new jobs on your phone</p>
+                        <p className="text-sm opacity-90">Get instant alerts for new jobs</p>
                       </div>
                     </div>
                     <button
-                      onClick={handleEnableNotifications}
+                      onClick={async () => {
+                        // Show immediate feedback
+                        alert('Button clicked! Checking OneSignal...');
+
+                        // Simple test first
+                        if (!window.OneSignal && !window._OneSignal) {
+                          alert('❌ OneSignal not loaded. Please refresh page.');
+                          return;
+                        }
+
+                        const oneSignal = window.OneSignal || window._OneSignal;
+
+                        // Try simple permission request
+                        if (Notification.permission === 'default') {
+                          const permission = await Notification.requestPermission();
+                          alert('Browser permission: ' + permission);
+
+                          if (permission === 'granted' && oneSignal && oneSignal.registerForPushNotifications) {
+                            await oneSignal.registerForPushNotifications();
+                            alert('✅ OneSignal subscription requested!');
+                          }
+                        } else {
+                          alert('Current permission: ' + Notification.permission);
+                        }
+                      }}
                       className="bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
                     >
                       Enable
