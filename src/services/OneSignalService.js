@@ -250,11 +250,40 @@ class OneSignalService {
     static capitalizeFirst(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
-    static debugShowPlayerId() {
-        this.getPlayerId().then(playerId => {
-            console.log('📱 Mobile Player ID:', playerId);
-            alert('Mobile Player ID: ' + playerId);
-        });
+    static async triggerSubscription() {
+        try {
+            console.log('🔔 Triggering subscription...');
+
+            const oneSignal = window._OneSignal || window.OneSignal;
+            if (!oneSignal) {
+                console.error('❌ OneSignal not available');
+                return false;
+            }
+
+            // Try different methods based on OneSignal documentation
+            if (oneSignal.Notifications && oneSignal.Notifications.requestPermission) {
+                // Method 1: requestPermission
+                const permission = await oneSignal.Notifications.requestPermission();
+                console.log('Permission result:', permission);
+                return permission === 'granted';
+            } else if (oneSignal.registerForPushNotifications) {
+                // Method 2: registerForPushNotifications
+                await oneSignal.registerForPushNotifications();
+                console.log('✅ Push notifications registered');
+                return true;
+            } else if (oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
+                // Method 3: Slidedown prompt
+                await oneSignal.Slidedown.promptPush();
+                console.log('✅ Push prompt shown');
+                return true;
+            } else {
+                console.error('❌ No subscription method found');
+                return false;
+            }
+        } catch (error) {
+            console.error('❌ Error triggering subscription:', error);
+            return false;
+        }
     }
 }
 
