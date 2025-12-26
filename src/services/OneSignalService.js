@@ -408,20 +408,56 @@ class OneSignalService {
         return await this.triggerSubscription();
     }
     // Add this NEW method to save company devices
+    // REPLACE the entire saveCompanyDevice method (around line 290) with this:
     static async saveCompanyDevice(userId, playerId) {
         try {
-            console.log('💾 Saving company device to database:', {
-                userId,
-                playerId,
-                isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-            });
+            console.log('💾 saveCompanyDevice called:', { userId, playerId });
+
+            // IMPORTANT: First check what Player ID Clouddiamond SHOULD have
+            const isClouddiamond = userId === '2e3af016-40f4-4302-9bc3-e44a6f77f1c9';
+
+            if (isClouddiamond) {
+                console.log('🏢 This is Clouddiamond company');
+
+                // Clouddiamond should have these Player IDs:
+                const correctLaptopId = '448f98d4-b6d4-4d18-8942-50e9b41819a1';
+                const correctMobileId = '9cc588d0-c37c-40fa-bc91-5f6b98e900ca';
+
+                // Check if this is one of the correct IDs
+                const isCorrectDevice = playerId === correctLaptopId || playerId === correctMobileId;
+
+                if (!isCorrectDevice) {
+                    console.warn('⚠️ WRONG DEVICE for Clouddiamond!');
+                    console.warn(`   Current device: ${playerId}`);
+                    console.warn(`   Should be either:`);
+                    console.warn(`   - Laptop: ${correctLaptopId}`);
+                    console.warn(`   - Mobile: ${correctMobileId}`);
+
+                    // DON'T save wrong device as primary
+                    // Instead, just add to company_devices as additional device
+                    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                    const deviceType = isMobile ? 'mobile' : 'desktop';
+                    const deviceName = 'Additional Device (Wrong ID)';
+
+                    const NotificationService = await import('../services/NotificationService.js');
+                    await NotificationService.default.addCompanyDevice(
+                        userId,
+                        playerId,
+                        deviceType,
+                        deviceName
+                    );
+
+                    console.log('📱 Added as additional device (not primary)');
+                    return false; // Return false to indicate wrong device
+                }
+            }
 
             // Determine device type
             const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
             const deviceType = isMobile ? 'mobile' : 'desktop';
             const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
 
-            // Import NotificationService to use addCompanyDevice
+            // Import NotificationService
             const NotificationService = await import('../services/NotificationService.js');
 
             // Save to company_devices table
@@ -434,13 +470,47 @@ class OneSignalService {
 
             if (success) {
                 console.log('✅ Device saved to company_devices table');
+
+                // If this is Clouddiamond and it's the correct laptop ID, update companies table
+                if (isClouddiamond && playerId === '448f98d4-b6d4-4d18-8942-50e9b41819a1') {
+                    console.log('💻 Updating Clouddiamond primary Player ID in companies table');
+                    await this.updateCompanyPrimaryPlayerId(userId, playerId);
+                }
             } else {
                 console.error('❌ Failed to save device');
             }
 
             return success;
+
         } catch (error) {
             console.error('❌ Error saving company device:', error);
+            return false;
+        }
+    }
+
+    // ADD this new method to update primary Player ID
+    static async updateCompanyPrimaryPlayerId(companyId, playerId) {
+        try {
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            const { error } = await supabase
+                .from('companies')
+                .update({
+                    onesignal_player_id: playerId,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', companyId);
+
+            if (error) {
+                console.error('❌ Error updating company primary Player ID:', error);
+                return false;
+            }
+
+            console.log('✅ Updated company primary Player ID');
+            return true;
+
+        } catch (error) {
+            console.error('❌ Error in updateCompanyPrimaryPlayerId:', error);
             return false;
         }
     }
