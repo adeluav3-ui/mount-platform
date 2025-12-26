@@ -2,6 +2,7 @@
 <html>
 
 <body>
+    <button onclick="checkMethods()">Check Methods</button>
     <button onclick="requestNotifications()">Enable Notifications</button>
     <div id="result"></div>
 
@@ -12,12 +13,31 @@
         OneSignalDeferred.push(async function (OneSignal) {
             await OneSignal.init({
                 appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
-                autoRegister: true,
+                autoRegister: false,
                 notifyButton: { enable: false }
             });
 
             window.OneSignal = OneSignal;
+            console.log('OneSignal loaded:', OneSignal);
         });
+
+        function checkMethods() {
+            if (!window.OneSignal) {
+                document.getElementById('result').innerHTML = 'OneSignal not loaded';
+                return;
+            }
+
+            let methods = '';
+            for (let key in window.OneSignal) {
+                if (typeof window.OneSignal[key] === 'function') {
+                    methods += key + '(), ';
+                }
+            }
+
+            document.getElementById('result').innerHTML =
+                'Methods: ' + methods + '<br>' +
+                'OneSignal keys: ' + Object.keys(window.OneSignal).join(', ');
+        }
 
         async function requestNotifications() {
             if (!window.OneSignal) {
@@ -26,11 +46,42 @@
             }
 
             try {
-                await window.OneSignal.registerForPushNotifications();
-                const userId = await window.OneSignal.getUserId();
-                document.getElementById('result').innerHTML = 'Success! User ID: ' + userId;
+                // Try different methods
+                let success = false;
+
+                // Method 1: getNotificationPermission (might trigger prompt)
+                if (window.OneSignal.getNotificationPermission) {
+                    const permission = await window.OneSignal.getNotificationPermission();
+                    document.getElementById('result').innerHTML += '<br>Permission: ' + permission;
+                    success = true;
+                }
+
+                // Method 2: Notifications.requestPermission
+                if (!success && window.OneSignal.Notifications && window.OneSignal.Notifications.requestPermission) {
+                    const permission = await window.OneSignal.Notifications.requestPermission();
+                    document.getElementById('result').innerHTML += '<br>Notifications permission: ' + permission;
+                    success = true;
+                }
+
+                // Method 3: Slidedown.promptPush
+                if (!success && window.OneSignal.Slidedown && window.OneSignal.Slidedown.promptPush) {
+                    window.OneSignal.Slidedown.promptPush();
+                    document.getElementById('result').innerHTML += '<br>Slidedown triggered';
+                    success = true;
+                }
+
+                if (success) {
+                    // Get user ID after a delay
+                    setTimeout(async () => {
+                        const userId = await window.OneSignal.getUserId();
+                        document.getElementById('result').innerHTML += '<br>User ID: ' + userId;
+                    }, 2000);
+                } else {
+                    document.getElementById('result').innerHTML += '<br>No subscription method found';
+                }
+
             } catch (error) {
-                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+                document.getElementById('result').innerHTML += '<br>Error: ' + error.message;
             }
         }
     </script>
