@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Mobile Push Debug</title>
+    <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .enable-btn {
+            background: #10B981;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📱 Mobile Push Debug</h1>
+
+    <div id="deviceInfo" class="status"></div>
+    <div id="oneSignalStatus" class="status"></div>
+    <div id="subscriptionStatus" class="status"></div>
+
+    <button onclick="checkAll()" class="enable-btn">Run All Checks</button>
+    <button onclick="initOneSignal()">Initialize OneSignal</button>
+    <button onclick="checkSubscription()">Check Subscription</button>
+    <button onclick="requestPermission()">Request Permission</button>
+
+    <script>
+        // Check device info
+        function checkDeviceInfo() {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            const isChrome = /Chrome/.test(navigator.userAgent);
+            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+            document.getElementById('deviceInfo').innerHTML = `
+                <h3>📱 Device Info</h3>
+                <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+                <p><strong>Mobile:</strong> ${isMobile}</p>
+                <p><strong>iOS:</strong> ${isIOS}</p>
+                <p><strong>Android:</strong> ${isAndroid}</p>
+                <p><strong>Chrome:</strong> ${isChrome}</p>
+                <p><strong>Safari:</strong> ${isSafari}</p>
+                <p><strong>HTTPS:</strong> ${window.location.protocol === 'https:'}</p>
+                <p><strong>Service Worker:</strong> ${'serviceWorker' in navigator}</p>
+                <p><strong>Notification Permission:</strong> ${Notification.permission}</p>
+            `;
+
+            document.getElementById('deviceInfo').className = 'status ' +
+                (isMobile ? 'warning' : 'success');
+        }
+
+        // Check OneSignal SDK
+        async function checkOneSignalSDK() {
+            let status = '❌ OneSignal SDK not loaded';
+            let className = 'error';
+
+            // Check if SDK is loaded
+            if (window.OneSignal || window._OneSignal) {
+                const oneSignal = window.OneSignal || window._OneSignal;
+                status = '✅ OneSignal SDK loaded';
+                className = 'success';
+
+                // Check SDK methods
+                if (oneSignal.init) status += '<br>✅ Has init() method';
+                if (oneSignal.User) status += '<br>✅ Has User object';
+            }
+
+            document.getElementById('oneSignalStatus').innerHTML = `
+                <h3>📡 OneSignal SDK</h3>
+                <p>${status}</p>
+            `;
+            document.getElementById('oneSignalStatus').className = 'status ' + className;
+        }
+
+        // Initialize OneSignal
+        async function initOneSignal() {
+            try {
+                // Check if already initialized
+                if (window.OneSignalInitialized) {
+                    alert('OneSignal already initialized');
+                    return;
+                }
+
+                const appId = '0186919f-3891-40a5-81b6-c9e70634bdef';
+
+                // Initialize OneSignal
+                window.OneSignal = window.OneSignal || [];
+                OneSignal.push(function () {
+                    OneSignal.init({
+                        appId: appId,
+                        safari_web_id: "",
+                        notifyButton: {
+                            enable: true,
+                        },
+                        allowLocalhostAsSecureOrigin: true,
+                    });
+
+                    console.log('OneSignal initialized');
+                    window.OneSignalInitialized = true;
+                });
+
+                setTimeout(() => {
+                    checkOneSignalSDK();
+                    checkSubscription();
+                }, 3000);
+
+            } catch (error) {
+                console.error('Init error:', error);
+                alert('Init failed: ' + error.message);
+            }
+        }
+
+        // Check subscription status
+        async function checkSubscription() {
+            try {
+                const oneSignal = window.OneSignal || window._OneSignal;
+                let html = '<h3>🔔 Subscription Status</h3>';
+
+                if (!oneSignal) {
+                    html += '<p>❌ OneSignal not available</p>';
+                    document.getElementById('subscriptionStatus').innerHTML = html;
+                    document.getElementById('subscriptionStatus').className = 'status error';
+                    return;
+                }
+
+                // Get Player ID
+                const playerId = await oneSignal.User.PushSubscription.id;
+                const optedIn = await oneSignal.User.PushSubscription.optedIn;
+
+                html += `
+                    <p><strong>Player ID:</strong> ${playerId || 'None'}</p>
+                    <p><strong>Opted In:</strong> ${optedIn}</p>
+                    <p><strong>Permission:</strong> ${Notification.permission}</p>
+                `;
+
+                if (playerId && optedIn) {
+                    html += '<p>✅ Subscribed and ready!</p>';
+                    document.getElementById('subscriptionStatus').className = 'status success';
+                } else if (!optedIn && Notification.permission === 'granted') {
+                    html += '<p>⚠️ Permission granted but not subscribed</p>';
+                    document.getElementById('subscriptionStatus').className = 'status warning';
+                } else if (Notification.permission === 'default') {
+                    html += '<p>⚠️ Permission not requested yet</p>';
+                    document.getElementById('subscriptionStatus').className = 'status warning';
+                } else {
+                    html += '<p>❌ Not subscribed</p>';
+                    document.getElementById('subscriptionStatus').className = 'status error';
+                }
+
+                document.getElementById('subscriptionStatus').innerHTML = html;
+
+            } catch (error) {
+                console.error('Check subscription error:', error);
+                document.getElementById('subscriptionStatus').innerHTML = `
+                    <h3>🔔 Subscription Status</h3>
+                    <p>❌ Error: ${error.message}</p>
+                `;
+                document.getElementById('subscriptionStatus').className = 'status error';
+            }
+        }
+
+        // Request permission
+        async function requestPermission() {
+            if (Notification.permission === 'granted') {
+                alert('Already granted');
+                return;
+            }
+
+            const permission = await Notification.requestPermission();
+            alert('Permission: ' + permission);
+
+            if (permission === 'granted') {
+                // Try to subscribe
+                const oneSignal = window.OneSignal || window._OneSignal;
+                if (oneSignal && oneSignal.registerForPushNotifications) {
+                    await oneSignal.registerForPushNotifications();
+                    setTimeout(checkSubscription, 2000);
+                }
+            }
+        }
+
+        // Run all checks
+        function checkAll() {
+            checkDeviceInfo();
+            checkOneSignalSDK();
+            checkSubscription();
+        }
+
+        // Run checks on load
+        checkDeviceInfo();
+        checkOneSignalSDK();
+
+        // Auto-initialize OneSignal after 2 seconds
+        setTimeout(() => {
+            if (!window.OneSignalInitialized) {
+                initOneSignal();
+            }
+        }, 2000);
+    </script>
+</body>
+
+</html>
