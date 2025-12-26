@@ -50,9 +50,21 @@ export default function CompanyDashboard() {
 
   // In CompanyDashboard.jsx, update the OneSignal section:
   useEffect(() => {
-    // Replace the entire setupOneSignal function in the useEffect:
     const setupOneSignal = async () => {
       if (!user?.id) return;
+
+      // Check if mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      console.log(`${isMobile ? '📱' : '💻'} Device detected:`, {
+        isMobile,
+        userAgent: navigator.userAgent,
+        permission: Notification.permission
+      });
+
+      // Mobile-specific: Wait longer for slow connections
+      const waitTime = isMobile ? 5000 : 2000;
+      console.log(`⏳ Waiting ${waitTime}ms for OneSignal...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
 
       console.log('🔔 Setting up OneSignal for user:', user.id);
       console.log('📊 Current user ID for saving:', user.id);
@@ -740,33 +752,6 @@ export default function CompanyDashboard() {
     }
   }, [user, supabase, loadNotifications])
 
-  // Add this useEffect near your other useEffects
-  useEffect(() => {
-    const checkMobileSubscription = async () => {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      if (isMobile && user) {
-        console.log('📱 MOBILE DEVICE DETECTED - Running diagnostics...');
-
-        // Import dynamically to avoid bundle issues
-        const { MobileDebugService } = await import('../../services/MobileDebugService');
-        const results = await MobileDebugService.checkOneSignalSetup();
-
-        console.log('📱 Diagnostic results:', results);
-
-        // If not subscribed, try to force it
-        if (!results.playerId || !results.optedIn) {
-          console.log('📱 No subscription detected, attempting to subscribe...');
-          await MobileDebugService.forceMobileSubscription();
-        }
-      }
-    };
-
-    if (user) {
-      checkMobileSubscription();
-    }
-  }, [user]);
-
 
   // Check Service Worker Registration
   useEffect(() => {
@@ -958,30 +943,6 @@ export default function CompanyDashboard() {
                   )}
                 </div>
               </div>
-              {isMobile && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-4">
-                  <div className="flex items-center">
-                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                      <span className="text-xl">📱</span>
-                    </div>
-                    <div className="ml-4">
-                      <h4 className="font-semibold text-yellow-800">Mobile Notifications</h4>
-                      <p className="text-sm text-yellow-600">
-                        Enable push notifications to receive job alerts on your phone.
-                      </p>
-                      <button
-                        onClick={async () => {
-                          const { MobileDebugService } = await import('../../services/MobileDebugService');
-                          await MobileDebugService.forceMobileSubscription();
-                        }}
-                        className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600"
-                      >
-                        Enable Push Notifications
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
               {/* Profile Dropdown */}
               <div className="relative group">
                 <button className="flex items-center space-x-2 focus:outline-none">
