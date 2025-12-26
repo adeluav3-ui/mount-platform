@@ -15,28 +15,27 @@
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     OneSignalDeferred.push(async function (OneSignal) {
-      // Use local service worker files
+      // Configure Service Worker paths
       OneSignal.SERVICE_WORKER_UPDATER_PATH = '/OneSignalSDKUpdaterWorker.js';
       OneSignal.SERVICE_WORKER_PATH = '/OneSignalSDKWorker.js';
       OneSignal.SERVICE_WORKER_PARAM = { scope: '/' };
 
-      try {
-        console.log('🚀 Starting OneSignal initialization with local workers...');
+      console.log('🚀 Mount Platform: Starting OneSignal initialization...');
 
+      try {
+        // Initialize WITHOUT auto-register
         await OneSignal.init({
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
 
-          // In index.html, update the promptOptions:
+          // CRITICAL CHANGE: Disable auto-prompt for now
           promptOptions: {
             slidedown: {
-              enabled: true, // CHANGE BACK TO TRUE
-              autoPrompt: true, // ENABLE AUTO-PROMPT
-              timeDelay: 3, // Show after 3 seconds
-              pageViews: 1 // Show on first page view
+              enabled: false, // DISABLE auto-prompt
+              autoPrompt: false
             }
           },
 
-          // Other settings
+          // Important settings
           allowLocalhostAsSecureOrigin: true,
           notifyButton: {
             enable: false
@@ -44,17 +43,50 @@
           welcomeNotification: {
             disable: true
           },
-          persistNotification: false
+          persistNotification: false,
+          autoRegister: false, // DISABLE auto registration
+          autoResubscribe: false, // Let us handle resubscription
+          serviceWorkerParam: { scope: '/' }
         });
 
-        console.log('✅ OneSignal initialized successfully');
-        console.log('Initial permission:', Notification.permission);
+        console.log('✅ OneSignal SDK initialized (no auto-register)');
 
-        // Check subscription
-        const playerId = await OneSignal.User.PushSubscription.id;
-        console.log('Player ID:', playerId);
-
+        // Store reference
         window._OneSignal = OneSignal;
+
+        // Check if we already have a subscription
+        const playerId = await OneSignal.User.PushSubscription.id;
+        console.log('Current Player ID:', playerId);
+
+        if (!playerId) {
+          console.log('⚠️ No subscription yet. Will manually register later.');
+
+          // Create a global function to trigger subscription
+          window.triggerOneSignalSubscription = async function () {
+            console.log('🎯 Manually triggering subscription...');
+
+            if (Notification.permission === 'default') {
+              const permission = await Notification.requestPermission();
+              console.log('Permission result:', permission);
+
+              if (permission !== 'granted') {
+                return false;
+              }
+            }
+
+            if (OneSignal.Slidedown && OneSignal.Slidedown.promptPush) {
+              OneSignal.Slidedown.promptPush();
+              return true;
+            }
+
+            if (OneSignal.registerForPushNotifications) {
+              await OneSignal.registerForPushNotifications();
+              return true;
+            }
+
+            return false;
+          };
+        }
 
       } catch (error) {
         console.error('❌ OneSignal initialization failed:', error);
