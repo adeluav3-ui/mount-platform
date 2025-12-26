@@ -142,6 +142,45 @@ export default function CompanyDashboard() {
     }
   };
 
+
+  const debugOneSignal = async () => {
+    const oneSignal = window.OneSignal || window._OneSignal;
+
+    let result = 'OneSignal Debug:\n';
+    result += 'Loaded: ' + (oneSignal ? 'Yes' : 'No') + '\n';
+
+    if (oneSignal) {
+      result += 'Methods available:\n';
+
+      // Check common methods
+      const methods = ['registerForPushNotifications', 'getUserId', 'Slidedown', 'internal', 'Notifications'];
+      methods.forEach(method => {
+        if (oneSignal[method]) {
+          result += '  ✓ ' + method + '\n';
+          if (method === 'Slidedown' && oneSignal[method].promptPush) {
+            result += '    ✓ promptPush available\n';
+          }
+        } else {
+          result += '  ✗ ' + method + '\n';
+        }
+      });
+
+      // Try to get Player ID
+      try {
+        if (oneSignal.getUserId) {
+          const playerId = await oneSignal.getUserId();
+          result += 'Player ID: ' + (playerId || 'null') + '\n';
+        }
+      } catch (e) {
+        result += 'Player ID error: ' + e.message + '\n';
+      }
+    }
+
+    result += '\nBrowser Permission: ' + Notification.permission;
+    result += '\nService Worker: ' + ('serviceWorker' in navigator ? 'Supported' : 'Not supported');
+
+    alert(result);
+  };
   // REAL-TIME JOB COUNT
   const [pendingJobCount, setPendingJobCount] = useState(0)
   const [hasNewJobs, setHasNewJobs] = useState(false)
@@ -1289,7 +1328,7 @@ export default function CompanyDashboard() {
               </div>
               {isMobileDevice && (
                 <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl shadow-lg z-50">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col space-y-3">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
                         <span className="text-xl">🔔</span>
@@ -1299,36 +1338,20 @@ export default function CompanyDashboard() {
                         <p className="text-sm opacity-90">Get instant alerts for new jobs</p>
                       </div>
                     </div>
-                    <button
-                      onClick={async () => {
-                        // Show immediate feedback
-                        alert('Button clicked! Checking OneSignal...');
-
-                        // Simple test first
-                        if (!window.OneSignal && !window._OneSignal) {
-                          alert('❌ OneSignal not loaded. Please refresh page.');
-                          return;
-                        }
-
-                        const oneSignal = window.OneSignal || window._OneSignal;
-
-                        // Try simple permission request
-                        if (Notification.permission === 'default') {
-                          const permission = await Notification.requestPermission();
-                          alert('Browser permission: ' + permission);
-
-                          if (permission === 'granted' && oneSignal && oneSignal.registerForPushNotifications) {
-                            await oneSignal.registerForPushNotifications();
-                            alert('✅ OneSignal subscription requested!');
-                          }
-                        } else {
-                          alert('Current permission: ' + Notification.permission);
-                        }
-                      }}
-                      className="bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
-                    >
-                      Enable
-                    </button>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleEnableNotifications}
+                        className="flex-1 bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                      >
+                        Enable Notifications
+                      </button>
+                      <button
+                        onClick={debugOneSignal}
+                        className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-blue-600"
+                      >
+                        Debug
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
