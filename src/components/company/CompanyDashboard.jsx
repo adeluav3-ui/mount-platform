@@ -88,46 +88,7 @@ export default function CompanyDashboard() {
       checkMobileSubscription();
     }
   }, []);
-  useEffect(() => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-    if (isMobile) {
-      console.log('📱 MOBILE - Forcing subscription check...');
-
-      const forceMobileSubscription = async () => {
-        // Wait for OneSignal to load
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        // Check current state
-        const playerId = await OneSignalService.getPlayerId();
-        console.log('📱 Initial Player ID:', playerId);
-
-        if (!playerId) {
-          console.log('📱 No Player ID found, triggering subscription...');
-
-          // Try to trigger subscription
-          const success = await OneSignalService.triggerSubscription();
-          console.log('📱 Subscription trigger result:', success);
-
-          // Check again after 3 seconds
-          setTimeout(async () => {
-            const newPlayerId = await OneSignalService.getPlayerId();
-            console.log('📱 New Player ID after trigger:', newPlayerId);
-
-            if (newPlayerId) {
-              alert('✅ Mobile subscribed! ID: ' + newPlayerId.substring(0, 8) + '...');
-            } else {
-              alert('❌ Mobile subscription failed. Check browser permissions.');
-            }
-          }, 3000);
-        } else {
-          console.log('📱 Already subscribed with ID:', playerId);
-        }
-      };
-
-      forceMobileSubscription();
-    }
-  }, []);
   useEffect(() => {
     if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
       console.log('📱 MOBILE DEVICE DETECTED');
@@ -389,6 +350,83 @@ export default function CompanyDashboard() {
         }, 5000);
       }
     };
+
+    // Function to show mobile subscription prompt
+    const showMobileSubscriptionPrompt = () => {
+      // Check if prompt already exists
+      if (document.getElementById('mobile-push-prompt')) return;
+
+      const promptDiv = document.createElement('div');
+      promptDiv.id = 'mobile-push-prompt';
+      promptDiv.innerHTML = `
+            <div style="position: fixed; bottom: 20px; left: 20px; right: 20px; background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 16px; border-radius: 12px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); z-index: 9999; animation: slideUp 0.3s ease;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        <div style="background: white; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
+                            <span style="font-size: 20px; color: #10B981;">🔔</span>
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 14px;">Enable Job Notifications</div>
+                            <div style="font-size: 12px; opacity: 0.9;">Get instant alerts for new jobs</div>
+                        </div>
+                    </div>
+                    <button id="enable-mobile-push" style="background: white; color: #10B981; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;">
+                        Enable
+                    </button>
+                </div>
+                <button id="close-mobile-prompt" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+                    ×
+                </button>
+            </div>
+            <style>
+                @keyframes slideUp {
+                    from { transform: translateY(100px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            </style>
+        `;
+
+      document.body.appendChild(promptDiv);
+
+      // Add event listeners
+      document.getElementById('enable-mobile-push').addEventListener('click', async () => {
+        await OneSignalService.triggerSubscription();
+        document.body.removeChild(promptDiv);
+      });
+
+      document.getElementById('close-mobile-prompt').addEventListener('click', () => {
+        document.body.removeChild(promptDiv);
+      });
+
+      // Auto-remove after 30 seconds
+      setTimeout(() => {
+        if (document.body.contains(promptDiv)) {
+          document.body.removeChild(promptDiv);
+        }
+      }, 30000);
+    };
+
+    if (user?.id) {
+      setupOneSignalForUser();
+    }
+  }, [user, supabase]); // Only depend on user and supabase
+
+  const NotificationSettings = () => {
+    const [preferences, setPreferences] = useState({
+      push: true,
+      email: true,
+      browser: true
+    });
+
+    const updatePreferences = async (key, value) => {
+      const newPrefs = { ...preferences, [key]: value };
+      setPreferences(newPrefs);
+
+      await supabase
+        .from('companies')
+        .update({ notification_preferences: newPrefs })
+        .eq('id', user.id);
+    };
     const handleEnableNotifications = async () => {
       try {
         console.log('📱 Mobile notification button clicked');
@@ -472,83 +510,6 @@ export default function CompanyDashboard() {
 
       checkAndPromptMobile();
     }, [isMobileDevice, user]);
-    // Function to show mobile subscription prompt
-    const showMobileSubscriptionPrompt = () => {
-      // Check if prompt already exists
-      if (document.getElementById('mobile-push-prompt')) return;
-
-      const promptDiv = document.createElement('div');
-      promptDiv.id = 'mobile-push-prompt';
-      promptDiv.innerHTML = `
-            <div style="position: fixed; bottom: 20px; left: 20px; right: 20px; background: linear-gradient(135deg, #10B981, #059669); color: white; padding: 16px; border-radius: 12px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3); z-index: 9999; animation: slideUp 0.3s ease;">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center;">
-                        <div style="background: white; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-right: 12px;">
-                            <span style="font-size: 20px; color: #10B981;">🔔</span>
-                        </div>
-                        <div>
-                            <div style="font-weight: bold; font-size: 14px;">Enable Job Notifications</div>
-                            <div style="font-size: 12px; opacity: 0.9;">Get instant alerts for new jobs</div>
-                        </div>
-                    </div>
-                    <button id="enable-mobile-push" style="background: white; color: #10B981; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;">
-                        Enable
-                    </button>
-                </div>
-                <button id="close-mobile-prompt" style="position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-                    ×
-                </button>
-            </div>
-            <style>
-                @keyframes slideUp {
-                    from { transform: translateY(100px); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
-                }
-            </style>
-        `;
-
-      document.body.appendChild(promptDiv);
-
-      // Add event listeners
-      document.getElementById('enable-mobile-push').addEventListener('click', async () => {
-        await OneSignalService.triggerSubscription();
-        document.body.removeChild(promptDiv);
-      });
-
-      document.getElementById('close-mobile-prompt').addEventListener('click', () => {
-        document.body.removeChild(promptDiv);
-      });
-
-      // Auto-remove after 30 seconds
-      setTimeout(() => {
-        if (document.body.contains(promptDiv)) {
-          document.body.removeChild(promptDiv);
-        }
-      }, 30000);
-    };
-
-    if (user?.id) {
-      setupOneSignalForUser();
-    }
-  }, [user, supabase]); // Only depend on user and supabase
-
-  const NotificationSettings = () => {
-    const [preferences, setPreferences] = useState({
-      push: true,
-      email: true,
-      browser: true
-    });
-
-    const updatePreferences = async (key, value) => {
-      const newPrefs = { ...preferences, [key]: value };
-      setPreferences(newPrefs);
-
-      await supabase
-        .from('companies')
-        .update({ notification_preferences: newPrefs })
-        .eq('id', user.id);
-    };
-
     return (
       <div className="bg-white rounded-xl p-6 shadow">
         <h3 className="text-lg font-bold mb-4">Notification Settings</h3>
