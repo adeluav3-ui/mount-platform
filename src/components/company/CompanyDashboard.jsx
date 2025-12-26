@@ -55,23 +55,30 @@ export default function CompanyDashboard() {
     const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     setIsMobileDevice(mobile);
 
-    // Check subscription status periodically for mobile
     if (mobile) {
-      const checkSubscription = async () => {
-        const playerId = await OneSignalService.getPlayerId();
-        const optedIn = await OneSignalService.isOptedIn();
+      console.log('📱 Mobile device detected');
 
-        if (!playerId || !optedIn) {
-          setShowEnableNotifications(true);
+      // Check subscription status after OneSignal is initialized
+      const checkMobileSubscription = async () => {
+        // Wait for OneSignal to potentially initialize
+        await new Promise(resolve => setTimeout(resolve, 8000));
+
+        try {
+          const playerId = await OneSignalService.getPlayerId();
+          const optedIn = await OneSignalService.isOptedIn();
+
+          console.log('📱 Mobile subscription check:', { playerId, optedIn });
+
+          if (!playerId || !optedIn) {
+            console.log('📱 Mobile not subscribed, showing banner');
+            setShowEnableNotifications(true);
+          }
+        } catch (error) {
+          console.log('📱 Could not check subscription:', error);
         }
       };
 
-      // Check immediately
-      checkSubscription();
-
-      // Check every 30 seconds
-      const interval = setInterval(checkSubscription, 30000);
-      return () => clearInterval(interval);
+      checkMobileSubscription();
     }
   }, []);
 
@@ -257,22 +264,6 @@ export default function CompanyDashboard() {
         setTimeout(async () => {
           await OneSignalService.triggerSubscription();
         }, 5000);
-      }
-
-      // STEP 4: Set up periodic subscription check for mobile
-      if (isMobile) {
-        const subscriptionCheckInterval = setInterval(async () => {
-          const currentPlayerId = await OneSignalService.getPlayerId();
-          const currentOptedIn = await OneSignalService.isOptedIn();
-
-          if (!currentPlayerId || !currentOptedIn) {
-            console.log('📱 Periodic check: Mobile not subscribed, attempting recovery...');
-            await OneSignalService.triggerSubscription();
-          }
-        }, 60000); // Check every minute
-
-        // Clean up on unmount
-        return () => clearInterval(subscriptionCheckInterval);
       }
     };
 
@@ -1096,31 +1087,6 @@ export default function CompanyDashboard() {
                   )}
                 </div>
               </div>
-
-              {isMobileDevice && showEnableNotifications && (
-                <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-4 rounded-xl shadow-xl z-50 animate-bounce">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-xl">🔔</span>
-                      </div>
-                      <div>
-                        <h4 className="font-bold">Enable Job Alerts</h4>
-                        <p className="text-sm opacity-90">Get instant notifications for new jobs</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await OneSignalService.ensureSubscription(user?.id);
-                        setShowEnableNotifications(false);
-                      }}
-                      className="bg-white text-yellow-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
-                    >
-                      Enable
-                    </button>
-                  </div>
-                </div>
-              )}
               {/* Profile Dropdown */}
               <div className="relative group">
                 <button className="flex items-center space-x-2 focus:outline-none">
@@ -1469,6 +1435,30 @@ export default function CompanyDashboard() {
                               <span className="inline-block mt-2 text-xs font-medium text-blue-600">
                                 New
                               </span>
+                            )}
+                            {isMobileDevice && showEnableNotifications && (
+                              <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-4 rounded-xl shadow-xl z-50 animate-bounce">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                                      <span className="text-xl">🔔</span>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-bold">Enable Job Alerts</h4>
+                                      <p className="text-sm opacity-90">Get instant notifications for new jobs</p>
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={async () => {
+                                      await OneSignalService.ensureSubscription(user?.id);
+                                      setShowEnableNotifications(false);
+                                    }}
+                                    className="bg-white text-yellow-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                                  >
+                                    Enable
+                                  </button>
+                                </div>
+                              </div>
                             )}
                           </div>
                         </div>
