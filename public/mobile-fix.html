@@ -597,53 +597,128 @@
             }
             // NUCLEAR OPTION: Clear everything and force a fresh OneSignal registration
             // MANUAL REGISTRATION via OneSignal API
+            // AGGRESSIVE MANUAL REGISTRATION with SW activation
             async function manualApiRegistration() {
-                log('Starting MANUAL API registration...');
-                updateStatus('subStatus', 'Preparing manual registration...', 'loading');
+                log('🔧 Starting AGGRESSIVE manual registration...');
+                updateStatus('subStatus', 'Taking control of Service Worker...', 'loading');
 
-                // 1. Get the push subscription from Service Worker
+                let registration;
                 let subscription;
+
                 try {
-                    const registration = await navigator.serviceWorker.ready;
+                    // 1. UNREGISTER any existing Service Workers to break deadlocks
+                    const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+                    log(`Found ${existingRegistrations.length} existing Service Workers`);
+
+                    for (const reg of existingRegistrations) {
+                        await reg.unregister();
+                        log(`Unregistered: ${reg.scope}`);
+                    }
+
+                    // 2. REGISTER FRESH Service Worker with aggressive activation
+                    log('Registering fresh Service Worker...');
+                    registration = await navigator.serviceWorker.register('/OneSignalSDKWorker.js', {
+                        scope: '/',
+                        updateViaCache: 'none' // Critical: bypass cache issues
+                    });
+
+                    log(`Service Worker registered: ${registration.scope}`);
+
+                    // 3. FORCE ACTIVATION - Don't wait for "ready"
+                    if (registration.installing) {
+                        log('Service Worker is installing, waiting for activation...');
+                        await new Promise((resolve) => {
+                            registration.installing.addEventListener('statechange', (e) => {
+                                if (e.target.state === 'activated') {
+                                    log('✅ Service Worker ACTIVATED');
+                                    resolve();
+                                }
+                            });
+                        });
+                    } else if (registration.waiting) {
+                        log('Service Worker is waiting, claiming clients...');
+                        await registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                    }
+
+                    // 4. CLAIM this page immediately
+                    if (registration.active) {
+                        await registration.active.postMessage({ type: 'CLAIM_CLIENTS' });
+                        log('Service Worker claimed this page');
+                    }
+
+                    // 5. Wait 2 seconds for stabilization
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // 6. Get Service Worker in READY state (should work now)
+                    registration = await navigator.serviceWorker.ready;
+                    log('✅ Service Worker is now READY');
+
+                    // 7. CHECK for existing subscription
                     subscription = await registration.pushManager.getSubscription();
 
                     if (!subscription) {
-                        throw new Error('No push subscription found. Please use "Force Subscribe" first.');
+                        log('No subscription found. Creating one manually...');
+                        // Use the same VAPID key as before
+                        const vapidPublicKey = 'BINUYd8-pxRnZ6KZ-TZ_7UKcETNdK_LiJGbK3B8C7nv18X9PkAjA_nf-0iyqYS8OT0-aqsFRP-V3qAjObYqoO2U';
+
+                        subscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+                        });
+                        log('✅ Created new push subscription');
+                    } else {
+                        log('✅ Found existing push subscription');
                     }
-                    log('✅ Got push subscription from Service Worker');
+
+                    // 8. DISPLAY the subscription data
+                    const subData = subscription.toJSON();
+                    log('🎯 RAW SUBSCRIPTION DATA OBTAINED:');
+
+                    const displayBox = document.getElementById('playerIdContainer') || document.createElement('div');
+                    displayBox.id = 'playerIdContainer';
+                    displayBox.style.display = 'block';
+                    displayBox.innerHTML = `
+            <strong>📋 COPY THIS ENTIRE JSON:</strong><br><br>
+            <textarea id="subDataJson" style="width:100%; height:180px; font-family:monospace; font-size:12px; padding:10px; border:2px solid #10B981; border-radius:8px;" readonly>${JSON.stringify(subData, null, 2)}</textarea>
+            <br><button onclick="copyToClipboard()" style="margin-top:10px; padding:10px; background:#10B981; color:white; border:none; border-radius:6px; cursor:pointer;">📋 Copy to Clipboard</button>
+        `;
+
+                    document.querySelector('.card:nth-child(3)').appendChild(displayBox);
+
+                    updateStatus('subStatus', '✅ READY! Copy JSON above', 'success');
+
+                    // Add copy function
+                    window.copyToClipboard = function () {
+                        const textarea = document.getElementById('subDataJson');
+                        textarea.select();
+                        document.execCommand('copy');
+                        alert('✅ Copied to clipboard! Send this JSON to your developer.');
+                    };
+
+                    // Auto-scroll to the data
+                    displayBox.scrollIntoView({ behavior: 'smooth' });
+
+                    log('Manual registration ready. JSON displayed on page.');
+                    alert('✅ SUCCESS! The subscription JSON is now displayed on the page.\n\n1. TAP the "Copy to Clipboard" button\n2. SEND the JSON to your developer\n\nThis contains your mobile push credentials.');
+
                 } catch (error) {
-                    log(`❌ Failed to get subscription: ${error.message}`, 'error');
-                    return;
+                    log(`❌ CRITICAL ERROR: ${error.message}`, 'error');
+                    updateStatus('subStatus', `❌ Failed: ${error.message}`, 'error');
+
+                    // Last resort: try to get ANY registration
+                    try {
+                        const registrations = await navigator.serviceWorker.getRegistrations();
+                        if (registrations.length > 0) {
+                            log('Attempting fallback...');
+                            subscription = await registrations[0].pushManager.getSubscription();
+                            if (subscription) {
+                                alert(`Got subscription via fallback:\n\n${JSON.stringify(subscription.toJSON())}`);
+                            }
+                        }
+                    } catch (fallbackError) {
+                        log(`Fallback also failed: ${fallbackError.message}`, 'error');
+                    }
                 }
-
-                // 2. Display the raw subscription data (CRITICAL FOR NEXT STEP)
-                const subData = subscription.toJSON();
-                log('Raw Subscription JSON:');
-                log(JSON.stringify(subData, null, 2)); // This will appear in your debug log
-
-                // Create a user-friendly display
-                const displayData = `
-Endpoint: ${subData.endpoint}
-
-Keys:
-- p256dh: ${subData.keys.p256dh}
-- auth: ${subData.keys.auth}
-    `;
-
-                updateStatus('subStatus', '✅ Subscription Data Ready', 'success');
-
-                // Show it in the main display too
-                const playerIdDisplay = document.getElementById('playerIdDisplay');
-                const playerIdContainer = document.getElementById('playerIdContainer');
-                if (playerIdDisplay && playerIdContainer) {
-                    playerIdDisplay.textContent = displayData;
-                    playerIdContainer.style.display = 'block';
-                    playerIdContainer.innerHTML = `<strong>Copy ALL data below:</strong><br><br><textarea style="width:100%; height:150px; font-family:monospace; font-size:12px;">${JSON.stringify(subData, null, 2)}</textarea>`;
-                }
-
-                // 3. Prepare for API call
-                log('Ready for manual API registration.');
-                alert(`📋 STEP 1 COMPLETE:\n\nPush subscription data is ready.\n\n1. COPY the JSON from the "Copy ALL data" box above.\n2. Send it to me for the next step.`);
             }
             // Set up button events
             function setupButtons() {
