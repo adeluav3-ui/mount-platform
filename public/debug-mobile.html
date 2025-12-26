@@ -158,6 +158,17 @@
                     return;
                 }
 
+                // WAIT for User object to be ready
+                if (!oneSignal.User || !oneSignal.User.PushSubscription) {
+                    html += '<p>⏳ Waiting for OneSignal User object...</p>';
+                    document.getElementById('subscriptionStatus').innerHTML = html;
+                    document.getElementById('subscriptionStatus').className = 'status warning';
+
+                    // Try again in 2 seconds
+                    setTimeout(checkSubscription, 2000);
+                    return;
+                }
+
                 // Get Player ID
                 const playerId = await oneSignal.User.PushSubscription.id;
                 const optedIn = await oneSignal.User.PushSubscription.optedIn;
