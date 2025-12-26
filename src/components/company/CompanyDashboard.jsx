@@ -67,7 +67,14 @@ export default function CompanyDashboard() {
           const playerId = await OneSignalService.getPlayerId();
           const optedIn = await OneSignalService.isOptedIn();
 
-          console.log('📱 Mobile subscription check:', { playerId, optedIn });
+          console.log('📱 Mobile subscription check - Player ID:', playerId);
+          console.log('📱 Mobile subscription check - Opted in:', optedIn);
+
+          if (!playerId || !optedIn) {
+            console.log('📱 Mobile needs subscription');
+            // Try to subscribe
+            await OneSignalService.triggerSubscription();
+          }
 
           if (!playerId || !optedIn) {
             console.log('📱 Mobile not subscribed, showing banner');
@@ -82,7 +89,18 @@ export default function CompanyDashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      console.log('📱 MOBILE DEVICE DETECTED');
 
+      // Check subscription after 5 seconds
+      setTimeout(async () => {
+        const playerId = await OneSignalService.getPlayerId();
+        console.log('📱 Mobile Player ID:', playerId);
+        alert('Mobile Player ID: ' + playerId);
+      }, 5000);
+    }
+  }, []);
 
   // In CompanyDashboard.jsx, update the OneSignal section:
   useEffect(() => {
