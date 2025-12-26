@@ -65,8 +65,8 @@ class NotificationService {
         }
 
         // 2. Send to all devices
-        const playerIds = devices.map(d => d.player_id);
-        console.log(`📤 Sending to ${playerIds.length} devices:`, playerIds);
+        const playerIds = devices;
+        console.log(`📤 Sending to ${devices.length} devices:`, devices, 'Type:', typeof devices[0]);
 
         const pushResult = await this.sendOneSignalPush(playerIds, jobData, company.company_name);
 
