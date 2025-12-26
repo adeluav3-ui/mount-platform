@@ -142,7 +142,7 @@ export default function Step2Companies({
             // 2. Browser push notification
             if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
                 navigator.serviceWorker.ready.then(registration => {
-                    registration.showNotification('🔧 Mount: New Job!', {
+                    registration.showNotification('Mount: New Job!', {
                         body: `${jobDetails.category} - ${jobDetails.sub_service}`,
                         icon: '/icons/logo192.png',
                         tag: `job-${jobId}`,

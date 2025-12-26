@@ -8,10 +8,6 @@ import logo from '../../assets/logo.png';
 import OneSignalService from "../../services/OneSignalService";
 
 export default function CompanyDashboard() {
-  console.log('🏢 CompanyDashboard loaded - checking environment:');
-  console.log('🔔 Notification permission:', Notification.permission);
-  console.log('🌐 HTTPS:', window.location.protocol === 'https:');
-  console.log('🔧 OneSignal in window:', !!window.OneSignal || !!window._OneSignal);
   const { user, signOut, supabase } = useSupabase()
   const [company, setCompany] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -331,7 +327,7 @@ export default function CompanyDashboard() {
       // 2. Send browser push notification
       if (Notification.permission === 'granted' && 'serviceWorker' in navigator) {
         navigator.serviceWorker.ready.then(registration => {
-          registration.showNotification('🔧 Mount: New Job!', {
+          registration.showNotification('Mount: New Job!', {
             body: `${newJob.category} - ${newJob.sub_service}`,
             icon: '/logo.png',
             badge: '/logo.png',
@@ -403,7 +399,7 @@ export default function CompanyDashboard() {
       const shouldShowNotification = !document.hasFocus() || true; // Set to true to always show
 
       if (shouldShowNotification) {
-        registration.showNotification('🔧 Mount: New Job!', {
+        registration.showNotification(' Mount: New Job!', {
           body: `${newJob.category} - ${newJob.sub_service}`,
           icon: '/logo.png',
           badge: '/logo.png',
@@ -654,7 +650,7 @@ export default function CompanyDashboard() {
               .then(registration => {
                 console.log('✅ Service Worker ready, showing notification...');
 
-                registration.showNotification('🔧 Mount: New Job!', {
+                registration.showNotification('Mount: New Job!', {
                   body: `${newJob.category} - ${newJob.sub_service}`,
                   icon: '/icons/logo192.png',
                   badge: '/icons/logo192.png',
@@ -743,6 +739,35 @@ export default function CompanyDashboard() {
       supabase.removeChannel(notificationChannel)
     }
   }, [user, supabase, loadNotifications])
+
+  // Add this useEffect near your other useEffects
+  useEffect(() => {
+    const checkMobileSubscription = async () => {
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile && user) {
+        console.log('📱 MOBILE DEVICE DETECTED - Running diagnostics...');
+
+        // Import dynamically to avoid bundle issues
+        const { MobileDebugService } = await import('../../services/MobileDebugService');
+        const results = await MobileDebugService.checkOneSignalSetup();
+
+        console.log('📱 Diagnostic results:', results);
+
+        // If not subscribed, try to force it
+        if (!results.playerId || !results.optedIn) {
+          console.log('📱 No subscription detected, attempting to subscribe...');
+          await MobileDebugService.forceMobileSubscription();
+        }
+      }
+    };
+
+    if (user) {
+      checkMobileSubscription();
+    }
+  }, [user]);
+
+
   // Check Service Worker Registration
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -933,7 +958,30 @@ export default function CompanyDashboard() {
                   )}
                 </div>
               </div>
-
+              {isMobile && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-4">
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+                      <span className="text-xl">📱</span>
+                    </div>
+                    <div className="ml-4">
+                      <h4 className="font-semibold text-yellow-800">Mobile Notifications</h4>
+                      <p className="text-sm text-yellow-600">
+                        Enable push notifications to receive job alerts on your phone.
+                      </p>
+                      <button
+                        onClick={async () => {
+                          const { MobileDebugService } = await import('../../services/MobileDebugService');
+                          await MobileDebugService.forceMobileSubscription();
+                        }}
+                        className="mt-2 bg-yellow-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-yellow-600"
+                      >
+                        Enable Push Notifications
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Profile Dropdown */}
               <div className="relative group">
                 <button className="flex items-center space-x-2 focus:outline-none">
