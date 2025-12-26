@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <button onclick="requestNotifications()">Enable Notifications</button>
+    <div id="result"></div>
+
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+        OneSignalDeferred.push(async function (OneSignal) {
+            await OneSignal.init({
+                appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
+                autoRegister: true,
+                notifyButton: { enable: false }
+            });
+
+            window.OneSignal = OneSignal;
+        });
+
+        async function requestNotifications() {
+            if (!window.OneSignal) {
+                document.getElementById('result').innerHTML = 'OneSignal not loaded';
+                return;
+            }
+
+            try {
+                await window.OneSignal.registerForPushNotifications();
+                const userId = await window.OneSignal.getUserId();
+                document.getElementById('result').innerHTML = 'Success! User ID: ' + userId;
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
