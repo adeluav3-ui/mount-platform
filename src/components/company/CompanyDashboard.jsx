@@ -24,6 +24,57 @@ export default function CompanyDashboard() {
     averageRating: 0,
     totalReviews: 0
   })
+  const handleEnableNotifications = async () => {
+    try {
+      console.log('📱 Mobile notification button clicked');
+
+      // Get OneSignal instance
+      const oneSignal = window.OneSignal || window._OneSignal;
+
+      if (!oneSignal) {
+        alert('❌ OneSignal not loaded. Please refresh page.');
+        return;
+      }
+
+      // Check current permission
+      if (oneSignal.Notifications && oneSignal.Notifications.permissionNative) {
+        const currentPermission = await oneSignal.Notifications.permissionNative;
+        console.log('Current permission:', currentPermission);
+
+        if (currentPermission === 'granted') {
+          alert('✅ Notifications already enabled!');
+          return;
+        }
+      }
+
+      // Request permission using the correct method
+      console.log('Requesting notification permission...');
+      const permission = await oneSignal.Notifications.requestPermission();
+      console.log('Permission result:', permission);
+
+      if (permission === 'granted') {
+        alert('✅ Notifications enabled! You will now receive job alerts.');
+
+        // Wait a moment, then check Player ID
+        setTimeout(async () => {
+          const playerId = await OneSignalService.getPlayerId();
+          console.log('New Player ID:', playerId);
+
+          if (playerId) {
+            // Save to database
+            await OneSignalService.saveDevice(user?.id, playerId);
+            alert('✅ Device registered successfully!');
+          }
+        }, 2000);
+      } else {
+        alert('❌ Notifications not enabled. Please allow notifications to get job alerts.');
+      }
+
+    } catch (error) {
+      console.error('❌ Error enabling notifications:', error);
+      alert('❌ Error: ' + error.message);
+    }
+  };
 
   // REAL-TIME JOB COUNT
   const [pendingJobCount, setPendingJobCount] = useState(0)
@@ -426,57 +477,6 @@ export default function CompanyDashboard() {
         .from('companies')
         .update({ notification_preferences: newPrefs })
         .eq('id', user.id);
-    };
-    const handleEnableNotifications = async () => {
-      try {
-        console.log('📱 Mobile notification button clicked');
-
-        // Get OneSignal instance
-        const oneSignal = window.OneSignal || window._OneSignal;
-
-        if (!oneSignal) {
-          alert('❌ OneSignal not loaded. Please refresh page.');
-          return;
-        }
-
-        // Check current permission
-        if (oneSignal.Notifications && oneSignal.Notifications.permissionNative) {
-          const currentPermission = await oneSignal.Notifications.permissionNative;
-          console.log('Current permission:', currentPermission);
-
-          if (currentPermission === 'granted') {
-            alert('✅ Notifications already enabled!');
-            return;
-          }
-        }
-
-        // Request permission using the correct method
-        console.log('Requesting notification permission...');
-        const permission = await oneSignal.Notifications.requestPermission();
-        console.log('Permission result:', permission);
-
-        if (permission === 'granted') {
-          alert('✅ Notifications enabled! You will now receive job alerts.');
-
-          // Wait a moment, then check Player ID
-          setTimeout(async () => {
-            const playerId = await OneSignalService.getPlayerId();
-            console.log('New Player ID:', playerId);
-
-            if (playerId) {
-              // Save to database
-              await OneSignalService.saveDevice(user?.id, playerId);
-              alert('✅ Device registered successfully!');
-            }
-          }, 2000);
-        } else {
-          alert('❌ Notifications not enabled. Please allow notifications to get job alerts.');
-        }
-
-      } catch (error) {
-        console.error('❌ Error enabling notifications:', error);
-        alert('❌ Error: ' + error.message);
-      }
     };
 
     useEffect(() => {
