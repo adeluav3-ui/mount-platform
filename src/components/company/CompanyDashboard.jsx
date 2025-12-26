@@ -99,7 +99,15 @@ export default function CompanyDashboard() {
         permission: Notification.permission,
         https: window.location.protocol === 'https:'
       });
-
+      // Add this to CompanyDashboard.jsx
+      useEffect(() => {
+        // Check if on mobile
+        if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+          setTimeout(() => {
+            OneSignalService.debugShowPlayerId();
+          }, 5000);
+        }
+      }, []);
       // Set up subscription success callback
       OneSignalService.onSubscriptionSuccess = async (playerId) => {
         console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);

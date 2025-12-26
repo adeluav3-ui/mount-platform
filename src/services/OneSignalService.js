@@ -250,6 +250,12 @@ class OneSignalService {
     static capitalizeFirst(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
+    static debugShowPlayerId() {
+        this.getPlayerId().then(playerId => {
+            console.log('📱 Mobile Player ID:', playerId);
+            alert('Mobile Player ID: ' + playerId);
+        });
+    }
 }
 
 export default OneSignalService;
