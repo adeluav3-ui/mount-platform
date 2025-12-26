@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Mount - Mobile Fix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #10B981;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #333;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            font-weight: 500;
+        }
+
+        .loading {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .btn {
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #059669;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .step {
+            margin-bottom: 24px;
+        }
+
+        .step-number {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            background: #10B981;
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        .log {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        #playerIdDisplay {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📱 Mobile Push Fix</h1>
+
+        <!-- Step 1: Device Check -->
+        <div class="card">
+            <div class="step">
+                <span class="step-number">1</span>
+                <h2>Device Check</h2>
+            </div>
+            <div id="deviceStatus" class="status loading">Checking device...</div>
+        </div>
+
+        <!-- Step 2: OneSignal SDK -->
+        <div class="card">
+            <div class="step">
+                <span class="step-number">2</span>
+                <h2>OneSignal SDK</h2>
+            </div>
+            <div id="sdkStatus" class="status loading">Loading SDK...</div>
+        </div>
+
+        <!-- Step 3: Subscription -->
+        <div class="card">
+            <div class="step">
+                <span class="step-number">3</span>
+                <h2>Push Subscription</h2>
+            </div>
+            <div id="subStatus" class="status loading">Checking subscription...</div>
+            <div id="playerIdContainer" style="display: none; margin-top: 16px;">
+                <strong>Player ID:</strong>
+                <div id="playerIdDisplay"></div>
+            </div>
+        </div>
+
+        <!-- Fix Buttons -->
+        <div class="card">
+            <h2>Fix Actions</h2>
+
+            <button id="fixBtn" class="btn">🚀 Auto Fix Everything</button>
+            <button id="reloadBtn" class="btn" style="background: #3B82F6;">🔄 Reload SDK</button>
+            <button id="permissionBtn" class="btn" style="background: #8B5CF6;">🔔 Request Permission</button>
+            <button id="subscribeBtn" class="btn" style="background: #EF4444;">📝 Force Subscribe</button>
+
+            <div id="actionLog" class="log" style="margin-top: 16px;">Log will appear here...</div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card">
+            <h2>📋 Instructions</h2>
+            <ol style="margin-left: 20px; line-height: 1.8;">
+                <li>Tap "Auto Fix Everything" first</li>
+                <li>If that fails, try "Reload SDK"</li>
+                <li>Then "Request Permission" if needed</li>
+                <li>Finally "Force Subscribe"</li>
+                <li>Check OneSignal dashboard after successful fix</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let logs = [];
+        let oneSignalInstance = null;
+
+        // Log function that shows in UI
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}`;
+            logs.push(logEntry);
+
+            // Update log display (last 10 entries)
+            const recentLogs = logs.slice(-10).join('\n');
+            document.getElementById('actionLog').textContent = recentLogs;
+
+            // Also log to console if available
+            if (typeof console !== 'undefined') {
+                if (type === 'error') console.error(message);
+                else if (type === 'warn') console.warn(message);
+                else console.log(message);
+            }
+
+            return logEntry;
+        }
+
+        // Update status display
+        function updateStatus(elementId, message, className) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `status ${className}`;
+            log(`${elementId}: ${message}`);
+        }
+
+        // Step 1: Check device
+        function checkDevice() {
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/.test(navigator.userAgent);
+            const isChrome = /Chrome/.test(navigator.userAgent);
+            const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+
+            let message = `📱 ${isMobile ? 'Mobile' : 'Desktop'} | `;
+            message += `${isIOS ? 'iOS' : isAndroid ? 'Android' : 'Other'} | `;
+            message += `${isChrome ? 'Chrome' : isSafari ? 'Safari' : 'Other Browser'} | `;
+            message += `HTTPS: ${window.location.protocol === 'https:'} | `;
+            message += `Permission: ${Notification.permission}`;
+
+            updateStatus('deviceStatus', message, 'success');
+            return isMobile;
+        }
+
+        // Step 2: Load OneSignal SDK
+        async function loadOneSignalSDK() {
+            updateStatus('sdkStatus', 'Loading OneSignal SDK...', 'loading');
+
+            return new Promise((resolve) => {
+                // Remove any existing OneSignal scripts
+                document.querySelectorAll('script[src*="onesignal.com"]').forEach(s => s.remove());
+
+                const script = document.createElement('script');
+                script.src = 'https://cdn.onesignal.com/sdks/OneSignalSDK.js';
+                script.async = true;
+
+                script.onload = () => {
+                    log('✅ OneSignal SDK loaded');
+                    updateStatus('sdkStatus', '✅ SDK Loaded Successfully', 'success');
+                    resolve(true);
+                };
+
+                script.onerror = () => {
+                    log('❌ Failed to load OneSignal SDK', 'error');
+                    updateStatus('sdkStatus', '❌ SDK Failed to Load', 'error');
+                    resolve(false);
+                };
+
+                document.head.appendChild(script);
+            });
+        }
+
+        // Initialize OneSignal
+        async function initializeOneSignal() {
+            updateStatus('sdkStatus', 'Initializing OneSignal...', 'loading');
+
+            return new Promise((resolve) => {
+                window.OneSignal = window.OneSignal || [];
+
+                OneSignal.push(function () {
+                    log('OneSignal push function called');
+
+                    try {
+                        OneSignal.init({
+                            appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
+                            safari_web_id: "",
+                            notifyButton: {
+                                enable: false,
+                            },
+                            allowLocalhostAsSecureOrigin: true,
+                            autoResubscribe: true,
+                            persistNotification: true,
+
+                            // Mobile-specific settings
+                            promptOptions: {
+                                slidedown: {
+                                    enabled: true,
+                                    autoPrompt: true,
+                                    timeDelay: 1,
+                                    pageViews: 1,
+                                }
+                            }
+                        });
+
+                        oneSignalInstance = window.OneSignal;
+                        log('✅ OneSignal initialized');
+                        updateStatus('sdkStatus', '✅ OneSignal Initialized', 'success');
+                        resolve(true);
+
+                    } catch (error) {
+                        log(`❌ OneSignal init error: ${error.message}`, 'error');
+                        updateStatus('sdkStatus', '❌ Initialization Failed', 'error');
+                        resolve(false);
+                    }
+                });
+
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (!oneSignalInstance) {
+                        log('⚠️ OneSignal initialization timeout', 'warn');
+                        updateStatus('sdkStatus', '⚠️ Initialization Timeout', 'warning');
+                        resolve(false);
+                    }
+                }, 10000);
+            });
+        }
+
+        // Step 3: Check subscription
+        async function checkSubscription() {
+            updateStatus('subStatus', 'Checking subscription...', 'loading');
+
+            if (!oneSignalInstance) {
+                updateStatus('subStatus', '❌ OneSignal not initialized', 'error');
+                return;
+            }
+
+            try {
+                // Wait a bit for OneSignal to be ready
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Try to get Player ID
+                let playerId = null;
+                let optedIn = false;
+
+                // Method 1: Try getUserId
+                if (typeof oneSignalInstance.getUserId === 'function') {
+                    try {
+                        playerId = await oneSignalInstance.getUserId();
+                        log(`getUserId(): ${playerId}`);
+                    } catch (e) {
+                        log(`getUserId failed: ${e.message}`);
+                    }
+                }
+
+                // Method 2: Try User.PushSubscription
+                if (!playerId && oneSignalInstance.User && oneSignalInstance.User.PushSubscription) {
+                    try {
+                        playerId = await oneSignalInstance.User.PushSubscription.id;
+                        optedIn = await oneSignalInstance.User.PushSubscription.optedIn;
+                        log(`User.PushSubscription.id: ${playerId}, optedIn: ${optedIn}`);
+                    } catch (e) {
+                        log(`User.PushSubscription failed: ${e.message}`);
+                    }
+                }
+
+                if (playerId) {
+                    updateStatus('subStatus', `✅ Subscribed! Player ID: ${playerId.substring(0, 8)}...`, 'success');
+
+                    // Show full Player ID
+                    document.getElementById('playerIdDisplay').textContent = playerId;
+                    document.getElementById('playerIdContainer').style.display = 'block';
+
+                    log(`🎉 SUCCESS! Full Player ID: ${playerId}`);
+                    return playerId;
+                } else {
+                    updateStatus('subStatus', '❌ Not subscribed', 'error');
+                    log('Not subscribed to push notifications');
+                    return null;
+                }
+
+            } catch (error) {
+                updateStatus('subStatus', `❌ Error: ${error.message}`, 'error');
+                log(`Subscription check error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Request permission
+        async function requestPermission() {
+            log('Requesting notification permission...');
+
+            if (Notification.permission === 'granted') {
+                log('✅ Already have permission');
+                return true;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                log(`Permission result: ${permission}`);
+
+                if (permission === 'granted') {
+                    updateStatus('deviceStatus', `✅ Permission Granted`, 'success');
+                    return true;
+                } else {
+                    updateStatus('deviceStatus', `❌ Permission Denied (${permission})`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                log(`Permission error: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // Force subscription
+        async function forceSubscribe() {
+            log('Attempting to force subscription...');
+            updateStatus('subStatus', 'Attempting subscription...', 'loading');
+
+            if (!oneSignalInstance) {
+                log('❌ OneSignal not available', 'error');
+                return null;
+            }
+
+            try {
+                // Try different methods
+
+                // Method 1: registerForPushNotifications
+                if (typeof oneSignalInstance.registerForPushNotifications === 'function') {
+                    log('Trying registerForPushNotifications()...');
+                    await oneSignalInstance.registerForPushNotifications();
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+
+                // Method 2: showSlidedown
+                else if (typeof oneSignalInstance.showSlidedown === 'function') {
+                    log('Trying showSlidedown()...');
+                    oneSignalInstance.showSlidedown();
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+
+                // Method 3: Slidedown.promptPush
+                else if (oneSignalInstance.Slidedown && typeof oneSignalInstance.Slidedown.promptPush === 'function') {
+                    log('Trying Slidedown.promptPush()...');
+                    oneSignalInstance.Slidedown.promptPush();
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+
+                // Check if subscription worked
+                return await checkSubscription();
+
+            } catch (error) {
+                log(`Force subscribe error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        // Auto fix everything
+        async function autoFixEverything() {
+            log('🚀 Starting auto-fix...');
+
+            // 1. Check device
+            checkDevice();
+
+            // 2. Load and initialize OneSignal
+            const sdkLoaded = await loadOneSignalSDK();
+            if (!sdkLoaded) return;
+
+            const initialized = await initializeOneSignal();
+            if (!initialized) return;
+
+            // 3. Check current subscription
+            let playerId = await checkSubscription();
+
+            // 4. If not subscribed, request permission
+            if (!playerId && Notification.permission !== 'granted') {
+                const hasPermission = await requestPermission();
+                if (!hasPermission) return;
+            }
+
+            // 5. Force subscribe if needed
+            if (!playerId) {
+                playerId = await forceSubscribe();
+            }
+
+            // 6. Final check
+            if (playerId) {
+                log('🎉 AUTO-FIX COMPLETE! You should now see your device in OneSignal dashboard.');
+                alert(`✅ Success! Your Player ID is:\n${playerId}\n\nCheck OneSignal dashboard now.`);
+            } else {
+                log('❌ Auto-fix failed. Try manual steps below.');
+                alert('❌ Could not subscribe. Please try the manual buttons below.');
+            }
+        }
+
+        // Set up button events
+        document.getElementById('fixBtn').addEventListener('click', autoFixEverything);
+        document.getElementById('reloadBtn').addEventListener('click', loadOneSignalSDK);
+        document.getElementById('permissionBtn').addEventListener('click', requestPermission);
+        document.getElementById('subscribeBtn').addEventListener('click', forceSubscribe);
+
+        // Initialize on load
+        window.addEventListener('load', async () => {
+            checkDevice();
+            await loadOneSignalSDK();
+            await initializeOneSignal();
+            await checkSubscription();
+        });
+    </script>
+</body>
+
+</html>
