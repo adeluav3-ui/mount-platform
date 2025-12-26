@@ -88,7 +88,46 @@ export default function CompanyDashboard() {
       checkMobileSubscription();
     }
   }, []);
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
+    if (isMobile) {
+      console.log('📱 MOBILE - Forcing subscription check...');
+
+      const forceMobileSubscription = async () => {
+        // Wait for OneSignal to load
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        // Check current state
+        const playerId = await OneSignalService.getPlayerId();
+        console.log('📱 Initial Player ID:', playerId);
+
+        if (!playerId) {
+          console.log('📱 No Player ID found, triggering subscription...');
+
+          // Try to trigger subscription
+          const success = await OneSignalService.triggerSubscription();
+          console.log('📱 Subscription trigger result:', success);
+
+          // Check again after 3 seconds
+          setTimeout(async () => {
+            const newPlayerId = await OneSignalService.getPlayerId();
+            console.log('📱 New Player ID after trigger:', newPlayerId);
+
+            if (newPlayerId) {
+              alert('✅ Mobile subscribed! ID: ' + newPlayerId.substring(0, 8) + '...');
+            } else {
+              alert('❌ Mobile subscription failed. Check browser permissions.');
+            }
+          }, 3000);
+        } else {
+          console.log('📱 Already subscribed with ID:', playerId);
+        }
+      };
+
+      forceMobileSubscription();
+    }
+  }, []);
   useEffect(() => {
     if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
       console.log('📱 MOBILE DEVICE DETECTED');
