@@ -1,26 +1,32 @@
 // src/services/NotificationService.js - FIXED VERSION
 class NotificationService {
     // Get all active devices for a company
+    // In NotificationService.js, update getCompanyDevices method:
     static async getCompanyDevices(companyId) {
         try {
-            // Use dynamic import with correct path
-            const { supabase } = await import('../context/SupabaseContext.jsx');
+            // Use DeviceService instead of direct query
+            const DeviceService = await import('./DeviceService.js');
+            const result = await DeviceService.default.getCompanyDevices(companyId);
 
-            const { data: devices, error } = await supabase
-                .from('company_devices')
-                .select('player_id, device_type, device_name')
-                .eq('company_id', companyId)
-                .eq('is_active', true);
-
-            if (error) {
-                console.error('❌ Error fetching company devices:', error);
-                return [];
+            if (result.success && result.devices.length > 0) {
+                // Get player IDs from devices
+                const playerIds = result.devices.map(d => d.player_id);
+                console.log(`📱 Found ${playerIds.length} devices for company ${companyId}`);
+                return playerIds;
             }
 
-            console.log(`📱 Found ${devices?.length || 0} devices for company ${companyId}`);
-            return devices || [];
+            // Fallback to single Player ID from companies table
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+            const { data: company } = await supabase
+                .from('companies')
+                .select('onesignal_player_id')
+                .eq('id', companyId)
+                .single();
+
+            return company?.onesignal_player_id ? [company.onesignal_player_id] : [];
+
         } catch (error) {
-            console.error('❌ Error in getCompanyDevices:', error);
+            console.error('❌ Error getting company devices:', error);
             return [];
         }
     }

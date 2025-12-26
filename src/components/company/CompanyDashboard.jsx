@@ -166,7 +166,101 @@ export default function CompanyDashboard() {
           }
         }
       };
+      // In CompanyDashboard.jsx, add device management section
+      const DeviceManagement = () => {
+        const [devices, setDevices] = useState([]);
+        const [loading, setLoading] = useState(true);
 
+        const loadDevices = async () => {
+          if (!user) return;
+
+          const DeviceService = await import('../../services/DeviceService.js');
+          const result = await DeviceService.default.getCompanyDevices(user.id);
+
+          if (result.success) {
+            setDevices(result.devices);
+          }
+          setLoading(false);
+        };
+
+        useEffect(() => {
+          loadDevices();
+        }, [user]);
+
+        const setAsPrimary = async (playerId) => {
+          const DeviceService = await import('../../services/DeviceService.js');
+          const result = await DeviceService.default.setPrimaryDevice(user.id, playerId);
+
+          if (result.success) {
+            alert('✅ Primary device updated!');
+            loadDevices();
+          }
+        };
+
+        const removeDevice = async (playerId) => {
+          if (confirm('Remove this device from your account?')) {
+            const DeviceService = await import('../../services/DeviceService.js');
+            const result = await DeviceService.default.deactivateDevice(playerId);
+
+            if (result.success) {
+              alert('✅ Device removed');
+              loadDevices();
+            }
+          }
+        };
+
+        return (
+          <div className="bg-white rounded-xl p-6 shadow">
+            <h3 className="text-lg font-bold mb-4">Device Management</h3>
+
+            {loading ? (
+              <div className="text-center py-4">Loading devices...</div>
+            ) : devices.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No devices registered</div>
+            ) : (
+              <div className="space-y-3">
+                {devices.map(device => (
+                  <div key={device.player_id} className={`border rounded-lg p-4 ${device.is_primary ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium">{device.device_name}</div>
+                        <div className="text-sm text-gray-500">
+                          {device.device_type} • {device.os_info}
+                          {device.is_primary && <span className="ml-2 text-green-600 font-medium">✓ Primary</span>}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Last active: {new Date(device.last_active).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        {!device.is_primary && (
+                          <button
+                            onClick={() => setAsPrimary(device.player_id)}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            Set Primary
+                          </button>
+                        )}
+                        {!device.is_primary && (
+                          <button
+                            onClick={() => removeDevice(device.player_id)}
+                            className="text-sm text-red-600 hover:text-red-800"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      };
+
+      // Add to your CompanyDashboard render:
+      { activePanel === 'devices' && <DeviceManagement /> }
       // Function to verify the save
       const verifyPlayerIdSave = async (expectedPlayerId) => {
         try {
