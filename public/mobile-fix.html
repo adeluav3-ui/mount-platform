@@ -194,6 +194,8 @@
                 <strong>Debug Log:</strong>
                 <div id="actionLog" class="log">Log will appear here...</div>
             </div>
+            <button id="nuclearBtn" class="btn" style="background: #DC2626; margin-top: 16px;">☢️ Nuclear Reset &
+                Register</button>
         </div>
 
         <!-- Instructions -->
@@ -593,13 +595,159 @@
                     log('❌ Auto-fix failed');
                 }
             }
+            // NUCLEAR OPTION: Clear everything and force a fresh OneSignal registration
+            async function nuclearResetAndRegister() {
+                if (!confirm("⚠️ This will clear all OneSignal data in your browser and try a fresh registration. Continue?")) {
+                    return;
+                }
 
+                log('☢️ Starting Nuclear Reset...');
+                updateStatus('subStatus', 'Nuclear reset in progress...', 'loading');
+
+                // 1. Clear OneSignal IndexedDB & LocalStorage (where it stores its config)
+                try {
+                    // Clear localStorage keys
+                    const lsKeys = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key.includes('onesignal') || key.includes('OneSignal')) {
+                            lsKeys.push(key);
+                        }
+                    }
+                    lsKeys.forEach(key => {
+                        localStorage.removeItem(key);
+                        log(`Cleared localStorage: ${key}`);
+                    });
+
+                    // Clear sessionStorage
+                    sessionStorage.clear();
+                    log('Cleared sessionStorage');
+
+                    // Try to delete IndexedDB databases (where the Player ID is often stored)
+                    if (window.indexedDB) {
+                        const dbs = await indexedDB.databases ? await indexedDB.databases() : [];
+                        for (const db of dbs) {
+                            if (db.name && db.name.includes('OneSignal')) {
+                                indexedDB.deleteDatabase(db.name);
+                                log(`Deleted IndexedDB: ${db.name}`);
+                            }
+                        }
+                    }
+                } catch (storageError) {
+                    log(`Storage cleanup error: ${storageError.message}`, 'error');
+                }
+
+                // 2. Unregister ALL Service Workers (clean slate for push)
+                try {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        log(`Unregistered Service Worker: ${registration.scope}`);
+                    }
+                    log('All Service Workers unregistered');
+                } catch (swError) {
+                    log(`Service Worker cleanup error: ${swError.message}`, 'error');
+                }
+
+                // 3. Delete the OneSignal SDK script and global object
+                document.querySelectorAll('script[src*="onesignal.com"]').forEach(s => s.remove());
+                delete window.OneSignal;
+                delete window._OneSignal;
+                oneSignalInstance = null;
+                log('Removed OneSignal SDK from page');
+
+                // 4. Reload the SDK and initialize FRESH
+                updateStatus('sdkStatus', 'Loading fresh SDK...', 'loading');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const sdkLoaded = await loadOneSignalSDK();
+                if (!sdkLoaded) {
+                    log('❌ Failed to reload SDK', 'error');
+                    return;
+                }
+
+                // 5. RE-INITIALIZE OneSignal with autoRegister TRUE this time
+                updateStatus('sdkStatus', 'Initializing fresh...', 'loading');
+
+                return new Promise((resolve) => {
+                    window.OneSignal = window.OneSignal || [];
+
+                    OneSignal.push(function () {
+                        try {
+                            // CRITICAL: autoRegister MUST be true for mobile
+                            OneSignal.init({
+                                appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
+                                safari_web_id: "",
+                                notifyButton: { enable: false },
+                                allowLocalhostAsSecureOrigin: true,
+                                autoResubscribe: true,
+                                autoRegister: true, // ← THIS IS KEY
+                                persistNotification: false,
+                                promptOptions: {
+                                    slidedown: {
+                                        enabled: true, // ← Allow auto-prompt
+                                        autoPrompt: true,
+                                        timeDelay: 1,
+                                        pageViews: 1
+                                    }
+                                }
+                            });
+
+                            oneSignalInstance = window.OneSignal;
+                            log('✅ Fresh OneSignal initialization COMPLETE with autoRegister=true');
+                            updateStatus('sdkStatus', '✅ Fresh Initialization', 'success');
+
+                            // 6. Wait and check for the new Player ID
+                            setTimeout(async () => {
+                                log('Checking for new registration...');
+                                const checkInterval = setInterval(async () => {
+                                    if (oneSignalInstance) {
+                                        try {
+                                            const newPlayerId = await oneSignalInstance.getUserId();
+                                            if (newPlayerId) {
+                                                clearInterval(checkInterval);
+                                                log(`🎉 NEW OneSignal Player ID: ${newPlayerId}`);
+                                                updateStatus('subStatus', `✅ Registered! ID: ${newPlayerId.substring(0, 15)}...`, 'success');
+
+                                                const playerIdDisplay = document.getElementById('playerIdDisplay');
+                                                const playerIdContainer = document.getElementById('playerIdContainer');
+                                                if (playerIdDisplay) playerIdDisplay.textContent = newPlayerId;
+                                                if (playerIdContainer) playerIdContainer.style.display = 'block';
+
+                                                alert(`🚀 SUCCESS! Your mobile is now registered with OneSignal.\n\nNew Player ID: ${newPlayerId}\n\nCheck your OneSignal dashboard in 60 seconds.`);
+                                                resolve(newPlayerId);
+                                            }
+                                        } catch (e) { /* ignore */ }
+                                    }
+                                }, 2000);
+
+                                // Timeout after 30 seconds
+                                setTimeout(() => {
+                                    clearInterval(checkInterval);
+                                    log('⚠️ Registration check timeout. Page refresh may be needed.');
+                                    alert('Registration may still be processing. Please refresh the page and check the dashboard in 2 minutes.');
+                                    resolve(null);
+                                }, 30000);
+                            }, 5000);
+
+                        } catch (error) {
+                            log(`❌ Fresh init error: ${error.message}`, 'error');
+                            updateStatus('sdkStatus', '❌ Fresh Init Failed', 'error');
+                            resolve(null);
+                        }
+                    });
+                });
+            }
             // Set up button events
             function setupButtons() {
                 const fixBtn = document.getElementById('fixBtn');
                 const reloadBtn = document.getElementById('reloadBtn');
                 const permissionBtn = document.getElementById('permissionBtn');
                 const subscribeBtn = document.getElementById('subscribeBtn');
+                const nuclearBtn = document.getElementById('nuclearBtn');
+                if (nuclearBtn) {
+                    nuclearBtn.addEventListener('click', nuclearResetAndRegister);
+                }
 
                 if (fixBtn) {
                     fixBtn.addEventListener('click', autoFixEverything);
