@@ -1178,7 +1178,36 @@ export default function CompanyDashboard() {
                   )}
                 </button>
               </div>
-
+              {isMobileDevice && (
+                <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl shadow-lg z-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-xl">🔔</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold">Enable Job Notifications</h4>
+                        <p className="text-sm opacity-90">Get instant alerts for new jobs on your phone</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (window.triggerOneSignalSubscription) {
+                          const success = await window.triggerOneSignalSubscription();
+                          if (success) {
+                            alert('✅ Notifications enabled! You will now receive job alerts.');
+                          }
+                        } else {
+                          await OneSignalService.triggerSubscription();
+                        }
+                      }}
+                      className="bg-white text-green-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
+                    >
+                      Enable
+                    </button>
+                  </div>
+                </div>
+              )}
               {/* Company Name with Profile Picture */}
               <div className="hidden md:flex items-center space-x-3">
                 {/* Profile Picture */}
