@@ -1,4 +1,5 @@
 // Replace your entire OneSignalService.js with this FIXED version:
+import { MobileOneSignalFix } from './MobileOneSignalFix';
 
 class OneSignalService {
     static onSubscriptionSuccess = null;
@@ -22,7 +23,36 @@ class OneSignalService {
         try {
             console.log('🔔 OneSignalService: Starting initialization...');
 
-            // Wait for OneSignal SDK to be ready
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+            // MOBILE FIX: Use special initialization for mobile
+            if (isMobile) {
+                console.log('📱 Mobile detected, using MobileOneSignalFix...');
+                const initialized = await MobileOneSignalFix.initializeOneSignal();
+
+                if (!initialized) {
+                    console.error('❌ MobileOneSignalFix failed');
+                    return false;
+                }
+
+                // Try to get Player ID with retry
+                const playerId = await MobileOneSignalFix.getPlayerIdWithRetry();
+
+                if (playerId) {
+                    console.log('✅ Mobile Player ID obtained:', playerId);
+
+                    // Trigger success callback
+                    if (typeof this.onSubscriptionSuccess === 'function') {
+                        this.onSubscriptionSuccess(playerId);
+                    }
+
+                    return true;
+                }
+
+                return false;
+            }
+
+            // DESKTOP: Use original initialization
             await this.waitForOneSignal();
 
             const oneSignal = window._OneSignal || window.OneSignal;
