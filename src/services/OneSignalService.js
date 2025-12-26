@@ -212,11 +212,45 @@ class OneSignalService {
                 const playerId = await this.getPlayerId();
 
                 // If we got a player ID
+                // If we got a player ID
                 if (playerId && playerId !== lastPlayerId) {
                     console.log('🎉 SUBSCRIPTION DETECTED! Player ID:', playerId);
                     lastPlayerId = playerId;
 
                     clearInterval(checkInterval);
+
+                    // CRITICAL: Save device to database if it's a company user
+                    try {
+                        // Get current user from your auth system
+                        const currentUser = JSON.parse(
+                            localStorage.getItem('sb-zaupoobfkajpdaqglqwh-auth-token') || // Supabase default key
+                            localStorage.getItem('supabase.auth.token') ||
+                            sessionStorage.getItem('currentUser') ||
+                            '{}'
+                        );
+
+                        if (currentUser && (currentUser.user?.id || currentUser.userId)) {
+                            const userId = currentUser.user?.id || currentUser.userId;
+                            console.log(`👤 Found user ID for device saving: ${userId}`);
+
+                            // Check if this is a company user (simplified check)
+                            // You might need to adjust this based on your user type detection
+                            const isCompanyUser = currentUser.user?.email?.includes('@company.') || // Adjust domain
+                                currentUser.user?.user_metadata?.user_type === 'company' ||
+                                currentUser.user?.app_metadata?.user_type === 'company';
+
+                            if (isCompanyUser) {
+                                console.log('🏢 Company user detected, saving device...');
+                                await this.saveCompanyDevice(userId, playerId);
+                            } else {
+                                console.log('👤 Customer user, not saving to company_devices');
+                            }
+                        } else {
+                            console.log('⚠️ No user ID found for device saving');
+                        }
+                    } catch (error) {
+                        console.error('❌ Error during device saving:', error);
+                    }
 
                     // Trigger success callback
                     if (typeof this.onSubscriptionSuccess === 'function') {
@@ -372,6 +406,43 @@ class OneSignalService {
 
         // Try to trigger subscription
         return await this.triggerSubscription();
+    }
+    // Add this NEW method to save company devices
+    static async saveCompanyDevice(userId, playerId) {
+        try {
+            console.log('💾 Saving company device to database:', {
+                userId,
+                playerId,
+                isMobile: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+            });
+
+            // Determine device type
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const deviceType = isMobile ? 'mobile' : 'desktop';
+            const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
+
+            // Import NotificationService to use addCompanyDevice
+            const NotificationService = await import('./NotificationService.js');
+
+            // Save to company_devices table
+            const success = await NotificationService.default.addCompanyDevice(
+                userId,
+                playerId,
+                deviceType,
+                deviceName
+            );
+
+            if (success) {
+                console.log('✅ Device saved to company_devices table');
+            } else {
+                console.error('❌ Failed to save device');
+            }
+
+            return success;
+        } catch (error) {
+            console.error('❌ Error saving company device:', error);
+            return false;
+        }
     }
 }
 

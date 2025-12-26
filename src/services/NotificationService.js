@@ -1,87 +1,112 @@
-// src/services/NotificationService.js - UPDATED
+// src/services/NotificationService.js - MULTI-DEVICE VERSION
 class NotificationService {
-    // Accept company OBJECT instead of just ID
+    // Get all active devices for a company
+    static async getCompanyDevices(companyId) {
+        try {
+            const { supabase } = await import('./context/SupabaseContext.jsx');
+
+            const { data: devices, error } = await supabase
+                .from('company_devices')
+                .select('player_id, device_type, device_name')
+                .eq('company_id', companyId)
+                .eq('is_active', true);
+
+            if (error) {
+                console.error('❌ Error fetching company devices:', error);
+                return [];
+            }
+
+            console.log(`📱 Found ${devices?.length || 0} devices for company ${companyId}`);
+            return devices || [];
+        } catch (error) {
+            console.error('❌ Error in getCompanyDevices:', error);
+            return [];
+        }
+    }
+
+    // Main notification method - UPDATED for multi-device
     static async notifyCompanyNewJob(company, jobData) {
-        const notifications = [];
+        console.log('🔔 Sending notifications to company:', company.company_name);
 
-        console.log('🔔 Sending notifications for:', {
-            company: company.company_name,
-            companyId: company.id,
-            jobId: jobData.id
-        });
-
-        if (!company) {
+        if (!company || !company.id) {
             return { success: false, error: 'Company not provided' };
         }
 
-        // 2. Send OneSignal Push (Instant)
-        if (company.onesignal_player_id) {
-            const pushResult = await this.sendOneSignalPush(
-                company.onesignal_player_id,
-                jobData,
-                company.company_name
-            );
-            notifications.push({ type: 'push', success: pushResult.success });
-        } else {
-            console.log('⚠️ Company has no OneSignal player ID:', company.company_name);
-            notifications.push({ type: 'push', success: false, reason: 'no_player_id' });
+        // 1. Get all active devices for this company
+        const devices = await this.getCompanyDevices(company.id);
+
+        if (devices.length === 0) {
+            console.log('⚠️ No active devices found for company');
+
+            // Fallback: Use single player_id from company object if available
+            if (company.onesignal_player_id) {
+                console.log('🔄 Falling back to single Player ID from company object');
+                const fallbackResult = await this.sendOneSignalPush(
+                    company.onesignal_player_id,
+                    jobData,
+                    company.company_name
+                );
+                return {
+                    success: fallbackResult.success,
+                    notifications: [{ type: 'push', success: fallbackResult.success, fallback: true }],
+                    company: company.company_name,
+                    devices: 1
+                };
+            }
+
+            return { success: false, error: 'No active devices' };
         }
 
-        // 3. Send Email (Backup) - SKIP FOR NOW
-        if (company.email) {
-            console.log('📧 Email available but skipping for now:', company.email);
-            notifications.push({ type: 'email', success: false, reason: 'not_configured' });
-        }
+        // 2. Send to all devices
+        const playerIds = devices.map(d => d.player_id);
+        console.log(`📤 Sending to ${playerIds.length} devices:`, playerIds);
 
-        // Note: Database notification is already done in Step2Companies.jsx
-        // So we don't need to do it here
+        const pushResult = await this.sendOneSignalPush(playerIds, jobData, company.company_name);
 
+        // 3. Return results
         return {
-            success: notifications.some(n => n.success),
-            notifications,
-            company: company.company_name
+            success: pushResult.success,
+            notifications: [{
+                type: 'push',
+                success: pushResult.success,
+                devices: playerIds.length,
+                playerIds: playerIds,
+                recipients: pushResult.recipients
+            }],
+            company: company.company_name,
+            devices: playerIds.length
         };
     }
 
-    // In NotificationService.js, update the sendOneSignalPush function:
-    static async sendOneSignalPush(playerId, jobData, companyName) {
+    // Send to multiple player IDs (updated to handle arrays)
+    static async sendOneSignalPush(playerIds, jobData, companyName) {
         try {
-            console.log('🚀 [DEBUG] SENDING ONESIGNAL PUSH:');
-            console.log('📱 Player ID:', playerId);
-            console.log('🏢 Company:', companyName);
-            console.log('📦 Job Data:', jobData);
+            // Ensure playerIds is an array
+            const idsArray = Array.isArray(playerIds) ? playerIds : [playerIds];
+
+            console.log('🚀 Sending OneSignal push to:', idsArray.length, 'device(s)');
 
             const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
             const apiKey = import.meta.env.VITE_ONESIGNAL_REST_API_KEY;
-
-            console.log('🔑 Credentials check:', {
-                hasAppId: !!appId,
-                hasApiKey: !!apiKey,
-                appIdFirst10: appId ? appId.substring(0, 10) + '...' : 'missing',
-                apiKeyFirst10: apiKey ? apiKey.substring(0, 10) + '...' : 'missing'
-            });
 
             if (!appId || !apiKey) {
                 console.error('❌ Missing OneSignal credentials');
                 return { success: false, error: 'Credentials missing' };
             }
 
-            if (!playerId) {
-                console.error('❌ No player ID provided');
-                return { success: false, error: 'No player ID' };
-            }
+            // Filter valid UUIDs
+            const validPlayerIds = idsArray.filter(id =>
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+            );
 
-            // Verify playerId format (should be UUID)
-            const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(playerId);
-            console.log('🔍 Player ID validation:', {
-                length: playerId.length,
-                isUUID,
-                valid: isUUID && playerId.length === 36
-            });
+            if (validPlayerIds.length === 0) {
+                console.error('❌ No valid Player IDs');
+                return { success: false, error: 'No valid Player IDs' };
+            }
 
             const payload = {
                 app_id: appId,
-                include_player_ids: [playerId],
+                include_player_ids: validPlayerIds,
                 headings: { en: `🚨 New ${jobData.category} Job!` },
                 contents: { en: `${jobData.sub_service} in ${jobData.location}` },
                 data: {
@@ -95,8 +120,6 @@ class NotificationService {
                 priority: 10
             };
 
-            console.log('📤 OneSignal payload:', JSON.stringify(payload, null, 2));
-
             const response = await fetch('https://onesignal.com/api/v1/notifications', {
                 method: 'POST',
                 headers: {
@@ -108,35 +131,54 @@ class NotificationService {
 
             const result = await response.json();
 
-            console.log('📥 OneSignal API Response:', {
+            console.log('📥 OneSignal Response:', {
                 status: response.status,
-                statusText: response.statusText,
-                ok: response.ok,
-                result: result
+                recipients: result.recipients,
+                invalid_ids: result.invalid_player_ids
             });
-
-            if (result.errors) {
-                console.error('❌ OneSignal errors:', result.errors);
-                console.error('❌ Invalid player IDs:', result.invalid_player_ids);
-            }
-
-            if (result.id) {
-                console.log('✅ OneSignal notification sent successfully!');
-                console.log('📊 Notification ID:', result.id);
-                console.log('👥 Recipients count:', result.recipients);
-
-                // This notification should now appear in your OneSignal dashboard!
-            }
 
             return {
                 success: response.ok,
-                response: result,
-                playerId: playerId
+                recipients: result.recipients || 0,
+                invalidIds: result.invalid_player_ids || []
             };
 
         } catch (error) {
             console.error('❌ OneSignal push failed:', error);
             return { success: false, error };
+        }
+    }
+
+    // Add/update a company device
+    static async addCompanyDevice(companyId, playerId, deviceType = 'desktop', deviceName = 'Unknown Device') {
+        try {
+            const { supabase } = await import('./context/SupabaseContext.jsx');
+
+            const { data, error } = await supabase
+                .from('company_devices')
+                .upsert({
+                    company_id: companyId,
+                    player_id: playerId,
+                    device_type: deviceType,
+                    device_name: deviceName,
+                    is_active: true,
+                    last_active: new Date().toISOString()
+                }, {
+                    onConflict: 'player_id'
+                })
+                .select();
+
+            if (error) {
+                console.error('❌ Error adding company device:', error);
+                return false;
+            }
+
+            console.log('✅ Device saved to company_devices:', data);
+            return true;
+
+        } catch (error) {
+            console.error('❌ Error in addCompanyDevice:', error);
+            return false;
         }
     }
 }
