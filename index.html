@@ -24,28 +24,38 @@
 
       try {
         // Initialize WITHOUT auto-register
+        // Detect if mobile
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
         await OneSignal.init({
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
 
-          // CRITICAL CHANGE: Disable auto-prompt for now
+          // Enable auto-prompt ONLY on mobile
           promptOptions: {
             slidedown: {
-              enabled: false, // DISABLE auto-prompt
-              autoPrompt: false
+              enabled: isMobile, // Enable on mobile
+              autoPrompt: isMobile,
+              prompts: [
+                {
+                  type: "push", // Push notifications
+                  autoPrompt: isMobile,
+                  text: {
+                    /* Customize these messages */
+                    actionMessage: "Get notified about new jobs instantly!",
+                    acceptButton: "Allow",
+                    cancelButton: "Not Now"
+                  }
+                }
+              ]
             }
           },
 
-          // Important settings
           allowLocalhostAsSecureOrigin: true,
-          notifyButton: {
-            enable: false
-          },
-          welcomeNotification: {
-            disable: true
-          },
+          notifyButton: { enable: false },
+          welcomeNotification: { disable: true },
           persistNotification: false,
-          autoRegister: false, // DISABLE auto registration
-          autoResubscribe: false, // Let us handle resubscription
+          autoRegister: isMobile, // Auto-register on mobile
+          autoResubscribe: true,
           serviceWorkerParam: { scope: '/' }
         });
 
