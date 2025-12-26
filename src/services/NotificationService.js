@@ -1,9 +1,10 @@
-// src/services/NotificationService.js - MULTI-DEVICE VERSION
+// src/services/NotificationService.js - FIXED VERSION
 class NotificationService {
     // Get all active devices for a company
     static async getCompanyDevices(companyId) {
         try {
-            const { supabase } = await import('./context/SupabaseContext.jsx');
+            // Use dynamic import with correct path
+            const { supabase } = await import('../context/SupabaseContext.jsx');
 
             const { data: devices, error } = await supabase
                 .from('company_devices')
@@ -24,7 +25,7 @@ class NotificationService {
         }
     }
 
-    // Main notification method - UPDATED for multi-device
+    // Main notification method
     static async notifyCompanyNewJob(company, jobData) {
         console.log('🔔 Sending notifications to company:', company.company_name);
 
@@ -38,9 +39,9 @@ class NotificationService {
         if (devices.length === 0) {
             console.log('⚠️ No active devices found for company');
 
-            // Fallback: Use single player_id from company object if available
+            // Fallback to single player_id
             if (company.onesignal_player_id) {
-                console.log('🔄 Falling back to single Player ID from company object');
+                console.log('🔄 Falling back to single Player ID');
                 const fallbackResult = await this.sendOneSignalPush(
                     company.onesignal_player_id,
                     jobData,
@@ -78,7 +79,7 @@ class NotificationService {
         };
     }
 
-    // Send to multiple player IDs (updated to handle arrays)
+    // Send to multiple player IDs
     static async sendOneSignalPush(playerIds, jobData, companyName) {
         try {
             // Ensure playerIds is an array
@@ -152,7 +153,8 @@ class NotificationService {
     // Add/update a company device
     static async addCompanyDevice(companyId, playerId, deviceType = 'desktop', deviceName = 'Unknown Device') {
         try {
-            const { supabase } = await import('./context/SupabaseContext.jsx');
+            // Use dynamic import
+            const { supabase } = await import('../context/SupabaseContext.jsx');
 
             const { data, error } = await supabase
                 .from('company_devices')

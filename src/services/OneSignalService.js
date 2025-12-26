@@ -422,7 +422,7 @@ class OneSignalService {
             const deviceName = isMobile ? 'Mobile Device' : 'Desktop Device';
 
             // Import NotificationService to use addCompanyDevice
-            const NotificationService = await import('./NotificationService.js');
+            const NotificationService = await import('../services/NotificationService.js');
 
             // Save to company_devices table
             const success = await NotificationService.default.addCompanyDevice(
