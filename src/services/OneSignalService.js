@@ -188,8 +188,24 @@ class OneSignalService {
                 return null;
             }
 
-            const playerId = await oneSignal.User.PushSubscription.id;
-            return playerId || null;
+            const ps = oneSignal.User.PushSubscription;
+
+            // Try different possible property names (minified and unminified)
+            if (ps.q && typeof ps.q === 'string') {
+                // Minified version (what we found)
+                return ps.q;
+            } else if (ps.id && typeof ps.id === 'string') {
+                // Unminified version
+                return ps.id;
+            } else if (ps.getId && typeof ps.getId === 'function') {
+                // Method version
+                return await ps.getId();
+            } else if (ps.id && typeof ps.id === 'function') {
+                // Function version
+                return await ps.id();
+            }
+
+            return null;
         } catch (error) {
             console.error('Error getting Player ID:', error);
             return null;
