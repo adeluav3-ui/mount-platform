@@ -15,6 +15,7 @@ export default function CompanyDashboard() {
   const [activePanel, setActivePanel] = useState('dashboard')
   const [showEnableNotifications, setShowEnableNotifications] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [notifications, setNotifications] = useState([])
   const [stats, setStats] = useState({
     pendingJobs: 0,
@@ -26,6 +27,34 @@ export default function CompanyDashboard() {
   })
   const handleEnableNotifications = async () => {
     try {
+      // Detect iOS
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+      const isIOSChrome = isIOS && /Chrome/.test(navigator.userAgent);
+
+      alert(`Device Info:\niOS: ${isIOS}\nSafari: ${isSafari}\niOS Chrome: ${isIOSChrome}`);
+
+      if (isIOS) {
+        // iOS specific handling
+        alert('📱 iOS Device Detected\n\niOS requires:\n1. Safari browser\n2. Add to Home Screen\n3. Special APNS setup');
+
+        if (isIOSChrome) {
+          alert('⚠️ iOS Chrome has limited push support\nTry using Safari instead');
+        }
+
+        // Check if running as standalone (added to home screen)
+        const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches;
+        alert(`Standalone mode: ${isInStandaloneMode ? 'Yes (Home Screen)' : 'No (Browser)'}`);
+
+        if (!isInStandaloneMode) {
+          alert('💡 For iOS notifications:\n1. Open in Safari\n2. Tap Share button\n3. "Add to Home Screen"\n4. Open from Home Screen');
+        }
+
+        return;
+      }
+
+      // For non-iOS devices, continue with normal flow
+      alert('🚀 Starting push setup...');
       alert('🚀 Starting push notification setup...');
 
       // STEP 1: Check if Notification API is available
@@ -98,6 +127,73 @@ export default function CompanyDashboard() {
     } catch (error) {
       alert('❌ Error: ' + error.message);
     }
+  };
+
+  const IOSInstructions = () => {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl p-6 max-w-md">
+          <h3 className="text-xl font-bold mb-4">📱 iOS Setup Instructions</h3>
+
+          <div className="space-y-4">
+            <div className="flex items-start">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="text-blue-600">1</span>
+              </div>
+              <div>
+                <p className="font-medium">Use Safari Browser</p>
+                <p className="text-sm text-gray-600">Open this app in Safari, not Chrome</p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="text-blue-600">2</span>
+              </div>
+              <div>
+                <p className="font-medium">Add to Home Screen</p>
+                <p className="text-sm text-gray-600">Tap Share → "Add to Home Screen"</p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="text-blue-600">3</span>
+              </div>
+              <div>
+                <p className="font-medium">Open from Home Screen</p>
+                <p className="text-sm text-gray-600">Launch the app from your Home Screen icon</p>
+              </div>
+            </div>
+
+            <div className="flex items-start">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                <span className="text-blue-600">4</span>
+              </div>
+              <div>
+                <p className="font-medium">Enable Notifications</p>
+                <p className="text-sm text-gray-600">You'll be prompted to allow notifications</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={() => window.location.href = 'https://mountltd.com'}
+              className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold"
+            >
+              Open in Safari
+            </button>
+            <button
+              onClick={() => setShowIOSInstructions(false)}
+              className="w-full mt-2 text-gray-600 py-2"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const checkCurrentPlayerId = async () => {
@@ -1334,39 +1430,71 @@ export default function CompanyDashboard() {
                 </button>
               </div>
               {isMobileDevice && (
-                <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl shadow-lg z-50">
-                  <div className="flex flex-col space-y-3">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-xl">🔔</span>
+                <>
+                  {showIOSInstructions && <IOSInstructions />}
+
+                  <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white p-4 rounded-xl shadow-lg z-50">
+                    <div className="flex flex-col space-y-3">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-xl">🔔</span>
+                        </div>
+                        <div>
+                          <h4 className="font-bold">Push Notifications</h4>
+                          <p className="text-sm opacity-90">
+                            {/iPhone|iPad|iPod/.test(navigator.userAgent)
+                              ? 'iOS: Requires Safari + Home Screen'
+                              : 'Get instant job alerts'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold">Enable Job Notifications</h4>
-                        <p className="text-sm opacity-90">Get instant alerts for new jobs</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={handleEnableNotifications}
-                        className="bg-white text-green-600 px-4 py-3 rounded-lg font-bold hover:bg-gray-100"
-                      >
-                        Enable
-                      </button>
-                      <button
-                        onClick={checkCurrentPlayerId}
-                        className="bg-blue-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-blue-600"
-                      >
-                        Check ID
-                      </button>
-                      <button
-                        onClick={debugOneSignal}
-                        className="bg-purple-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-purple-600 col-span-2"
-                      >
-                        Debug OneSignal
-                      </button>
+
+                      {/iPhone|iPad|iPod/.test(navigator.userAgent) ? (
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => setShowIOSInstructions(true)}
+                            className="w-full bg-white text-green-600 px-4 py-3 rounded-lg font-bold hover:bg-gray-100"
+                          >
+                            📱 iOS Setup Instructions
+                          </button>
+                          <button
+                            onClick={checkCurrentPlayerId}
+                            className="w-full bg-blue-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-blue-600"
+                          >
+                            Check Current Status
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={handleEnableNotifications}
+                            className="bg-white text-green-600 px-4 py-3 rounded-lg font-bold hover:bg-gray-100"
+                          >
+                            Enable
+                          </button>
+                          <button
+                            onClick={checkCurrentPlayerId}
+                            className="bg-blue-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-blue-600"
+                          >
+                            Check ID
+                          </button>
+                          <button
+                            onClick={checkServiceWorker}
+                            className="bg-yellow-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-yellow-600"
+                          >
+                            Check SW
+                          </button>
+                          <button
+                            onClick={debugOneSignal}
+                            className="bg-purple-500 text-white px-4 py-3 rounded-lg font-bold hover:bg-purple-600"
+                          >
+                            Debug
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                </>
               )}
               {/* Company Name with Profile Picture */}
               <div className="hidden md:flex items-center space-x-3">
