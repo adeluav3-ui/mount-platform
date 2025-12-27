@@ -2,6 +2,20 @@
 <html lang="en">
 
 <head>
+  <script>
+    // iOS Safety: Ensure Notification API exists
+    if (typeof Notification === 'undefined') {
+      console.log('iOS: Creating Notification API placeholder');
+      window.Notification = {
+        permission: 'default',
+        requestPermission: function () {
+          console.log('iOS: Notification.requestPermission called');
+          return Promise.resolve('default');
+        }
+      };
+    }
+  </script>
+  <meta charset="UTF-8" />
   <meta charset="UTF-8" />
   <!-- CHANGE TO: -->
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
@@ -33,13 +47,18 @@
         console.log('OneSignal notification in foreground:', event);
         event.preventDefault(); // Prevent default to handle manually
 
-        // Show your own notification
-        if (Notification.permission === 'granted') {
-          new Notification(event.notification.title, {
-            body: event.notification.body,
-            icon: event.notification.icon || '/logo.png',
-            data: event.notification.data
-          });
+        // Show your own notification - SAFE FOR iOS
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          try {
+            new Notification(event.notification.title, {
+              body: event.notification.body,
+              icon: event.notification.icon || '/logo.png',
+              data: event.notification.data
+            });
+          } catch (error) {
+            console.log('Could not show notification on iOS:', error);
+            // Fallback: Show alert or in-app notification
+          }
         }
       });
       console.log('🚀 Mount Platform: Starting OneSignal with NEW FCM API...');
@@ -184,5 +203,18 @@
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
+
+<script>
+  // Global error handler
+  window.addEventListener('error', function (e) {
+    console.error('Global error:', e.message, 'at', e.filename, ':', e.lineno);
+
+    // Show error on page for mobile debugging
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: red; color: white; padding: 10px; z-index: 99999;';
+    errorDiv.innerHTML = 'Error: ' + e.message + ' at line ' + e.lineno;
+    document.body.appendChild(errorDiv);
+  });
+</script>
 
 </html>
