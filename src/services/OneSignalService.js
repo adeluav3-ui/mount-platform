@@ -24,34 +24,64 @@ class OneSignalService {
 
         // Wait for OneSignalDeferred to complete
         if (window.OneSignalDeferred && window.OneSignalDeferred.length > 0) {
-            console.log('⏳ Waiting for OneSignalDeferred to complete...');
+            console.log('⏳ Found OneSignalDeferred, waiting...');
 
             // Create a promise that waits for OneSignalDeferred
-            await new Promise((resolve) => {
-                const checkInterval = setInterval(() => {
-                    if (window.OneSignal && window.OneSignal.init &&
-                        window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-                        clearInterval(checkInterval);
-                        console.log('✅ OneSignalDeferred completed');
-                        resolve(true);
-                    }
-                }, 500);
+            return new Promise((resolve) => {
+                let checks = 0;
+                const maxChecks = 40; // 20 seconds (40 * 500ms)
 
-                // Timeout after 10 seconds
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    console.log('⚠️ OneSignalDeferred timeout');
-                    resolve(false);
-                }, 10000);
+                const checkInterval = setInterval(() => {
+                    checks++;
+
+                    // Check if OneSignal is now available
+                    const oneSignal = window._OneSignal || window.OneSignal;
+                    if (oneSignal && oneSignal.User && oneSignal.User.PushSubscription) {
+                        clearInterval(checkInterval);
+                        console.log(`✅ OneSignal ready after ${checks} checks`);
+                        this.isInitialized = true;
+                        this.monitorSubscription(userId);
+                        resolve(true);
+                        return;
+                    }
+
+                    // Check if OneSignalDeferred processed
+                    if (window.OneSignal && window.OneSignal.init) {
+                        clearInterval(checkInterval);
+                        console.log(`✅ OneSignalDeferred processed after ${checks} checks`);
+                        this.isInitialized = true;
+                        this.monitorSubscription(userId);
+                        resolve(true);
+                        return;
+                    }
+
+                    // Timeout
+                    if (checks >= maxChecks) {
+                        clearInterval(checkInterval);
+                        console.log(`⚠️ OneSignalDeferred timeout after ${checks} checks`);
+
+                        // Check one last time
+                        if (window.OneSignal || window._OneSignal) {
+                            console.log('✅ OneSignal available despite timeout');
+                            this.isInitialized = true;
+                            this.monitorSubscription(userId);
+                            resolve(true);
+                        } else {
+                            console.error('❌ OneSignal not available after timeout');
+                            resolve(false);
+                        }
+                    }
+                }, 500); // Check every 500ms
             });
         }
 
-        // Check if OneSignal is available
+        // If no OneSignalDeferred, check directly
         const oneSignal = window._OneSignal || window.OneSignal;
         if (!oneSignal) {
-            console.error('❌ OneSignal not available after waiting');
+            console.error('❌ OneSignal not available');
             return false;
         }
+
 
         // Check if already initialized
         if (oneSignal.initialized) {
