@@ -195,44 +195,69 @@ class OneSignalService {
     }
 
     static async getPlayerId() {
+        console.log('🔍 [DEBUG] getPlayerId called');
+
         try {
-            // Wait for OneSignal to be ready
-            await this.waitForOneSignal(3000);
+            // Wait a moment for OneSignal to be ready
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             const oneSignal = window._OneSignal || window.OneSignal;
-            if (!oneSignal || !oneSignal.User || !oneSignal.User.PushSubscription) {
-                console.log('OneSignal not ready yet');
+            console.log('[DEBUG] OneSignal available?', !!oneSignal);
+
+            if (!oneSignal) {
+                console.log('[DEBUG] ❌ OneSignal not available');
                 return null;
             }
 
+            // Check if User and PushSubscription exist
+            if (!oneSignal.User || !oneSignal.User.PushSubscription) {
+                console.log('[DEBUG] User or PushSubscription not ready');
+
+                // Wait and retry
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                if (!oneSignal.User || !oneSignal.User.PushSubscription) {
+                    console.log('[DEBUG] ❌ Still not ready after wait');
+                    return null;
+                }
+            }
+
             const ps = oneSignal.User.PushSubscription;
+            console.log('[DEBUG] PushSubscription object:', Object.keys(ps));
 
-            // Try multiple ways to get Player ID
+            // DIRECT ACCESS - no async calls needed
+            // The Player ID is in ps.q (as we saw in diagnostics)
             if (ps.q && typeof ps.q === 'string' && ps.q.length > 10) {
-                // Minified version
-                console.log('Got Player ID via ps.q');
+                console.log('[DEBUG] ✅ Found Player ID in ps.q:', ps.q.substring(0, 20) + '...');
                 return ps.q;
-            } else if (ps.id && typeof ps.id === 'string') {
-                // Unminified string version
-                return ps.id;
-            } else if (ps.getId && typeof ps.getId === 'function') {
-                // Method version
-                return await ps.getId();
-            } else if (ps.id && typeof ps.id === 'function') {
-                // Function version
-                return await ps.id();
             }
 
-            // Check if we can get it via the SDK
-            if (oneSignal.getUserId && typeof oneSignal.getUserId === 'function') {
-                const id = await oneSignal.getUserId();
-                if (id) return id;
+            // Fallback: check other properties
+            console.log('[DEBUG] ps.q value:', ps.q);
+            console.log('[DEBUG] Checking other properties...');
+
+            // If ps.q exists but is empty/undefined, try to get it
+            if (!ps.q && ps.id) {
+                if (typeof ps.id === 'string') {
+                    console.log('[DEBUG] Found Player ID in ps.id (string)');
+                    return ps.id;
+                } else if (typeof ps.id === 'function') {
+                    console.log('[DEBUG] Getting Player ID via ps.id() function');
+                    try {
+                        const id = await ps.id();
+                        console.log('[DEBUG] Got Player ID via ps.id():', id);
+                        return id;
+                    } catch (e) {
+                        console.error('[DEBUG] ps.id() error:', e);
+                    }
+                }
             }
 
+            console.log('[DEBUG] ❌ No Player ID found');
             return null;
 
         } catch (error) {
-            console.error('Error getting Player ID:', error);
+            console.error('[DEBUG] ❌ Error in getPlayerId:', error);
             return null;
         }
     }

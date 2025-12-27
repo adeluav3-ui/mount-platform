@@ -577,7 +577,17 @@ export default function CompanyDashboard() {
           const playerId = await OneSignalService.getPlayerId();
           const optedIn = await OneSignalService.isOptedIn?.(); // Optional chaining
 
-          console.log('📱 Current subscription:', { playerId, optedIn });
+          console.log('📱 Current subscription check:');
+          console.log('  Player ID from OneSignalService:', playerId);
+          console.log('  Opted in check:', optedIn);
+
+          // Also add direct check:
+          const oneSignal = window.OneSignal || window._OneSignal;
+          if (oneSignal && oneSignal.User && oneSignal.User.PushSubscription) {
+            const directPlayerId = oneSignal.User.PushSubscription.q;
+            console.log('  Direct Player ID (ps.q):', directPlayerId);
+            console.log('  Opted in (ps.J):', oneSignal.User.PushSubscription.J);
+          }
         }
 
       } catch (error) {
