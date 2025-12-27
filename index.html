@@ -10,44 +10,49 @@
   <link rel="apple-touch-icon" href="/icons/logo192.png" />
 
   <!-- OneSignal SDK v16 -->
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <!-- OneSignal SDK v16 with FCM support -->
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     OneSignalDeferred.push(async function (OneSignal) {
-      // Configure Service Worker paths
+      // Configure Service Worker
       OneSignal.SERVICE_WORKER_UPDATER_PATH = '/OneSignalSDKUpdaterWorker.js';
       OneSignal.SERVICE_WORKER_PATH = '/OneSignalSDKWorker.js';
-      OneSignal.SERVICE_WORKER_PARAM = { scope: '/' };
+      OneSignal.SERVICE_WORKER_PARAM = {
+        scope: '/',
+        updateViaCache: 'none'
+      };
 
-      console.log('🚀 Mount Platform: Starting OneSignal initialization...');
+      console.log('🚀 Mount Platform: Starting OneSignal with NEW FCM API...');
 
       try {
-        // Initialize WITHOUT auto-register
-        // Detect if mobile
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-        // Detect environment
         const isHttps = window.location.protocol === 'https:';
         const isLocalhost = window.location.hostname === 'localhost';
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-        await OneSignal.init({
+        // NEW FCM CONFIGURATION
+        const initConfig = {
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
 
-          // Auto-register on HTTPS (production)
+          // Auto-register
           autoRegister: isHttps && !isLocalhost,
 
           // Prompt settings
           promptOptions: {
             slidedown: {
               enabled: true,
-              autoPrompt: true,
+              autoPrompt: isMobile,
               timeDelay: 3,
               pageViews: 1,
               prompts: [
                 {
                   type: "push",
-                  autoPrompt: true
+                  autoPrompt: isMobile,
+                  text: {
+                    actionMessage: "Get instant job notifications",
+                    acceptButton: "Allow",
+                    cancelButton: "Not now"
+                  }
                 }
               ]
             }
@@ -58,47 +63,73 @@
           welcomeNotification: { disable: true },
           persistNotification: false,
           autoResubscribe: true,
-          serviceWorkerParam: { scope: '/' }
-        });
 
-        console.log('✅ OneSignal SDK initialized (no auto-register)');
+          // Service Worker config
+          serviceWorkerParam: {
+            scope: '/',
+            updateViaCache: 'none'
+          },
 
-        // Store reference
+          // IMPORTANT: Use NEW FCM API configuration
+          safari_web_id: "",
+
+          // For Chrome/Firefox with NEW FCM
+          web: {
+            fcm: {
+              enabled: true,
+              // Your FCM VAPID key (get from Firebase Console)
+              vapidKey: "BGCzYR4_jiwHWgQ3MIAoJKOfAVtV50LWzwWWH8lRaUUqK_UiXRl38QLjUAJD_VL0z92fSw7xtUehCyCjuSTQ7QA"
+            },
+            allowLocalhostAsSecureOrigin: true
+          }
+        };
+
+        await OneSignal.init(initConfig);
+
+        console.log('✅ OneSignal initialized with NEW FCM API');
+
+        // Store references
         window._OneSignal = OneSignal;
+        window.OneSignal = OneSignal;
 
-        // Check if we already have a subscription
-        const playerId = await OneSignal.User.PushSubscription.id;
-        console.log('Current Player ID:', playerId);
+        // Check subscription
+        setTimeout(async () => {
+          try {
+            const isSubscribed = await OneSignal.User.PushSubscription.optedIn;
+            const playerId = await OneSignal.User.PushSubscription.id;
+            console.log('📱 Subscription status:', {
+              subscribed: isSubscribed,
+              playerId: playerId ? playerId.substring(0, 20) + '...' : 'None'
+            });
+          } catch (e) {
+            console.log('Initial check error:', e);
+          }
+        }, 2000);
 
-        if (!playerId) {
-          console.log('⚠️ No subscription yet. Will manually register later.');
+        // Global trigger
+        window.triggerOneSignalSubscription = async function () {
+          console.log('🎯 Triggering subscription with NEW FCM...');
 
-          // Create a global function to trigger subscription
-          window.triggerOneSignalSubscription = async function () {
-            console.log('🎯 Manually triggering subscription...');
-
-            if (Notification.permission === 'default') {
-              const permission = await Notification.requestPermission();
+          try {
+            // Try new method first
+            if (OneSignal.Notifications && OneSignal.Notifications.requestPermission) {
+              const permission = await OneSignal.Notifications.requestPermission();
               console.log('Permission result:', permission);
-
-              if (permission !== 'granted') {
-                return false;
-              }
+              return permission === 'granted';
             }
 
-            if (OneSignal.Slidedown && OneSignal.Slidedown.promptPush) {
-              OneSignal.Slidedown.promptPush();
-              return true;
-            }
-
+            // Fallback to old method
             if (OneSignal.registerForPushNotifications) {
               await OneSignal.registerForPushNotifications();
               return true;
             }
 
             return false;
-          };
-        }
+          } catch (error) {
+            console.error('❌ Subscription failed:', error);
+            return false;
+          }
+        };
 
       } catch (error) {
         console.error('❌ OneSignal initialization failed:', error);
