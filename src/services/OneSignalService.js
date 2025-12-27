@@ -15,41 +15,55 @@ class OneSignalService {
             return await this.initializationPromise;
         }
 
-        this.initializationPromise = this._initialize(userId);
+        this.initializationPromise = this._initializeWithRetry(userId);
         return await this.initializationPromise;
     }
 
-    static async _initialize(userId = null) {
+    static async _initializeWithRetry(userId = null) {
+        console.log('🔔 Starting OneSignal initialization...');
+
+        // Wait for OneSignalDeferred to complete
+        if (window.OneSignalDeferred && window.OneSignalDeferred.length > 0) {
+            console.log('⏳ Waiting for OneSignalDeferred to complete...');
+
+            // Create a promise that waits for OneSignalDeferred
+            await new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (window.OneSignal && window.OneSignal.init &&
+                        window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+                        clearInterval(checkInterval);
+                        console.log('✅ OneSignalDeferred completed');
+                        resolve(true);
+                    }
+                }, 500);
+
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    console.log('⚠️ OneSignalDeferred timeout');
+                    resolve(false);
+                }, 10000);
+            });
+        }
+
+        // Check if OneSignal is available
+        const oneSignal = window._OneSignal || window.OneSignal;
+        if (!oneSignal) {
+            console.error('❌ OneSignal not available after waiting');
+            return false;
+        }
+
+        // Check if already initialized
+        if (oneSignal.initialized) {
+            console.log('✅ OneSignal already initialized by index.html');
+            this.isInitialized = true;
+
+            // Monitor subscription
+            this.monitorSubscription(userId);
+            return true;
+        }
+
         try {
-            console.log('🔔 Initializing OneSignal...');
-
-            // Check if OneSignal is already initialized globally
-            if (window.OneSignalDeferred && window.OneSignalDeferred.length > 0) {
-                console.log('⚠️ OneSignalDeferred detected - SDK will initialize automatically');
-                this.isInitialized = true;
-                return true;
-            }
-
-            // Wait for SDK to load
-            const sdkLoaded = await this.waitForOneSignal();
-            if (!sdkLoaded) {
-                console.error('❌ OneSignal SDK failed to load');
-                return false;
-            }
-
-            const oneSignal = window._OneSignal || window.OneSignal;
-            if (!oneSignal) {
-                console.error('❌ OneSignal not available');
-                return false;
-            }
-
-            // Check if already initialized
-            if (oneSignal.initialized) {
-                console.log('✅ OneSignal already initialized by index.html');
-                this.isInitialized = true;
-                return true;
-            }
-
             // Initialize with minimal settings
             await oneSignal.init({
                 appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
@@ -59,12 +73,11 @@ class OneSignalService {
                 serviceWorkerParam: { scope: '/' }
             });
 
-            console.log('✅ OneSignal initialized');
+            console.log('✅ OneSignal initialized successfully');
             this.isInitialized = true;
 
-            // Start monitoring subscription
+            // Monitor subscription
             this.monitorSubscription(userId);
-
             return true;
 
         } catch (error) {
@@ -183,19 +196,24 @@ class OneSignalService {
 
     static async getPlayerId() {
         try {
+            // Wait for OneSignal to be ready
+            await this.waitForOneSignal(3000);
+
             const oneSignal = window._OneSignal || window.OneSignal;
             if (!oneSignal || !oneSignal.User || !oneSignal.User.PushSubscription) {
+                console.log('OneSignal not ready yet');
                 return null;
             }
 
             const ps = oneSignal.User.PushSubscription;
 
-            // Try different possible property names (minified and unminified)
-            if (ps.q && typeof ps.q === 'string') {
-                // Minified version (what we found)
+            // Try multiple ways to get Player ID
+            if (ps.q && typeof ps.q === 'string' && ps.q.length > 10) {
+                // Minified version
+                console.log('Got Player ID via ps.q');
                 return ps.q;
             } else if (ps.id && typeof ps.id === 'string') {
-                // Unminified version
+                // Unminified string version
                 return ps.id;
             } else if (ps.getId && typeof ps.getId === 'function') {
                 // Method version
@@ -205,7 +223,14 @@ class OneSignalService {
                 return await ps.id();
             }
 
+            // Check if we can get it via the SDK
+            if (oneSignal.getUserId && typeof oneSignal.getUserId === 'function') {
+                const id = await oneSignal.getUserId();
+                if (id) return id;
+            }
+
             return null;
+
         } catch (error) {
             console.error('Error getting Player ID:', error);
             return null;
@@ -316,7 +341,10 @@ class OneSignalService {
     }
     static async triggerSubscription() {
         try {
-            console.log('🔔 Triggering subscription...');
+            console.log('🔔 Attempting to trigger subscription...');
+
+            // Wait for OneSignal to be fully available
+            await this.waitForOneSignal(5000);
 
             const oneSignal = window._OneSignal || window.OneSignal;
             if (!oneSignal) {
@@ -324,26 +352,45 @@ class OneSignalService {
                 return false;
             }
 
-            // Try different methods based on OneSignal documentation
+            // Wait a bit more for User to be available
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Check current subscription first
+            try {
+                const playerId = await this.getPlayerId();
+                if (playerId) {
+                    console.log('✅ Already subscribed with Player ID:', playerId.substring(0, 20) + '...');
+                    return true;
+                }
+            } catch (e) {
+                console.log('No existing subscription found');
+            }
+
+            // Try different subscription methods
             if (oneSignal.Notifications && oneSignal.Notifications.requestPermission) {
-                // Method 1: requestPermission
+                console.log('Using Notifications.requestPermission');
                 const permission = await oneSignal.Notifications.requestPermission();
                 console.log('Permission result:', permission);
                 return permission === 'granted';
-            } else if (oneSignal.registerForPushNotifications) {
-                // Method 2: registerForPushNotifications
+            }
+
+            if (oneSignal.registerForPushNotifications) {
+                console.log('Using registerForPushNotifications');
                 await oneSignal.registerForPushNotifications();
                 console.log('✅ Push notifications registered');
                 return true;
-            } else if (oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
-                // Method 3: Slidedown prompt
+            }
+
+            if (oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
+                console.log('Using Slidedown.promptPush');
                 await oneSignal.Slidedown.promptPush();
                 console.log('✅ Push prompt shown');
                 return true;
-            } else {
-                console.error('❌ No subscription method found');
-                return false;
             }
+
+            console.error('❌ No subscription method found');
+            return false;
+
         } catch (error) {
             console.error('❌ Error triggering subscription:', error);
             return false;

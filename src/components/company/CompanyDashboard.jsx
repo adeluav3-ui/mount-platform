@@ -377,6 +377,10 @@ export default function CompanyDashboard() {
     const setupOneSignalForUser = async () => {
       if (!user?.id) return;
 
+      // ADD DELAY for OneSignalDeferred to complete
+      console.log('⏳ Waiting 2 seconds for OneSignalDeferred...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       // Check device type
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
