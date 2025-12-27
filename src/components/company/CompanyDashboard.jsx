@@ -1887,30 +1887,6 @@ export default function CompanyDashboard() {
                                 New
                               </span>
                             )}
-                            {isMobileDevice && showEnableNotifications && (
-                              <div className="fixed bottom-4 left-4 right-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white p-4 rounded-xl shadow-xl z-50 animate-bounce">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center">
-                                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mr-3">
-                                      <span className="text-xl">🔔</span>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-bold">Enable Job Alerts</h4>
-                                      <p className="text-sm opacity-90">Get instant notifications for new jobs</p>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={async () => {
-                                      await OneSignalService.ensureSubscription(user?.id);
-                                      setShowEnableNotifications(false);
-                                    }}
-                                    className="bg-white text-yellow-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-100"
-                                  >
-                                    Enable
-                                  </button>
-                                </div>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
