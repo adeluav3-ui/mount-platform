@@ -937,7 +937,7 @@ export default function CompanyDashboard() {
       });
 
       // Check if we should show notification (based on focus state)
-      const shouldShowNotification = !document.hasFocus() || true; // Set to true to always show
+      const shouldShowNotification = true; // Set to true to always show
 
       if (shouldShowNotification) {
         registration.showNotification(' Mount: New Job!', {

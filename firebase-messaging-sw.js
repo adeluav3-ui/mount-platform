@@ -47,7 +47,17 @@ self.addEventListener('push', function (event) {
     };
 
     event.waitUntil(
-        self.registration.showNotification(title, options)
+        self.registration.showNotification(
+            data.title || 'Mount',
+            {
+                body: data.body || data.contents?.en || 'New notification',
+                icon: data.icon || '/logo.png',
+                badge: '/logo.png',
+                data: data.data || {},
+                requireInteraction: true,
+                vibrate: [200, 100, 200]
+            }
+        )
     );
 });
 

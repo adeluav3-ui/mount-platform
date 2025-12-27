@@ -22,7 +22,25 @@
         scope: '/',
         updateViaCache: 'none'
       };
+      // Add this inside your OneSignalDeferred.push function:
+      OneSignal.Notifications.addEventListener('click', function (event) {
+        console.log('OneSignal notification clicked:', event);
+        // Handle notification click
+      });
 
+      OneSignal.Notifications.addEventListener('foregroundWillDisplay', function (event) {
+        console.log('OneSignal notification in foreground:', event);
+        event.preventDefault(); // Prevent default to handle manually
+
+        // Show your own notification
+        if (Notification.permission === 'granted') {
+          new Notification(event.notification.title, {
+            body: event.notification.body,
+            icon: event.notification.icon || '/logo.png',
+            data: event.notification.data
+          });
+        }
+      });
       console.log('🚀 Mount Platform: Starting OneSignal with NEW FCM API...');
 
       try {
