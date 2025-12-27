@@ -26,70 +26,74 @@ export default function CompanyDashboard() {
   })
   const handleEnableNotifications = async () => {
     try {
-      alert('🔔 Setting up notifications...');
+      alert('🚀 Starting push notification setup...');
 
-      // Get OneSignal instance
+      // STEP 1: Check if Notification API is available
+      if (typeof Notification === 'undefined') {
+        alert('❌ Notification API not available in this browser');
+        alert('Try using Chrome or Firefox on mobile');
+        return;
+      }
+
+      // STEP 2: Check and request permission
+      let permission = Notification.permission;
+
+      if (permission === 'default') {
+        alert('Requesting notification permission...');
+        permission = await Notification.requestPermission();
+        alert('Permission result: ' + permission);
+      } else {
+        alert('Current permission: ' + permission);
+      }
+
+      if (permission !== 'granted') {
+        alert('❌ Permission not granted: ' + permission);
+        return;
+      }
+
+      alert('✅ Permission granted!');
+
+      // STEP 3: Check Service Worker
+      if (!('serviceWorker' in navigator)) {
+        alert('❌ Service Worker not supported');
+        return;
+      }
+
+      alert('✅ Service Worker supported');
+
+      // STEP 4: Get Service Worker registration
+      let registration;
+      try {
+        registration = await navigator.serviceWorker.ready;
+        alert('✅ Service Worker ready');
+      } catch (error) {
+        alert('❌ Service Worker error: ' + error.message);
+        return;
+      }
+
+      // STEP 5: Check for OneSignal subscription
+      alert('Checking for existing subscription...');
       const oneSignal = window.OneSignal || window._OneSignal;
 
-      if (!oneSignal) {
-        alert('❌ OneSignal not loaded. Please refresh page.');
-        return;
-      }
+      if (oneSignal) {
+        // Try to trigger OneSignal subscription
+        if (oneSignal.Slidedown && oneSignal.Slidedown.promptPush) {
+          alert('Triggering OneSignal prompt...');
+          oneSignal.Slidedown.promptPush();
 
-      // Check if Slidedown.promptPush is available
-      if (!oneSignal.Slidedown || !oneSignal.Slidedown.promptPush) {
-        alert('❌ Slidedown.promptPush not available');
-        return;
-      }
-
-      alert('✅ Using Slidedown.promptPush...');
-
-      // STEP 1: Trigger the OneSignal subscription prompt
-      oneSignal.Slidedown.promptPush();
-
-      alert('✅ Subscription prompt shown! Please allow in the popup.');
-
-      // STEP 2: Check Player ID after delay
-      setTimeout(async () => {
-        alert('Checking Player ID...');
-
-        // Try to get Player ID
-        let playerId = null;
-
-        // Method 1: getUserId
-        if (oneSignal.getUserId) {
-          try {
-            playerId = await oneSignal.getUserId();
-          } catch (error) {
-            console.log('getUserId failed:', error);
-          }
-        }
-
-        // Method 2: User.PushSubscription.id
-        if (!playerId && oneSignal.User && oneSignal.User.PushSubscription) {
-          try {
-            playerId = await oneSignal.User.PushSubscription.id;
-          } catch (error) {
-            console.log('PushSubscription.id failed:', error);
-          }
-        }
-
-        // Method 3: Use OneSignalService
-        if (!playerId) {
-          playerId = await OneSignalService.getPlayerId();
-        }
-
-        if (playerId) {
-          alert('🎉 SUCCESS! Player ID: ' + playerId.substring(0, 8) + '...');
-
-          // Save to database
-          await OneSignalService.saveDevice(user?.id, playerId);
-          alert('✅ Device registered in database!');
+          // Wait and check
+          setTimeout(async () => {
+            if (oneSignal.getUserId) {
+              const playerId = await oneSignal.getUserId();
+              alert('Player ID after prompt: ' + (playerId || 'null'));
+            }
+          }, 3000);
         } else {
-          alert('⚠️ Player ID still null. The subscription may still be processing.');
-          alert('Try: 1) Wait 30 seconds 2) Refresh page 3) Check browser notifications settings');
+          alert('⚠️ OneSignal Slidedown not available');
         }
-      }, 3000); // Wait 3 seconds for subscription to complete
+      } else {
+        alert('⚠️ OneSignal not loaded');
+      }
 
     } catch (error) {
       alert('❌ Error: ' + error.message);
@@ -105,13 +109,11 @@ export default function CompanyDashboard() {
     }
 
     let playerId = null;
-    let method = '';
 
     // Try different methods to get Player ID
     if (oneSignal.getUserId) {
       try {
         playerId = await oneSignal.getUserId();
-        method = 'getUserId';
       } catch (error) {
         console.log('getUserId error:', error);
       }
@@ -120,7 +122,6 @@ export default function CompanyDashboard() {
     if (!playerId && oneSignal.User && oneSignal.User.PushSubscription) {
       try {
         playerId = await oneSignal.User.PushSubscription.id;
-        method = 'User.PushSubscription.id';
       } catch (error) {
         console.log('PushSubscription error:', error);
       }
@@ -128,35 +129,47 @@ export default function CompanyDashboard() {
 
     if (!playerId) {
       playerId = await OneSignalService.getPlayerId();
-      method = 'OneSignalService';
     }
 
-    alert(`Player ID check:\n` +
-      `Method: ${method}\n` +
-      `Player ID: ${playerId || 'null'}\n` +
-      `Permission: ${Notification.permission}`);
+    // Check Notification API availability
+    const notificationAvailable = typeof Notification !== 'undefined';
+    const permission = notificationAvailable ? Notification.permission : 'API not available';
+
+    alert(`Player ID: ${playerId || 'null'}\n` +
+      `Notification API: ${notificationAvailable ? 'Available' : 'Not available'}\n` +
+      `Permission: ${permission}\n` +
+      `OneSignal: ${oneSignal ? 'Loaded' : 'Not loaded'}`);
   };
 
 
   const debugOneSignal = async () => {
     const oneSignal = window.OneSignal || window._OneSignal;
 
-    let result = 'OneSignal Debug:\n';
-    result += 'Loaded: ' + (oneSignal ? 'Yes' : 'No') + '\n';
+    let result = 'OneSignal Debug:\n\n';
+
+    // Check Notification API
+    const notificationAvailable = typeof Notification !== 'undefined';
+    result += `Notification API: ${notificationAvailable ? '✅ Available' : '❌ Not available'}\n`;
+
+    if (notificationAvailable) {
+      result += `Permission: ${Notification.permission}\n`;
+    }
+
+    result += `OneSignal: ${oneSignal ? '✅ Loaded' : '❌ Not loaded'}\n\n`;
 
     if (oneSignal) {
       result += 'Methods available:\n';
 
       // Check common methods
-      const methods = ['registerForPushNotifications', 'getUserId', 'Slidedown', 'internal', 'Notifications'];
+      const methods = ['getUserId', 'Slidedown', 'internal', 'Notifications', 'registerForPushNotifications'];
       methods.forEach(method => {
         if (oneSignal[method]) {
-          result += '  ✓ ' + method + '\n';
+          result += `  ✓ ${method}\n`;
           if (method === 'Slidedown' && oneSignal[method].promptPush) {
-            result += '    ✓ promptPush available\n';
+            result += `    ✓ promptPush available\n`;
           }
         } else {
-          result += '  ✗ ' + method + '\n';
+          result += `  ✗ ${method}\n`;
         }
       });
 
@@ -164,15 +177,14 @@ export default function CompanyDashboard() {
       try {
         if (oneSignal.getUserId) {
           const playerId = await oneSignal.getUserId();
-          result += 'Player ID: ' + (playerId || 'null') + '\n';
+          result += `\nPlayer ID: ${playerId || 'null'}\n`;
         }
       } catch (e) {
-        result += 'Player ID error: ' + e.message + '\n';
+        result += `\nPlayer ID error: ${e.message}\n`;
       }
     }
 
-    result += '\nBrowser Permission: ' + Notification.permission;
-    result += '\nService Worker: ' + ('serviceWorker' in navigator ? 'Supported' : 'Not supported');
+    result += `\nService Worker: ${'serviceWorker' in navigator ? '✅ Supported' : '❌ Not supported'}`;
 
     alert(result);
   };

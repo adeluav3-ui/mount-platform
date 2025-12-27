@@ -27,24 +27,27 @@
         // Detect if mobile
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
+        // Detect environment
+        const isHttps = window.location.protocol === 'https:';
+        const isLocalhost = window.location.hostname === 'localhost';
+
         await OneSignal.init({
           appId: "0186919f-3891-40a5-81b6-c9e70634bdef",
 
-          // Enable auto-prompt ONLY on mobile
+          // Auto-register on HTTPS (production)
+          autoRegister: isHttps && !isLocalhost,
+
+          // Prompt settings
           promptOptions: {
             slidedown: {
-              enabled: isMobile, // Enable on mobile
-              autoPrompt: isMobile,
+              enabled: true,
+              autoPrompt: true,
+              timeDelay: 3,
+              pageViews: 1,
               prompts: [
                 {
-                  type: "push", // Push notifications
-                  autoPrompt: isMobile,
-                  text: {
-                    /* Customize these messages */
-                    actionMessage: "Get notified about new jobs instantly!",
-                    acceptButton: "Allow",
-                    cancelButton: "Not Now"
-                  }
+                  type: "push",
+                  autoPrompt: true
                 }
               ]
             }
@@ -54,7 +57,6 @@
           notifyButton: { enable: false },
           welcomeNotification: { disable: true },
           persistNotification: false,
-          autoRegister: isMobile, // Auto-register on mobile
           autoResubscribe: true,
           serviceWorkerParam: { scope: '/' }
         });
