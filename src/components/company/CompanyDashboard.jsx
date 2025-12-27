@@ -31,8 +31,24 @@ export default function CompanyDashboard() {
       const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
       const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
       const isIOSChrome = isIOS && /Chrome/.test(navigator.userAgent);
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       alert(`Device Info:\niOS: ${isIOS}\nSafari: ${isSafari}\niOS Chrome: ${isIOSChrome}`);
+
+      if (isMobile) {
+        console.log('📱 Mobile enable notification clicked');
+
+        // Use mobile-specific flow
+        const success = await OneSignalService.ensureMobileSubscription(user?.id);
+
+        if (success) {
+          alert('✅ Mobile notifications enabled!');
+          setShowEnableNotifications(false);
+        } else {
+          alert('❌ Failed to enable notifications. Please check browser permissions.');
+        }
+        return;
+      }
 
       if (isIOS) {
         // iOS specific handling
@@ -309,57 +325,52 @@ export default function CompanyDashboard() {
 
   }, [user, supabase])
 
-  // Check if mobile on component mount
+  // Clean mobile OneSignal setup
   useEffect(() => {
-    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    setIsMobileDevice(mobile);
+    const setupMobileOneSignal = async () => {
+      if (!user?.id) return;
 
-    if (mobile) {
-      console.log('📱 Mobile device detected');
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (!isMobile) return;
 
-      // Check subscription status after OneSignal is initialized
-      const checkMobileSubscription = async () => {
-        // Wait for OneSignal to potentially initialize
-        await new Promise(resolve => setTimeout(resolve, 8000));
+      console.log('📱 MOBILE SETUP: Starting OneSignal initialization...');
 
-        try {
+      try {
+        // Initialize OneSignal
+        const initialized = await OneSignalService.initialize(user.id);
+
+        if (initialized) {
+          // Check if we have Player ID
           const playerId = await OneSignalService.getPlayerId();
-          const optedIn = await OneSignalService.isOptedIn();
+          console.log('📱 Initial Player ID check:', playerId);
 
-          console.log('📱 Mobile subscription check - Player ID:', playerId);
-          console.log('📱 Mobile subscription check - Opted in:', optedIn);
+          if (!playerId) {
+            console.log('📱 No Player ID - triggering subscription...');
+            // Use the new mobile-specific method
+            await OneSignalService.ensureMobileSubscription(user.id);
 
-          if (!playerId || !optedIn) {
-            console.log('📱 Mobile needs subscription');
-            // Try to subscribe
-            await OneSignalService.triggerSubscription();
+            // Check again after delay
+            setTimeout(async () => {
+              const newPlayerId = await OneSignalService.getPlayerId();
+              console.log('📱 Player ID after subscription attempt:', newPlayerId);
+
+              if (!newPlayerId) {
+                console.log('📱 Still no Player ID - showing enable button');
+                setShowEnableNotifications(true);
+              }
+            }, 3000);
+          } else {
+            console.log('📱 Already has Player ID:', playerId.substring(0, 20) + '...');
           }
-
-          if (!playerId || !optedIn) {
-            console.log('📱 Mobile not subscribed, showing banner');
-            setShowEnableNotifications(true);
-          }
-        } catch (error) {
-          console.log('📱 Could not check subscription:', error);
         }
-      };
+      } catch (error) {
+        console.error('📱 Mobile OneSignal setup error:', error);
+        setShowEnableNotifications(true);
+      }
+    };
 
-      checkMobileSubscription();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-      console.log('📱 MOBILE DEVICE DETECTED');
-
-      // Check subscription after 5 seconds
-      setTimeout(async () => {
-        const playerId = await OneSignalService.getPlayerId();
-        console.log('📱 Mobile Player ID:', playerId);
-        alert('Mobile Player ID: ' + playerId);
-      }, 5000);
-    }
-  }, []);
+    setupMobileOneSignal();
+  }, [user]);
 
   // In CompanyDashboard.jsx, update the OneSignal section:
   useEffect(() => {

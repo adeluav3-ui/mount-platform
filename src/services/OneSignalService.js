@@ -211,7 +211,55 @@ class OneSignalService {
             return null;
         }
     }
+    static async ensureMobileSubscription(userId) {
+        try {
+            console.log('📱 Ensuring mobile subscription for user:', userId);
 
+            // Wait for OneSignal to load
+            await this.waitForOneSignal(10000);
+
+            const oneSignal = window._OneSignal || window.OneSignal;
+            if (!oneSignal) {
+                console.error('❌ OneSignal not available on mobile');
+                return false;
+            }
+
+            // Check current permission
+            const permission = await oneSignal.Notifications.permissionNative;
+            console.log('📱 Mobile permission:', permission);
+
+            if (permission === 'default') {
+                console.log('📱 Requesting permission...');
+
+                // For mobile, we need to use registerForPushNotifications
+                if (oneSignal.registerForPushNotifications) {
+                    await oneSignal.registerForPushNotifications();
+                    console.log('✅ Mobile push registration triggered');
+                } else {
+                    console.error('❌ registerForPushNotifications not available');
+                    return false;
+                }
+
+                // Wait and check for Player ID
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+
+            // Get Player ID
+            const playerId = await this.getPlayerId();
+            console.log('📱 Mobile Player ID after attempt:', playerId);
+
+            if (playerId) {
+                await this.saveDevice(userId, playerId);
+                return true;
+            }
+
+            return false;
+
+        } catch (error) {
+            console.error('❌ Mobile subscription error:', error);
+            return false;
+        }
+    }
     static async waitForOneSignal(maxWait = 10000) {
         return new Promise((resolve) => {
             const checkOneSignal = () => {
