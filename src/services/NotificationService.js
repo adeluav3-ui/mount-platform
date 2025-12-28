@@ -1,4 +1,5 @@
 // src/services/NotificationService.js - FIXED VERSION
+import smsService from './SMSService';
 class NotificationService {
     // Get all active devices for a company
     // In NotificationService.js, update getCompanyDevices method:
@@ -187,6 +188,73 @@ class NotificationService {
         } catch (error) {
             console.error('❌ Error in addCompanyDevice:', error);
             return false;
+        }
+    }
+    async sendSMSNotification(companyId, message, jobId = null) {
+        try {
+            // Get company phone number from database
+            const { data: company, error } = await this.supabase
+                .from('companies')
+                .select('phone, company_name')
+                .eq('id', companyId)
+                .single();
+
+            if (error || !company?.phone) {
+                console.error('No phone number found for company:', companyId);
+                return { success: false, error: 'No phone number' };
+            }
+
+            // Send SMS via SendChamp
+            const smsResult = await smsService.sendSMS(
+                company.phone,
+                message
+            );
+
+            // Log SMS notification
+            await this.logNotification({
+                user_id: companyId,
+                job_id: jobId,
+                title: 'SMS Alert',
+                message: message,
+                type: 'sms',
+                sms_status: smsResult.success ? 'sent' : 'failed',
+                sms_message_id: smsResult.messageId
+            });
+
+            return smsResult;
+        } catch (error) {
+            console.error('SMS notification error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    // Update your main sendNotification method to include SMS fallback
+    async sendNotification(userId, notification, jobId = null) {
+        try {
+            // 1. Try push notification first
+            const pushResult = await this.sendPushNotification(userId, notification);
+
+            // 2. If push fails or after 5 minutes no response, send SMS
+            if (!pushResult.success) {
+                console.log('Push failed, falling back to SMS...');
+
+                // Create SMS-friendly message
+                const smsMessage = `Mount: ${notification.title} - ${notification.message}`;
+
+                // Send SMS
+                const smsResult = await this.sendSMSNotification(userId, smsMessage, jobId);
+
+                return {
+                    ...smsResult,
+                    fallbackUsed: 'sms',
+                    originalPushFailed: true
+                };
+            }
+
+            return pushResult;
+        } catch (error) {
+            console.error('Notification sending error:', error);
+            return { success: false, error: error.message };
         }
     }
 }

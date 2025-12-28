@@ -450,7 +450,7 @@ export default function CustomerDashboard() {
                     className="w-full sm:w-auto bg-naijaGreen text-white px-6 sm:px-10 py-4 sm:py-5 rounded-xl font-extrabold text-base sm:text-lg flex items-center justify-center gap-3 hover:bg-darkGreen transition shadow-lg"
                 >
                     <HammerIcon className="w-5 sm:w-6 h-5 sm:h-6" />
-                    I need to fix something!
+                    I need a service!
                 </button>
             </div>
             <div className="grid md:grid-cols-2 gap-6">
