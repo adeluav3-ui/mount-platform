@@ -88,6 +88,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
 
     const [pictureKey, setPictureKey] = useState(Date.now())
     const [portfolioPictures, setPortfolioPictures] = useState(company?.portfolio_pictures || [])
+    const [selectedPortfolioFiles, setSelectedPortfolioFiles] = useState([])
     const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
     const navigate = useNavigate();
 
@@ -117,24 +118,28 @@ export default function ProfileSection({ company, editing, setEditing }) {
             [subcategory]: "TBD"
         }))
     }
+    const handlePortfolioFileChange = (e) => {
+        const files = Array.from(e.target.files)
 
-    // Function to upload portfolio pictures
-    const handlePortfolioUpload = async () => {
-        if (!portfolioFileInputRef.current?.files.length) return
-
-        const files = Array.from(portfolioFileInputRef.current.files)
-
-        // Check if adding these files would exceed 5 pictures
+        // Validate file count
         if (portfolioPictures.length + files.length > 5) {
             alert(`You can only upload a maximum of 5 portfolio pictures. You currently have ${portfolioPictures.length} and tried to add ${files.length}.`)
+            e.target.value = ''
+            setSelectedPortfolioFiles([])
             return
         }
+
+        setSelectedPortfolioFiles(files)
+    }
+    // Function to upload portfolio pictures
+    const handlePortfolioUpload = async () => {
+        if (selectedPortfolioFiles.length === 0) return
 
         setUploadingPortfolio(true)
         const uploadedUrls = []
 
         try {
-            for (const file of files) {
+            for (const file of selectedPortfolioFiles) {
                 const fileExt = file.name.split('.').pop()
                 const timestamp = Date.now()
                 const randomStr = Math.random().toString(36).substring(2, 8)
@@ -158,6 +163,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
             // Update portfolio pictures state
             const newPortfolioPictures = [...portfolioPictures, ...uploadedUrls]
             setPortfolioPictures(newPortfolioPictures)
+            setSelectedPortfolioFiles([]) // Clear selected files
 
             // Update in database
             const { error } = await supabase
@@ -167,8 +173,10 @@ export default function ProfileSection({ company, editing, setEditing }) {
 
             if (error) throw error
 
-            alert(`Successfully uploaded ${files.length} portfolio picture(s)!`)
-            portfolioFileInputRef.current.value = '' // Clear input
+            alert(`Successfully uploaded ${selectedPortfolioFiles.length} portfolio picture(s)!`)
+            if (portfolioFileInputRef.current) {
+                portfolioFileInputRef.current.value = '' // Clear input
+            }
 
         } catch (error) {
             console.error('Error uploading portfolio pictures:', error)
@@ -379,6 +387,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                     </div>
 
                     {/* PORTFOLIO PICTURES SECTION */}
+                    {/* PORTFOLIO PICTURES SECTION */}
                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
                         <h4 className="text-xl font-bold text-naijaGreen mb-6 flex items-center gap-2">
                             <span>📸 Portfolio Pictures</span>
@@ -434,22 +443,54 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                     accept="image/*"
                                     ref={portfolioFileInputRef}
                                     multiple
+                                    onChange={handlePortfolioFileChange}
                                     className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-naijaGreen transition"
-                                    onChange={(e) => {
-                                        // Validate file count
-                                        if (e.target.files.length > 5) {
-                                            alert('Maximum 5 pictures allowed')
-                                            e.target.value = ''
-                                        }
-                                    }}
                                 />
+
+                                {/* Selected Files Preview */}
+                                {selectedPortfolioFiles.length > 0 && (
+                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <p className="text-sm font-medium text-blue-800 mb-2">
+                                            Selected {selectedPortfolioFiles.length} file(s):
+                                        </p>
+                                        <ul className="text-sm text-blue-700 space-y-1">
+                                            {selectedPortfolioFiles.map((file, index) => (
+                                                <li key={index} className="flex items-center gap-2">
+                                                    <span className="text-xs">📷</span>
+                                                    <span className="truncate">{file.name}</span>
+                                                    <span className="text-xs text-gray-500">
+                                                        ({(file.size / 1024).toFixed(1)} KB)
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedPortfolioFiles([])
+                                                if (portfolioFileInputRef.current) {
+                                                    portfolioFileInputRef.current.value = ''
+                                                }
+                                            }}
+                                            className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                                        >
+                                            Clear selection
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="flex items-center justify-between">
                                     <div className="text-sm text-gray-600">
-                                        {portfolioPictures.length}/5 pictures uploaded
+                                        {portfolioPictures.length}/5 pictures uploaded •
+                                        {selectedPortfolioFiles.length > 0 && (
+                                            <span className="ml-2 text-naijaGreen font-medium">
+                                                +{selectedPortfolioFiles.length} selected
+                                            </span>
+                                        )}
                                     </div>
                                     <button
                                         onClick={handlePortfolioUpload}
-                                        disabled={uploadingPortfolio || !portfolioFileInputRef.current?.files.length}
+                                        disabled={uploadingPortfolio || selectedPortfolioFiles.length === 0}
                                         className="px-6 py-2 bg-naijaGreen text-white rounded-lg font-medium hover:bg-darkGreen disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
                                         {uploadingPortfolio ? (
@@ -457,7 +498,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                                 Uploading...
                                             </>
-                                        ) : 'Upload Pictures'}
+                                        ) : `Upload ${selectedPortfolioFiles.length > 0 ? `(${selectedPortfolioFiles.length})` : ''}`}
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-500">
