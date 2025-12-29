@@ -100,6 +100,39 @@ export function SupabaseProvider({ children }) {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    // Memoize these functions so they don't change on every render
+    const memoizedGetCurrentUser = React.useCallback(async () => {
+        try {
+            const { data: { user }, error } = await supabase.auth.getUser();
+
+            if (error) {
+                console.error('Get user error:', error);
+                return null;
+            }
+
+            return user;
+        } catch (error) {
+            console.error('Get current user error:', error);
+            return null;
+        }
+    }, []);
+
+    const memoizedGetSession = React.useCallback(async () => {
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+
+            if (error) {
+                console.error('Get session error:', error);
+                return null;
+            }
+
+            return session;
+        } catch (error) {
+            console.error('Get session error:', error);
+            return null;
+        }
+    }, []);
+
     useEffect(() => {
         console.log('SupabaseProvider mounting...');
 
@@ -126,7 +159,7 @@ export function SupabaseProvider({ children }) {
         };
     }, []);
 
-    const signUp = (email, password, metadata = {}) => {
+    const signUp = React.useCallback((email, password, metadata = {}) => {
         console.log('SignUp called:', email);
         return supabase.auth.signUp({
             email,
@@ -136,21 +169,20 @@ export function SupabaseProvider({ children }) {
                 emailRedirectTo: window.location.origin + '/dashboard'
             }
         });
-    };
+    }, []);
 
-    const signIn = (email, password) => {
+    const signIn = React.useCallback((email, password) => {
         console.log('SignIn called:', email);
         return supabase.auth.signInWithPassword({ email, password });
-    };
+    }, []);
 
-    const signOut = () => {
+    const signOut = React.useCallback(() => {
         console.log('SignOut called');
         supabase.auth.signOut().then(() => {
             window.location.href = '/';
         });
-    };
+    }, []);
 
-    // LINE 152 IS HERE - Make sure it's exactly this:
     return (
         <SupabaseContext.Provider value={{
             user,
@@ -159,8 +191,8 @@ export function SupabaseProvider({ children }) {
             signUp,
             signIn,
             signOut,
-            getCurrentUser,
-            getSession
+            getCurrentUser: memoizedGetCurrentUser,
+            getSession: memoizedGetSession
         }}>
             {children}
         </SupabaseContext.Provider>
