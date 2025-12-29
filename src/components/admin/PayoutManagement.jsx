@@ -189,35 +189,64 @@ const PayoutManagement = () => {
 
             let amount, platformFee, description;
 
+            // FIRST: Get all verified payments for this job to understand what was paid
+            const { data: verifiedPayments } = await supabase
+                .from('financial_transactions')
+                .select('type, amount, platform_fee')
+                .eq('job_id', jobId)
+                .eq('status', 'completed')
+                .eq('verified_by_admin', true);
+
+            // Calculate total service fee collected from customer
+            let totalServiceFeeCollected = 0;
+            if (verifiedPayments) {
+                verifiedPayments.forEach(payment => {
+                    totalServiceFeeCollected += payment.platform_fee || 0;
+                });
+            }
+
+            const totalJobAmount = job.quoted_price;
+
             if (payoutType === 'deposit') {
-                // 50% deposit, no fee
-                amount = job.quoted_price * 0.5;
-                platformFee = 0;
-                description = '50% deposit payment (no platform fee)';
+                // Company gets 50% of job amount (NOT including customer's service fee)
+                amount = totalJobAmount * 0.5;
+                platformFee = 0; // No platform commission on deposit
+                description = '50% deposit payment to company';
+
             } else if (payoutType === 'intermediate') {
-                // 30% intermediate, no fee
-                amount = job.quoted_price * 0.3;
-                platformFee = 0;
-                description = '30% intermediate payment for materials (no platform fee)';
+                // Company gets 30% of job amount
+                amount = totalJobAmount * 0.3;
+                platformFee = 0; // No platform commission on intermediate
+                description = '30% intermediate payment for materials';
+
             } else {
-                // final payment - platform fee is 5% of TOTAL job cost
-                const totalJobAmount = job.quoted_price;
-                const platformFeeTotal = totalJobAmount * 0.05; // 5% of total
+                // FINAL PAYMENT - Calculate based on what's already been paid to company
 
-                // Check if intermediate payment was made
-                const hasIntermediatePayment = job.paymentData?.hasIntermediate;
-
-                if (hasIntermediatePayment) {
-                    // For jobs with intermediate payment: 20% final - 5% platform fee = 15%
-                    amount = totalJobAmount * 0.15;
-                    description = 'Final payment (20% - 5% platform fee = 15%)';
-                } else {
-                    // For jobs without intermediate: 50% final - 5% platform fee = 45%
-                    amount = totalJobAmount * 0.45;
-                    description = 'Final payment (50% - 5% platform fee = 45%)';
+                // Calculate what company has already received
+                let companyReceivedSoFar = 0;
+                if (verifiedPayments) {
+                    verifiedPayments.forEach(payment => {
+                        if (payment.type === 'deposit') {
+                            // Deposit: company gets 50% of job
+                            companyReceivedSoFar += totalJobAmount * 0.5;
+                        } else if (payment.type === 'intermediate') {
+                            // Intermediate: company gets 30% of job
+                            companyReceivedSoFar += totalJobAmount * 0.3;
+                        }
+                        // Note: We don't count service fee (platform_fee) as company payment
+                    });
                 }
 
-                platformFee = platformFeeTotal;
+                // Total company should receive: 95% of job (5% platform commission)
+                const totalCompanyShouldReceive = totalJobAmount * 0.95;
+
+                // Final payment = remaining amount company should get
+                amount = totalCompanyShouldReceive - companyReceivedSoFar;
+
+                // Platform commission is 5% of total job
+                platformFee = totalJobAmount * 0.05;
+
+                description = `Final payment (${((amount / totalJobAmount) * 100).toFixed(1)}% job amount - 5% platform commission)`;
             }
 
             // Create payout
@@ -232,17 +261,42 @@ const PayoutManagement = () => {
                     status: 'pending',
                     bank_name: job.companies.bank_name,
                     bank_account: job.companies.bank_account,
-                    description: description
+                    description: description,
+                    metadata: {
+                        total_job_amount: totalJobAmount,
+                        service_fee_collected: totalServiceFeeCollected,
+                        platform_commission: payoutType === 'final' ? totalJobAmount * 0.05 : 0,
+                        calculation: {
+                            deposit_paid: verifiedPayments?.some(p => p.type === 'deposit'),
+                            intermediate_paid: verifiedPayments?.some(p => p.type === 'intermediate'),
+                            company_received_before: companyReceivedSoFar || 0
+                        }
+                    }
                 });
 
             if (payoutError) throw payoutError;
 
-            alert(`${payoutType.charAt(0).toUpperCase() + payoutType.slice(1)} payout created!\n\nAmount: ₦${amount.toLocaleString()}\nPlatform Fee: ₦${platformFee.toLocaleString()}`);
+            // Also update the job's customer_service_fee if not already set
+            if (totalServiceFeeCollected > 0) {
+                await supabase
+                    .from('jobs')
+                    .update({
+                        customer_service_fee: totalServiceFeeCollected
+                    })
+                    .eq('id', jobId);
+            }
+
+            alert(`${payoutType.charAt(0).toUpperCase() + payoutType.slice(1)} payout created!\n\n` +
+                `Company receives: ₦${amount.toLocaleString()}\n` +
+                `Platform fee collected from customer: ₦${totalServiceFeeCollected.toLocaleString()}\n` +
+                `Platform commission: ₦${platformFee.toLocaleString()}\n` +
+                `Total job amount: ₦${totalJobAmount.toLocaleString()}`);
+
             fetchData(); // Refresh data
 
         } catch (error) {
             console.error('Error creating payout:', error);
-            alert('Failed to create payout');
+            alert('Failed to create payout: ' + error.message);
         }
     };
 
@@ -391,35 +445,41 @@ const PayoutManagement = () => {
                                             </div>
                                         </div>
                                         <div className="p-4 bg-gray-50 rounded-lg">
-                                            <h4 className="font-medium text-gray-700">Payment Due</h4>
+                                            <h4 className="font-medium text-gray-700">Payment Details</h4>
                                             <p className="text-2xl font-bold text-green-600">
                                                 {job.status === 'deposit_paid'
-                                                    ? formatCurrency(job.quoted_price * 0.5)
+                                                    ? formatCurrency(job.quoted_price * 0.5)  // Company gets 50%
                                                     : job.status === 'intermediate_paid'
-                                                        ? formatCurrency(job.quoted_price * 0.3)
-                                                        : job.paymentData?.hasIntermediate
-                                                            ? formatCurrency(job.quoted_price * 0.15)  // 20% final - 5% fee = 15%
-                                                            : formatCurrency(job.quoted_price * 0.45)  // 50% final - 5% fee = 45%
+                                                        ? formatCurrency(job.quoted_price * 0.3)  // Company gets 30%
+                                                        : // For final payment, calculate remaining amount for company
+                                                        (() => {
+                                                            // Calculate what company has already received
+                                                            let companyReceived = 0;
+                                                            if (job.paymentData?.hasDeposit) companyReceived += job.quoted_price * 0.5;
+                                                            if (job.paymentData?.hasIntermediate) companyReceived += job.quoted_price * 0.3;
+
+                                                            // Company gets 95% total (5% platform commission)
+                                                            const totalForCompany = job.quoted_price * 0.95;
+                                                            const finalAmount = totalForCompany - companyReceived;
+                                                            return formatCurrency(finalAmount);
+                                                        })()
                                                 }
                                             </p>
                                             <p className="text-sm text-gray-600">
                                                 {job.status === 'deposit_paid'
-                                                    ? '50% deposit (no platform fee)'
+                                                    ? '50% deposit to company'
                                                     : job.status === 'intermediate_paid'
-                                                        ? '30% intermediate payment (no platform fee)'
-                                                        : job.paymentData?.hasIntermediate
-                                                            ? '15% final (20% - 5% platform fee)'
-                                                            : '45% final (50% - 5% platform fee)'
+                                                        ? '30% intermediate to company'
+                                                        : 'Final payment to company (95% total - already paid)'
                                                 }
                                             </p>
-                                            {job.status === 'completed' && (
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Platform fee: 5% of ₦{formatCurrency(job.quoted_price)} = ₦{formatCurrency(job.quoted_price * 0.05)}
-                                                    {job.paymentData?.hasIntermediate && (
-                                                        <span className="block">Intermediate payment was made: Yes</span>
-                                                    )}
-                                                </p>
-                                            )}
+                                            {/* Show service fee information */}
+                                            <div className="mt-2 text-xs text-gray-500">
+                                                {job.customer_service_fee > 0 && (
+                                                    <div>Customer service fee: ₦{job.customer_service_fee.toLocaleString()}</div>
+                                                )}
+                                                <div>Platform commission: 5% of ₦{formatCurrency(job.quoted_price)}</div>
+                                            </div>
                                         </div>
                                     </div>
 

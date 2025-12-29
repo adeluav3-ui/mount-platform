@@ -139,7 +139,21 @@ export default function AdminPaymentVerification() {
                         console.log('✅ Job status updated to:', newJobStatus);
                     }
                 }
+                if (payment.type === 'deposit') {
+                    newJobStatus = 'deposit_paid';
+                    notificationMessage = `Your 50% deposit of ₦${payment.amount} has been verified. The service provider will start your job.`;
 
+                    // Store the service fee amount if present
+                    if (payment.platform_fee > 0) {
+                        await supabase
+                            .from('jobs')
+                            .update({
+                                customer_service_fee: payment.platform_fee,
+                                service_fee_waived: false
+                            })
+                            .eq('id', payment.job_id);
+                    }
+                }
                 // 4. Send notification to customer
                 if (payment.user_id) {
                     const notificationData = {

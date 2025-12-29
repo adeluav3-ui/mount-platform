@@ -1,7 +1,61 @@
-// src/components/payment/PaymentPage.jsx - CORRECTED VERSION
+// src/components/payment/PaymentPage.jsx - WITH TIERED SERVICE FEE
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../context/SupabaseContext';
+import PaymentService from '../../utils/PaymentService';
+
+// Helper function to calculate payment with service fee
+const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType) => {
+    try {
+        // Only apply service fee to deposit payments
+        if (paymentType !== 'deposit') {
+            return {
+                baseAmount: jobAmount,
+                serviceFee: 0,
+                totalPayment: jobAmount,
+                isFeeWaived: true,
+                isDepositPayment: false
+            };
+        }
+
+        // Check if customer is in promotion
+        const promotionResult = await PaymentService.checkCustomerPromotionStatus(customerId);
+
+        const depositAmount = jobAmount * 0.5;
+
+        if (promotionResult.isInPromotion) {
+            // In promotion: no service fee
+            return {
+                baseAmount: depositAmount,
+                serviceFee: 0,
+                totalPayment: depositAmount,
+                isFeeWaived: true,
+                isDepositPayment: true
+            };
+        } else {
+            // Not in promotion: add tiered service fee
+            const serviceFee = PaymentService.calculateTieredServiceFee(jobAmount);
+            return {
+                baseAmount: depositAmount,
+                serviceFee: serviceFee,
+                totalPayment: depositAmount + serviceFee,
+                isFeeWaived: false,
+                isDepositPayment: true
+            };
+        }
+    } catch (error) {
+        console.error('Error calculating payment with fee:', error);
+        // Fallback: just deposit without fee
+        const depositAmount = jobAmount * 0.5;
+        return {
+            baseAmount: depositAmount,
+            serviceFee: 0,
+            totalPayment: depositAmount,
+            isFeeWaived: false,
+            isDepositPayment: true
+        };
+    }
+};
 
 const PaymentPage = () => {
     const { jobId } = useParams();
@@ -10,6 +64,13 @@ const PaymentPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [reference, setReference] = useState('');
+    const [paymentCalculation, setPaymentCalculation] = useState({
+        baseAmount: 0,
+        serviceFee: 0,
+        totalPayment: 0,
+        isFeeWaived: true,
+        isDepositPayment: false
+    });
 
     const generateReference = (jobId) => {
         const prefix = 'MT';
@@ -29,7 +90,11 @@ const PaymentPage = () => {
         try {
             setLoading(true);
 
-            // 1. Fetch job
+            // 1. Get current user
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Please login to proceed with payment');
+
+            // 2. Fetch job
             const { data: jobData, error: jobError } = await supabase
                 .from('jobs')
                 .select('*')
@@ -41,7 +106,7 @@ const PaymentPage = () => {
 
             console.log('📋 Job status:', jobData.status);
 
-            // 2. Fetch company
+            // 3. Fetch company
             let companyName = 'Service Provider';
             if (jobData.company_id) {
                 const { data: company } = await supabase
@@ -52,10 +117,10 @@ const PaymentPage = () => {
                 if (company) companyName = company.company_name;
             }
 
-            // 3. Get total amount
+            // 4. Get total amount
             const totalAmount = jobData.quoted_price || 0;
 
-            // 4. Get all verified payments for this job
+            // 5. Get all verified payments for this job
             const { data: verifiedPayments } = await supabase
                 .from('financial_transactions')
                 .select('type, amount')
@@ -65,7 +130,7 @@ const PaymentPage = () => {
 
             console.log('✅ Verified payments:', verifiedPayments);
 
-            // 5. Calculate what's been paid
+            // 6. Calculate what's been paid
             let paidAmount = 0;
             let hasDeposit = false;
             let hasIntermediate = false;
@@ -93,11 +158,11 @@ const PaymentPage = () => {
                 hasFinal
             });
 
-            // 6. DETERMINE PAYMENT TYPE - SIMPLE CORRECT LOGIC
-            // 6. DETERMINE PAYMENT TYPE - FIXED LOGIC
+            // 7. DETERMINE PAYMENT TYPE
             let paymentType = '';
             let paymentAmount = 0;
             let paymentDescription = '';
+            let paymentCalculationResult = null;
 
             // First, check for pending intermediate payments (for work_ongoing status)
             if (jobData.status === 'work_ongoing') {
@@ -118,20 +183,41 @@ const PaymentPage = () => {
                     paymentType = 'intermediate';
                     paymentAmount = pendingIntermediate[0].amount || totalAmount * 0.3;
                     paymentDescription = '30% Intermediate payment for materials';
+                    paymentCalculationResult = {
+                        baseAmount: paymentAmount,
+                        serviceFee: 0,
+                        totalPayment: paymentAmount,
+                        isFeeWaived: true,
+                        isDepositPayment: false
+                    };
                 } else {
                     // No pending intermediate, check what's been paid
                     if (hasDeposit && !hasIntermediate && !hasFinal) {
                         paymentType = 'intermediate';
                         paymentAmount = totalAmount * 0.3;
                         paymentDescription = '30% Intermediate payment for materials';
+                        paymentCalculationResult = {
+                            baseAmount: paymentAmount,
+                            serviceFee: 0,
+                            totalPayment: paymentAmount,
+                            isFeeWaived: true,
+                            isDepositPayment: false
+                        };
                     } else if (hasDeposit && hasIntermediate && !hasFinal) {
                         paymentType = 'final_payment';
                         paymentAmount = totalAmount * 0.2;
                         paymentDescription = 'Final payment (20% balance)';
+                        paymentCalculationResult = {
+                            baseAmount: paymentAmount,
+                            serviceFee: 0,
+                            totalPayment: paymentAmount,
+                            isFeeWaived: true,
+                            isDepositPayment: false
+                        };
                     }
                 }
             }
-            // SPECIAL SCENARIO: Job is work_rectified - Always calculate based on actual payments
+            // SPECIAL SCENARIO: Job is work_rectified
             else if (jobData.status === 'work_rectified') {
                 console.log('🔄 Job is work_rectified. Calculating balance based on actual payments...');
 
@@ -160,6 +246,14 @@ const PaymentPage = () => {
                     paymentDescription = `Balance payment (₦${balance.toLocaleString()})`;
                 }
 
+                paymentCalculationResult = {
+                    baseAmount: paymentAmount,
+                    serviceFee: 0,
+                    totalPayment: paymentAmount,
+                    isFeeWaived: true,
+                    isDepositPayment: false
+                };
+
                 console.log('💰 work_rectified calculation:', {
                     totalAmount,
                     totalPaid,
@@ -170,11 +264,14 @@ const PaymentPage = () => {
                     finalCount: hasFinal
                 });
             }
-            // SCENARIO 1: No payments made yet
+            // SCENARIO 1: No payments made yet - DEPOSIT with possible service fee
             else if (!hasDeposit && !hasIntermediate && !hasFinal) {
                 paymentType = 'deposit';
-                paymentAmount = totalAmount * 0.5;
                 paymentDescription = '50% Deposit to start the job';
+
+                // Calculate deposit WITH service fee
+                paymentCalculationResult = await calculatePaymentWithServiceFee(totalAmount, user.id, 'deposit');
+                paymentAmount = paymentCalculationResult.totalPayment;
             }
             // SCENARIO 2: Only deposit paid (50%), no intermediate
             else if (hasDeposit && !hasIntermediate && !hasFinal) {
@@ -183,11 +280,25 @@ const PaymentPage = () => {
                     paymentType = 'final_payment';
                     paymentAmount = totalAmount * 0.5;
                     paymentDescription = 'Final payment (50% balance)';
+                    paymentCalculationResult = {
+                        baseAmount: paymentAmount,
+                        serviceFee: 0,
+                        totalPayment: paymentAmount,
+                        isFeeWaived: true,
+                        isDepositPayment: false
+                    };
                 } else {
                     // For ongoing work, show intermediate payment option
                     paymentType = 'intermediate';
                     paymentAmount = totalAmount * 0.3;
                     paymentDescription = '30% Intermediate payment for materials';
+                    paymentCalculationResult = {
+                        baseAmount: paymentAmount,
+                        serviceFee: 0,
+                        totalPayment: paymentAmount,
+                        isFeeWaived: true,
+                        isDepositPayment: false
+                    };
                 }
             }
             // SCENARIO 3: Deposit (50%) + Intermediate (30%) paid, need final 20%
@@ -195,6 +306,13 @@ const PaymentPage = () => {
                 paymentType = 'final_payment';
                 paymentAmount = totalAmount * 0.2;
                 paymentDescription = 'Final payment (20% balance)';
+                paymentCalculationResult = {
+                    baseAmount: paymentAmount,
+                    serviceFee: 0,
+                    totalPayment: paymentAmount,
+                    isFeeWaived: true,
+                    isDepositPayment: false
+                };
             }
             // SCENARIO 4: All payments made
             else if (hasDeposit && hasIntermediate && hasFinal) {
@@ -208,23 +326,45 @@ const PaymentPage = () => {
                     paymentType = 'final_payment';
                     paymentAmount = totalAmount * 0.2;
                     paymentDescription = 'Final payment (20% balance)';
+                    paymentCalculationResult = {
+                        baseAmount: paymentAmount,
+                        serviceFee: 0,
+                        totalPayment: paymentAmount,
+                        isFeeWaived: true,
+                        isDepositPayment: false
+                    };
                 } else if (paidPercentage >= 50) {
                     // Paid 50%+, need either intermediate or final
                     paymentType = 'final_payment';
                     paymentAmount = balance;
                     paymentDescription = `Balance payment (₦${balance.toLocaleString()})`;
+                    paymentCalculationResult = {
+                        baseAmount: paymentAmount,
+                        serviceFee: 0,
+                        totalPayment: paymentAmount,
+                        isFeeWaived: true,
+                        isDepositPayment: false
+                    };
                 } else {
                     // Paid less than 50%
                     paymentType = 'deposit';
-                    paymentAmount = totalAmount * 0.5;
                     paymentDescription = '50% Deposit to start the job';
+
+                    // Calculate deposit WITH service fee
+                    paymentCalculationResult = await calculatePaymentWithServiceFee(totalAmount, user.id, 'deposit');
+                    paymentAmount = paymentCalculationResult.totalPayment;
                 }
             }
 
-            // 7. Generate reference
+            // 8. Generate reference
             const ref = generateReference(jobId);
 
-            // 8. Set job data
+            // 9. Set payment calculation state
+            if (paymentCalculationResult) {
+                setPaymentCalculation(paymentCalculationResult);
+            }
+
+            // 10. Set job data
             const jobWithDetails = {
                 ...jobData,
                 companyName: companyName,
@@ -234,13 +374,19 @@ const PaymentPage = () => {
                 paymentType: paymentType,
                 reference: ref,
                 paidAmount: paidAmount,
-                balance: balance
+                balance: balance,
+                serviceFee: paymentCalculationResult?.serviceFee || 0,
+                isServiceFeeWaived: paymentCalculationResult?.isFeeWaived || true,
+                baseAmount: paymentCalculationResult?.baseAmount || paymentAmount
             };
 
             console.log('🎯 Final payment details:', {
                 type: paymentType,
                 amount: paymentAmount,
                 description: paymentDescription,
+                baseAmount: paymentCalculationResult?.baseAmount,
+                serviceFee: paymentCalculationResult?.serviceFee,
+                isFeeWaived: paymentCalculationResult?.isFeeWaived,
                 shouldBe20Percent: paymentAmount === totalAmount * 0.2
             });
 
@@ -253,6 +399,7 @@ const PaymentPage = () => {
             setLoading(false);
         }
     };
+
     const initiateBankTransfer = async () => {
         if (!job) return;
 
@@ -320,13 +467,13 @@ const PaymentPage = () => {
                 console.log('🔄 Using existing payment record ID:', transactionId);
             }
 
-            // Prepare payment data
+            // Prepare payment data with service fee
             const paymentData = {
                 job_id: jobId,
                 user_id: user.id,
                 type: dbPaymentType,
-                amount: job.paymentAmount,
-                platform_fee: dbPaymentType === 'final_payment' ? job.paymentAmount * 0.05 : 0, // 5% fee only on final
+                amount: job.paymentAmount, // Total amount (base + service fee if applicable)
+                platform_fee: job.serviceFee || 0, // Store service fee separately
                 description: `${job.paymentType} payment for: ${job.description || `Job #${jobId.substring(0, 8)}`}`,
                 reference: reference,
                 status: 'pending',
@@ -342,7 +489,11 @@ const PaymentPage = () => {
                     created_via: 'customer_payment_page',
                     job_status: job.status,
                     total_job_amount: job.totalAmount,
-                    calculated_correctly: job.paymentAmount === job.totalAmount * (dbPaymentType === 'deposit' ? 0.5 : dbPaymentType === 'intermediate' ? 0.3 : 0.2)
+                    base_amount: job.baseAmount || (job.totalAmount * (dbPaymentType === 'deposit' ? 0.5 : dbPaymentType === 'intermediate' ? 0.3 : 0.2)),
+                    service_fee: job.serviceFee || 0,
+                    is_service_fee_waived: job.isServiceFeeWaived || true,
+                    is_deposit_payment: dbPaymentType === 'deposit',
+                    calculated_correctly: true
                 },
                 created_at: new Date().toISOString()
             };
@@ -414,6 +565,8 @@ const PaymentPage = () => {
             console.log('🎯 Navigation details:', {
                 reference,
                 amount: job.paymentAmount,
+                baseAmount: job.baseAmount,
+                serviceFee: job.serviceFee,
                 paymentType: job.paymentType,
                 transactionId
             });
@@ -423,10 +576,13 @@ const PaymentPage = () => {
                 state: {
                     reference: reference,
                     amount: job.paymentAmount,
+                    baseAmount: job.baseAmount,
+                    serviceFee: job.serviceFee,
                     totalAmount: job.totalAmount,
                     paymentType: job.paymentType,
                     transactionId: transactionId,
-                    isUpdate: !!existingPayment // Flag if this was an update
+                    isUpdate: !!existingPayment,
+                    isServiceFeeWaived: job.isServiceFeeWaived
                 }
             });
 
@@ -503,6 +659,9 @@ const PaymentPage = () => {
     const paymentAmount = job.paymentAmount || 0;
     const paymentDescription = job.paymentDescription || '';
     const companyName = job.companyName || 'Service Provider';
+    const serviceFee = job.serviceFee || 0;
+    const baseAmount = job.baseAmount || paymentAmount;
+    const isServiceFeeWaived = job.isServiceFeeWaived;
 
     return (
         <div className="min-h-screen bg-gray-50 p-4">
@@ -556,12 +715,44 @@ const PaymentPage = () => {
                             </div>
                         </div>
 
+                        {/* Service Fee Breakdown (only for deposit payments) */}
+                        {job.paymentType === 'deposit' && (
+                            <div className="pt-4 border-t border-gray-200">
+                                <h4 className="font-medium text-gray-800 mb-3">Payment Breakdown</h4>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">50% Deposit</span>
+                                        <span>₦{baseAmount.toLocaleString()}</span>
+                                    </div>
+                                    {!isServiceFeeWaived && serviceFee > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Service Fee</span>
+                                            <span className="text-blue-600">+ ₦{serviceFee.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {isServiceFeeWaived && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Service Fee</span>
+                                            <span className="text-green-600 line-through">Waived</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="pt-4 border-t">
                             <div className="flex justify-between items-center">
                                 <span className="text-lg font-bold">Amount to Pay</span>
-                                <span className="text-3xl font-bold text-naijaGreen">
-                                    ₦{paymentAmount.toLocaleString()}
-                                </span>
+                                <div className="text-right">
+                                    <div className="text-3xl font-bold text-naijaGreen">
+                                        ₦{paymentAmount.toLocaleString()}
+                                    </div>
+                                    {job.paymentType === 'deposit' && !isServiceFeeWaived && (
+                                        <div className="text-sm text-gray-500 mt-1">
+                                            (Deposit: ₦{baseAmount.toLocaleString()} + Fee: ₦{serviceFee.toLocaleString()})
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -619,6 +810,11 @@ const PaymentPage = () => {
                             <p className="text-sm text-yellow-700 mt-1">
                                 Payments are held in escrow until job completion. Your money is protected.
                                 Service providers only receive payment when you confirm job completion.
+                                {job.paymentType === 'deposit' && !isServiceFeeWaived && (
+                                    <span className="block mt-1">
+                                        Service fee is charged only on deposit payments and is non-refundable.
+                                    </span>
+                                )}
                             </p>
                         </div>
                     </div>
