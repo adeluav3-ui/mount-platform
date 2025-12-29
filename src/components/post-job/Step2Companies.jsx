@@ -28,6 +28,36 @@ export default function Step2Companies({
     const [loadingModalReviews, setLoadingModalReviews] = useState(false)
     const [showPortfolioModal, setShowPortfolioModal] = useState(false)
     const [selectedCompanyForPortfolio, setSelectedCompanyForPortfolio] = useState(null)
+    const [currentPortfolioIndex, setCurrentPortfolioIndex] = useState(0)
+    const [touchStart, setTouchStart] = useState(null)
+    const [touchEnd, setTouchEnd] = useState(null)
+
+    // Minimum swipe distance
+    const minSwipeDistance = 50
+
+    // Touch handlers
+    const onTouchStart = (e) => {
+        setTouchEnd(null)
+        setTouchStart(e.targetTouches[0].clientX)
+    }
+
+    const onTouchMove = (e) => {
+        setTouchEnd(e.targetTouches[0].clientX)
+    }
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return
+
+        const distance = touchStart - touchEnd
+        const isLeftSwipe = distance > minSwipeDistance
+        const isRightSwipe = distance < -minSwipeDistance
+
+        if (isLeftSwipe) {
+            handlePortfolioNavigation('next')
+        } else if (isRightSwipe) {
+            handlePortfolioNavigation('prev')
+        }
+    }
 
     // Fetch recent reviews for each company
     useEffect(() => {
@@ -73,6 +103,29 @@ export default function Step2Companies({
         setSelectedCompanyForPortfolio(company)
         setShowPortfolioModal(true)
     }
+
+    // Portfolio navigation function
+    const handlePortfolioNavigation = (direction) => {
+        if (!selectedCompanyForPortfolio?.portfolio_pictures) return
+
+        const totalImages = selectedCompanyForPortfolio.portfolio_pictures.length
+        let newIndex = currentPortfolioIndex
+
+        if (direction === 'next') {
+            newIndex = (currentPortfolioIndex + 1) % totalImages
+        } else if (direction === 'prev') {
+            newIndex = (currentPortfolioIndex - 1 + totalImages) % totalImages
+        }
+
+        setCurrentPortfolioIndex(newIndex)
+    }
+
+    // Function to open portfolio modal with specific image
+    const openPortfolioGallery = (company, index = 0) => {
+        setSelectedCompanyForPortfolio(company)
+        setCurrentPortfolioIndex(index)
+        setShowPortfolioModal(true)
+    }
     // Function to open reviews modal
     const handleViewAllReviews = async (company) => {
         setSelectedCompanyForReviews(company)
@@ -109,7 +162,25 @@ export default function Step2Companies({
             setLoadingModalReviews(false)
         }
     }
+    // Add keyboard navigation
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (!showPortfolioModal) return
 
+            if (e.key === 'ArrowRight') {
+                handlePortfolioNavigation('next')
+            } else if (e.key === 'ArrowLeft') {
+                handlePortfolioNavigation('prev')
+            } else if (e.key === 'Escape') {
+                setShowPortfolioModal(false)
+                setSelectedCompanyForPortfolio(null)
+                setCurrentPortfolioIndex(0)
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [showPortfolioModal, currentPortfolioIndex])
     // Function to render stars
     const renderStars = (rating, size = 'md') => {
         const sizeClasses = {
@@ -408,13 +479,13 @@ export default function Step2Companies({
                                                     <p className="text-xs font-medium text-gray-700 mb-2">Previous Work:</p>
                                                     <div className="flex gap-2 overflow-x-auto pb-2">
                                                         {c.portfolio_pictures.slice(0, 3).map((picture, index) => (
-                                                            <a
+                                                            <button
                                                                 key={index}
-                                                                href={picture}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="flex-shrink-0"
-                                                                onClick={(e) => e.stopPropagation()} // Prevent card click
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    openPortfolioGallery(c, index)
+                                                                }}
+                                                                className="flex-shrink-0 relative group"
                                                             >
                                                                 <img
                                                                     src={picture}
@@ -425,17 +496,19 @@ export default function Step2Companies({
                                                                         e.target.alt = 'Image failed to load'
                                                                     }}
                                                                 />
-                                                            </a>
+                                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition rounded-lg"></div>
+                                                            </button>
                                                         ))}
                                                         {c.portfolio_pictures.length > 3 && (
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation()
-                                                                    handleViewAllPortfolio(c)
+                                                                    openPortfolioGallery(c, 3) // Start from 4th image
                                                                 }}
-                                                                className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center border border-gray-200 hover:bg-gray-200 transition"
+                                                                className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 flex flex-col items-center justify-center border border-gray-200 hover:bg-gray-200 transition"
                                                             >
-                                                                <span className="text-xs text-gray-600">+{c.portfolio_pictures.length - 3} more</span>
+                                                                <span className="text-2xl">+</span>
+                                                                <span className="text-xs text-gray-600">{c.portfolio_pictures.length - 3} more</span>
                                                             </button>
                                                         )}
                                                     </div>
@@ -675,67 +748,93 @@ export default function Step2Companies({
                             )}
                         </div>
                         {/* PORTFOLIO MODAL */}
+                        {/* PORTFOLIO MODAL - IMAGE GALLERY WITH SWIPE */}
                         {showPortfolioModal && selectedCompanyForPortfolio && (
-                            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                                    {/* Modal Header */}
-                                    <div className="bg-naijaGreen text-white px-6 py-4 flex justify-between items-center">
-                                        <div>
-                                            <h3 className="text-xl font-bold">
-                                                {selectedCompanyForPortfolio.company_name} Portfolio
-                                            </h3>
-                                            <p className="text-green-100 text-sm">
-                                                {selectedCompanyForPortfolio.portfolio_pictures?.length || 0} work samples
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setShowPortfolioModal(false)
-                                                setSelectedCompanyForPortfolio(null)
+                            <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+                                <div className="relative w-full max-w-6xl max-h-[90vh]">
+                                    {/* Close Button */}
+                                    <button
+                                        onClick={() => {
+                                            setShowPortfolioModal(false)
+                                            setSelectedCompanyForPortfolio(null)
+                                            setCurrentPortfolioIndex(0)
+                                        }}
+                                        className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center"
+                                    >
+                                        ×
+                                    </button>
+
+                                    {/* Navigation Arrows */}
+                                    {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
+                                        <>
+                                            <button
+                                                onClick={() => handlePortfolioNavigation('prev')}
+                                                disabled={currentPortfolioIndex === 0}
+                                                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                            >
+                                                ←
+                                            </button>
+                                            <button
+                                                onClick={() => handlePortfolioNavigation('next')}
+                                                disabled={currentPortfolioIndex === selectedCompanyForPortfolio.portfolio_pictures.length - 1}
+                                                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                            >
+                                                →
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {/* Main Image Display with touch support */}
+                                    <div
+                                        className="w-full h-[80vh] flex items-center justify-center"
+                                        onTouchStart={onTouchStart}
+                                        onTouchMove={onTouchMove}
+                                        onTouchEnd={onTouchEnd}
+                                    >
+                                        <img
+                                            key={currentPortfolioIndex}
+                                            src={selectedCompanyForPortfolio.portfolio_pictures[currentPortfolioIndex]}
+                                            alt={`Portfolio ${currentPortfolioIndex + 1}`}
+                                            className="max-w-full max-h-full object-contain rounded-lg select-none"
+                                            draggable="false"
+                                            onError={(e) => {
+                                                e.target.src = '/default-portfolio.jpg'
+                                                e.target.alt = 'Image failed to load'
                                             }}
-                                            className="text-white hover:text-gray-200 text-2xl bg-white/20 rounded-full w-8 h-8 flex items-center justify-center"
-                                        >
-                                            ×
-                                        </button>
+                                        />
+                                    </div>
+                                    {/* Image Counter */}
+                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+                                        {currentPortfolioIndex + 1} / {selectedCompanyForPortfolio.portfolio_pictures?.length}
                                     </div>
 
-                                    {/* Modal Content */}
-                                    <div className="p-6 overflow-y-auto flex-1">
-                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                            {selectedCompanyForPortfolio.portfolio_pictures?.map((picture, index) => (
-                                                <a
+                                    {/* Thumbnail Strip */}
+                                    {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
+                                        <div className="mt-4 flex justify-center gap-2 overflow-x-auto py-2">
+                                            {selectedCompanyForPortfolio.portfolio_pictures.map((picture, index) => (
+                                                <button
                                                     key={index}
-                                                    href={picture}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="block"
+                                                    onClick={() => setCurrentPortfolioIndex(index)}
+                                                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentPortfolioIndex ? 'border-naijaGreen' : 'border-transparent'}`}
                                                 >
                                                     <img
                                                         src={picture}
-                                                        alt={`Portfolio ${index + 1}`}
-                                                        className="w-full h-64 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
+                                                        alt={`Thumbnail ${index + 1}`}
+                                                        className="w-full h-full object-cover hover:opacity-90"
                                                         onError={(e) => {
                                                             e.target.src = '/default-portfolio.jpg'
-                                                            e.target.alt = 'Image failed to load'
+                                                            e.target.alt = 'Thumbnail failed to load'
                                                         }}
                                                     />
-                                                    <p className="text-xs text-gray-500 mt-1 text-center">Portfolio {index + 1}</p>
-                                                </a>
+                                                </button>
                                             ))}
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* Modal Footer */}
-                                    <div className="border-t border-gray-200 px-6 py-4">
-                                        <button
-                                            onClick={() => {
-                                                setShowPortfolioModal(false)
-                                                setSelectedCompanyForPortfolio(null)
-                                            }}
-                                            className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition"
-                                        >
-                                            Close
-                                        </button>
+                                    {/* Company Info */}
+                                    <div className="text-center mt-4 text-white">
+                                        <h3 className="text-xl font-bold">{selectedCompanyForPortfolio.company_name}</h3>
+                                        <p className="text-gray-300">Portfolio Gallery</p>
                                     </div>
                                 </div>
                             </div>
