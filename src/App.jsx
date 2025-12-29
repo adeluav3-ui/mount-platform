@@ -103,10 +103,14 @@ function AppRoutes() {
   );
 }
 
-// Around line 103 in your App.jsx:
 export default function App() {
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <SupabaseProvider>
         <SettingsProvider>
           <AuthCheck>
