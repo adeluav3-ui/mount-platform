@@ -1,7 +1,7 @@
-// src/components/company/ProfileSection.jsx — FINAL WITH SUBCATEGORY PRICING + TBD
+// src/components/company/ProfileSection.jsx — WITH PORTFOLIO PICTURES
 import React from 'react'
 import { useSupabase } from '../../context/SupabaseContext'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
 
 const servicesData = {
@@ -69,8 +69,8 @@ const servicesData = {
 
 export default function ProfileSection({ company, editing, setEditing }) {
     const { supabase, user } = useSupabase()
-    const fileInputRef = useRef(null)
-
+    const profileFileInputRef = useRef(null)
+    const portfolioFileInputRef = useRef(null)
 
     const [form, setForm] = useState({
         company_name: company?.company_name || '',
@@ -83,11 +83,20 @@ export default function ProfileSection({ company, editing, setEditing }) {
     // Store selected main categories
     const [selectedCategories, setSelectedCategories] = useState(company?.services || [])
 
-    // Store price ranges per subcategory: { "Inverter installation and troubleshooting": { min: "50000", max: "80000" } } or "TBD"
+    // Store price ranges per subcategory
     const [subcategoryPrices, setSubcategoryPrices] = useState(company?.subcategory_prices || {})
 
     const [pictureKey, setPictureKey] = useState(Date.now())
+    const [portfolioPictures, setPortfolioPictures] = useState(company?.portfolio_pictures || [])
+    const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
     const navigate = useNavigate();
+
+    // Initialize portfolio pictures from company data
+    useEffect(() => {
+        if (company?.portfolio_pictures) {
+            setPortfolioPictures(company.portfolio_pictures)
+        }
+    }, [company])
 
     const toggleCategory = (cat) => {
         setSelectedCategories(prev =>
@@ -109,6 +118,102 @@ export default function ProfileSection({ company, editing, setEditing }) {
         }))
     }
 
+    // Function to upload portfolio pictures
+    const handlePortfolioUpload = async () => {
+        if (!portfolioFileInputRef.current?.files.length) return
+
+        const files = Array.from(portfolioFileInputRef.current.files)
+
+        // Check if adding these files would exceed 5 pictures
+        if (portfolioPictures.length + files.length > 5) {
+            alert(`You can only upload a maximum of 5 portfolio pictures. You currently have ${portfolioPictures.length} and tried to add ${files.length}.`)
+            return
+        }
+
+        setUploadingPortfolio(true)
+        const uploadedUrls = []
+
+        try {
+            for (const file of files) {
+                const fileExt = file.name.split('.').pop()
+                const timestamp = Date.now()
+                const randomStr = Math.random().toString(36).substring(2, 8)
+                const fileName = `${user.id}/portfolio/${timestamp}_${randomStr}.${fileExt}`
+
+                // Upload to Supabase Storage
+                const { error } = await supabase.storage
+                    .from('company-portfolio')
+                    .upload(fileName, file, { upsert: false })
+
+                if (error) throw error
+
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('company-portfolio')
+                    .getPublicUrl(fileName)
+
+                uploadedUrls.push(publicUrl)
+            }
+
+            // Update portfolio pictures state
+            const newPortfolioPictures = [...portfolioPictures, ...uploadedUrls]
+            setPortfolioPictures(newPortfolioPictures)
+
+            // Update in database
+            const { error } = await supabase
+                .from('companies')
+                .update({ portfolio_pictures: newPortfolioPictures })
+                .eq('id', user.id)
+
+            if (error) throw error
+
+            alert(`Successfully uploaded ${files.length} portfolio picture(s)!`)
+            portfolioFileInputRef.current.value = '' // Clear input
+
+        } catch (error) {
+            console.error('Error uploading portfolio pictures:', error)
+            alert('Failed to upload portfolio pictures: ' + error.message)
+        } finally {
+            setUploadingPortfolio(false)
+        }
+    }
+
+    // Function to delete a portfolio picture
+    const deletePortfolioPicture = async (pictureUrl) => {
+        if (!confirm('Are you sure you want to delete this portfolio picture?')) return
+
+        try {
+            // Extract filename from URL
+            const urlParts = pictureUrl.split('/')
+            const fileName = urlParts[urlParts.length - 1]
+            const fullPath = `${user.id}/portfolio/${fileName}`
+
+            // Remove from storage
+            const { error: storageError } = await supabase.storage
+                .from('company-portfolio')
+                .remove([fullPath])
+
+            if (storageError) console.warn('Could not delete from storage:', storageError)
+
+            // Remove from array
+            const newPortfolioPictures = portfolioPictures.filter(url => url !== pictureUrl)
+            setPortfolioPictures(newPortfolioPictures)
+
+            // Update database
+            const { error } = await supabase
+                .from('companies')
+                .update({ portfolio_pictures: newPortfolioPictures })
+                .eq('id', user.id)
+
+            if (error) throw error
+
+            alert('Portfolio picture deleted successfully!')
+        } catch (error) {
+            console.error('Error deleting portfolio picture:', error)
+            alert('Failed to delete portfolio picture: ' + error.message)
+        }
+    }
+
     const handleSave = async () => {
         const updates = {
             company_name: form.company_name,
@@ -117,16 +222,18 @@ export default function ProfileSection({ company, editing, setEditing }) {
             bank_name: form.bank_name,
             bank_account: form.bank_account,
             services: selectedCategories,
-            subcategory_prices: subcategoryPrices  // ← NEW FIELD
+            subcategory_prices: subcategoryPrices,
+            portfolio_pictures: portfolioPictures // Include portfolio pictures
         }
 
-        if (fileInputRef.current?.files[0]) {
-            const file = fileInputRef.current.files[0]
+        if (profileFileInputRef.current?.files[0]) {
+            const file = profileFileInputRef.current.files[0]
             const fileExt = file.name.split('.').pop()
             const fileName = `${user.id}/profile.${fileExt}`
             await supabase.storage.from('company-pictures').upload(fileName, file, { upsert: true })
             const { data: { publicUrl } } = supabase.storage.from('company-pictures').getPublicUrl(fileName)
             updates.picture_url = publicUrl
+            setPictureKey(Date.now()) // Refresh profile picture
         }
 
         const { error } = await supabase.from('companies').update(updates).eq('id', user.id)
@@ -152,8 +259,13 @@ export default function ProfileSection({ company, editing, setEditing }) {
                 />
                 {editing && (
                     <div className="mt-4">
-                        <input type="file" accept="image/*" ref={fileInputRef} className="block mx-auto" />
-                        <p className="text-sm text-gray-600 mt-2">Upload new company picture</p>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            ref={profileFileInputRef}
+                            className="block mx-auto"
+                        />
+                        <p className="text-sm text-gray-600 mt-2">Upload new profile picture</p>
                     </div>
                 )}
             </div>
@@ -180,7 +292,6 @@ export default function ProfileSection({ company, editing, setEditing }) {
                     <button
                         type="button"
                         onClick={() => {
-                            // Navigate to reviews page in SAME tab
                             navigate(`/company/${company.id}/reviews`);
                         }}
                         className="ml-3 text-sm text-naijaGreen hover:text-darkGreen underline"
@@ -267,7 +378,96 @@ export default function ProfileSection({ company, editing, setEditing }) {
                         />
                     </div>
 
-                    {/* NEW: SUBCATEGORY PRICING */}
+                    {/* PORTFOLIO PICTURES SECTION */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
+                        <h4 className="text-xl font-bold text-naijaGreen mb-6 flex items-center gap-2">
+                            <span>📸 Portfolio Pictures</span>
+                            <span className="text-sm font-normal text-gray-600">
+                                (Max 5 pictures) - Customers will see these when choosing companies
+                            </span>
+                        </h4>
+
+                        {/* Current Portfolio Pictures */}
+                        <div className="mb-6">
+                            <h5 className="font-medium text-gray-700 mb-3">Current Portfolio ({portfolioPictures.length}/5)</h5>
+                            {portfolioPictures.length === 0 ? (
+                                <div className="text-center py-6 bg-white rounded-xl border-2 border-dashed border-gray-300">
+                                    <div className="text-4xl mb-2 text-gray-400">📷</div>
+                                    <p className="text-gray-500">No portfolio pictures yet</p>
+                                    <p className="text-sm text-gray-400 mt-1">Add pictures of your work to attract customers</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {portfolioPictures.map((pictureUrl, index) => (
+                                        <div key={index} className="relative group">
+                                            <img
+                                                src={pictureUrl}
+                                                alt={`Portfolio ${index + 1}`}
+                                                className="w-full h-48 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                                onError={(e) => {
+                                                    e.target.src = '/default-portfolio.jpg'
+                                                    e.target.alt = 'Image failed to load'
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => deletePortfolioPicture(pictureUrl)}
+                                                className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
+                                                title="Delete picture"
+                                            >
+                                                ×
+                                            </button>
+                                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 rounded-b-lg">
+                                                <p className="text-white text-xs">Portfolio {index + 1}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Upload New Portfolio Pictures */}
+                        <div className="bg-white rounded-xl p-6 border border-gray-200">
+                            <h5 className="font-medium text-gray-700 mb-3">Upload New Pictures</h5>
+                            <div className="space-y-4">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    ref={portfolioFileInputRef}
+                                    multiple
+                                    className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-naijaGreen transition"
+                                    onChange={(e) => {
+                                        // Validate file count
+                                        if (e.target.files.length > 5) {
+                                            alert('Maximum 5 pictures allowed')
+                                            e.target.value = ''
+                                        }
+                                    }}
+                                />
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-gray-600">
+                                        {portfolioPictures.length}/5 pictures uploaded
+                                    </div>
+                                    <button
+                                        onClick={handlePortfolioUpload}
+                                        disabled={uploadingPortfolio || !portfolioFileInputRef.current?.files.length}
+                                        className="px-6 py-2 bg-naijaGreen text-white rounded-lg font-medium hover:bg-darkGreen disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {uploadingPortfolio ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Uploading...
+                                            </>
+                                        ) : 'Upload Pictures'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    📌 Tip: Upload high-quality pictures of your completed work to build trust with customers
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SUBCATEGORY PRICING */}
                     <div className="bg-gray-50 rounded-2xl p-8">
                         <h4 className="text-xl font-bold text-naijaGreen mb-6">Services & Price Range (Per Subcategory)</h4>
                         <div className="space-y-8">

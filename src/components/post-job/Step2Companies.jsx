@@ -400,7 +400,32 @@ export default function Step2Companies({
 
                                             {/* Address - NOW UNDER COMPANY NAME */}
                                             <p className="text-gray-600 text-xs sm:text-sm mt-2">{c.address}</p>
-
+                                            {/* Portfolio Pictures Preview */}
+                                            {c.portfolio_pictures && c.portfolio_pictures.length > 0 && (
+                                                <div className="mt-4">
+                                                    <p className="text-xs font-medium text-gray-700 mb-2">Previous Work:</p>
+                                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                                        {c.portfolio_pictures.slice(0, 3).map((picture, index) => (
+                                                            <div key={index} className="flex-shrink-0">
+                                                                <img
+                                                                    src={picture}
+                                                                    alt={`Portfolio ${index + 1}`}
+                                                                    className="w-20 h-20 rounded-lg object-cover border border-gray-200"
+                                                                    onError={(e) => {
+                                                                        e.target.src = '/default-portfolio.jpg'
+                                                                        e.target.alt = 'Image failed to load'
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                        {c.portfolio_pictures.length > 3 && (
+                                                            <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 flex items-center justify-center border border-gray-200">
+                                                                <span className="text-xs text-gray-600">+{c.portfolio_pictures.length - 3} more</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                             {/* Rating - STARS ONLY */}
                                             <div className="flex items-center mt-3">
                                                 {renderCompanyStars(c.average_rating || 0)}
