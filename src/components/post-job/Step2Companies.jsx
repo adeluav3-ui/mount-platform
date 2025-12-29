@@ -747,98 +747,6 @@ export default function Step2Companies({
                                 </div>
                             )}
                         </div>
-                        {/* PORTFOLIO MODAL */}
-                        {/* PORTFOLIO MODAL - IMAGE GALLERY WITH SWIPE */}
-                        {showPortfolioModal && selectedCompanyForPortfolio && (
-                            <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-                                <div className="relative w-full max-w-6xl max-h-[90vh]">
-                                    {/* Close Button */}
-                                    <button
-                                        onClick={() => {
-                                            setShowPortfolioModal(false)
-                                            setSelectedCompanyForPortfolio(null)
-                                            setCurrentPortfolioIndex(0)
-                                        }}
-                                        className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center"
-                                    >
-                                        ×
-                                    </button>
-
-                                    {/* Navigation Arrows */}
-                                    {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
-                                        <>
-                                            <button
-                                                onClick={() => handlePortfolioNavigation('prev')}
-                                                disabled={currentPortfolioIndex === 0}
-                                                className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                                            >
-                                                ←
-                                            </button>
-                                            <button
-                                                onClick={() => handlePortfolioNavigation('next')}
-                                                disabled={currentPortfolioIndex === selectedCompanyForPortfolio.portfolio_pictures.length - 1}
-                                                className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                                            >
-                                                →
-                                            </button>
-                                        </>
-                                    )}
-
-                                    {/* Main Image Display with touch support */}
-                                    <div
-                                        className="w-full h-[80vh] flex items-center justify-center"
-                                        onTouchStart={onTouchStart}
-                                        onTouchMove={onTouchMove}
-                                        onTouchEnd={onTouchEnd}
-                                    >
-                                        <img
-                                            key={currentPortfolioIndex}
-                                            src={selectedCompanyForPortfolio.portfolio_pictures[currentPortfolioIndex]}
-                                            alt={`Portfolio ${currentPortfolioIndex + 1}`}
-                                            className="max-w-full max-h-full object-contain rounded-lg select-none"
-                                            draggable="false"
-                                            onError={(e) => {
-                                                e.target.src = '/default-portfolio.jpg'
-                                                e.target.alt = 'Image failed to load'
-                                            }}
-                                        />
-                                    </div>
-                                    {/* Image Counter */}
-                                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
-                                        {currentPortfolioIndex + 1} / {selectedCompanyForPortfolio.portfolio_pictures?.length}
-                                    </div>
-
-                                    {/* Thumbnail Strip */}
-                                    {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
-                                        <div className="mt-4 flex justify-center gap-2 overflow-x-auto py-2">
-                                            {selectedCompanyForPortfolio.portfolio_pictures.map((picture, index) => (
-                                                <button
-                                                    key={index}
-                                                    onClick={() => setCurrentPortfolioIndex(index)}
-                                                    className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentPortfolioIndex ? 'border-naijaGreen' : 'border-transparent'}`}
-                                                >
-                                                    <img
-                                                        src={picture}
-                                                        alt={`Thumbnail ${index + 1}`}
-                                                        className="w-full h-full object-cover hover:opacity-90"
-                                                        onError={(e) => {
-                                                            e.target.src = '/default-portfolio.jpg'
-                                                            e.target.alt = 'Thumbnail failed to load'
-                                                        }}
-                                                    />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Company Info */}
-                                    <div className="text-center mt-4 text-white">
-                                        <h3 className="text-xl font-bold">{selectedCompanyForPortfolio.company_name}</h3>
-                                        <p className="text-gray-300">Portfolio Gallery</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         {/* Modal Footer */}
                         <div className="border-t border-gray-200 px-6 py-4">
                             <button
@@ -851,6 +759,97 @@ export default function Step2Companies({
                             >
                                 Close
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* PORTFOLIO MODAL - IMAGE GALLERY WITH SWIPE */}
+            {showPortfolioModal && selectedCompanyForPortfolio && (
+                <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+                    <div className="relative w-full max-w-6xl max-h-[90vh]">
+                        {/* Close Button */}
+                        <button
+                            onClick={() => {
+                                setShowPortfolioModal(false)
+                                setSelectedCompanyForPortfolio(null)
+                                setCurrentPortfolioIndex(0)
+                            }}
+                            className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center"
+                        >
+                            ×
+                        </button>
+
+                        {/* Navigation Arrows */}
+                        {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
+                            <>
+                                <button
+                                    onClick={() => handlePortfolioNavigation('prev')}
+                                    disabled={currentPortfolioIndex === 0}
+                                    className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    ←
+                                </button>
+                                <button
+                                    onClick={() => handlePortfolioNavigation('next')}
+                                    disabled={currentPortfolioIndex === selectedCompanyForPortfolio.portfolio_pictures.length - 1}
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                    →
+                                </button>
+                            </>
+                        )}
+
+                        {/* Main Image Display with touch support */}
+                        <div
+                            className="w-full h-[80vh] flex items-center justify-center"
+                            onTouchStart={onTouchStart}
+                            onTouchMove={onTouchMove}
+                            onTouchEnd={onTouchEnd}
+                        >
+                            <img
+                                key={currentPortfolioIndex}
+                                src={selectedCompanyForPortfolio.portfolio_pictures[currentPortfolioIndex]}
+                                alt={`Portfolio ${currentPortfolioIndex + 1}`}
+                                className="max-w-full max-h-full object-contain rounded-lg select-none"
+                                draggable="false"
+                                onError={(e) => {
+                                    e.target.src = '/default-portfolio.jpg'
+                                    e.target.alt = 'Image failed to load'
+                                }}
+                            />
+                        </div>
+                        {/* Image Counter */}
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+                            {currentPortfolioIndex + 1} / {selectedCompanyForPortfolio.portfolio_pictures?.length}
+                        </div>
+
+                        {/* Thumbnail Strip */}
+                        {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
+                            <div className="mt-4 flex justify-center gap-2 overflow-x-auto py-2">
+                                {selectedCompanyForPortfolio.portfolio_pictures.map((picture, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setCurrentPortfolioIndex(index)}
+                                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentPortfolioIndex ? 'border-naijaGreen' : 'border-transparent'}`}
+                                    >
+                                        <img
+                                            src={picture}
+                                            alt={`Thumbnail ${index + 1}`}
+                                            className="w-full h-full object-cover hover:opacity-90"
+                                            onError={(e) => {
+                                                e.target.src = '/default-portfolio.jpg'
+                                                e.target.alt = 'Thumbnail failed to load'
+                                            }}
+                                        />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Company Info */}
+                        <div className="text-center mt-4 text-white">
+                            <h3 className="text-xl font-bold">{selectedCompanyForPortfolio.company_name}</h3>
+                            <p className="text-gray-300">Portfolio Gallery</p>
                         </div>
                     </div>
                 </div>
