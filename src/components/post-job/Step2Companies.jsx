@@ -641,72 +641,7 @@ export default function Step2Companies({
                                             <div className="mb-4">
                                                 <p className="text-gray-700 whitespace-pre-line">{review.comment}</p>
                                             </div>
-                                            {/* PORTFOLIO MODAL */}
-                                            {showPortfolioModal && selectedCompanyForPortfolio && (
-                                                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                                                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                                                        {/* Modal Header */}
-                                                        <div className="bg-naijaGreen text-white px-6 py-4 flex justify-between items-center">
-                                                            <div>
-                                                                <h3 className="text-xl font-bold">
-                                                                    {selectedCompanyForPortfolio.company_name} Portfolio
-                                                                </h3>
-                                                                <p className="text-green-100 text-sm">
-                                                                    {selectedCompanyForPortfolio.portfolio_pictures?.length || 0} work samples
-                                                                </p>
-                                                            </div>
-                                                            <button
-                                                                onClick={() => {
-                                                                    setShowPortfolioModal(false)
-                                                                    setSelectedCompanyForPortfolio(null)
-                                                                }}
-                                                                className="text-white hover:text-gray-200 text-2xl bg-white/20 rounded-full w-8 h-8 flex items-center justify-center"
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </div>
 
-                                                        {/* Modal Content */}
-                                                        <div className="p-6 overflow-y-auto flex-1">
-                                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                                                {selectedCompanyForPortfolio.portfolio_pictures?.map((picture, index) => (
-                                                                    <a
-                                                                        key={index}
-                                                                        href={picture}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="block"
-                                                                    >
-                                                                        <img
-                                                                            src={picture}
-                                                                            alt={`Portfolio ${index + 1}`}
-                                                                            className="w-full h-64 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
-                                                                            onError={(e) => {
-                                                                                e.target.src = '/default-portfolio.jpg'
-                                                                                e.target.alt = 'Image failed to load'
-                                                                            }}
-                                                                        />
-                                                                        <p className="text-xs text-gray-500 mt-1 text-center">Portfolio {index + 1}</p>
-                                                                    </a>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Modal Footer */}
-                                                        <div className="border-t border-gray-200 px-6 py-4">
-                                                            <button
-                                                                onClick={() => {
-                                                                    setShowPortfolioModal(false)
-                                                                    setSelectedCompanyForPortfolio(null)
-                                                                }}
-                                                                className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition"
-                                                            >
-                                                                Close
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
                                             {/* Review Photos */}
                                             {review.review_photos && review.review_photos.length > 0 && (
                                                 <div className="mb-4">
@@ -739,7 +674,72 @@ export default function Step2Companies({
                                 </div>
                             )}
                         </div>
+                        {/* PORTFOLIO MODAL */}
+                        {showPortfolioModal && selectedCompanyForPortfolio && (
+                            <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                                    {/* Modal Header */}
+                                    <div className="bg-naijaGreen text-white px-6 py-4 flex justify-between items-center">
+                                        <div>
+                                            <h3 className="text-xl font-bold">
+                                                {selectedCompanyForPortfolio.company_name} Portfolio
+                                            </h3>
+                                            <p className="text-green-100 text-sm">
+                                                {selectedCompanyForPortfolio.portfolio_pictures?.length || 0} work samples
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setShowPortfolioModal(false)
+                                                setSelectedCompanyForPortfolio(null)
+                                            }}
+                                            className="text-white hover:text-gray-200 text-2xl bg-white/20 rounded-full w-8 h-8 flex items-center justify-center"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
 
+                                    {/* Modal Content */}
+                                    <div className="p-6 overflow-y-auto flex-1">
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                            {selectedCompanyForPortfolio.portfolio_pictures?.map((picture, index) => (
+                                                <a
+                                                    key={index}
+                                                    href={picture}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="block"
+                                                >
+                                                    <img
+                                                        src={picture}
+                                                        alt={`Portfolio ${index + 1}`}
+                                                        className="w-full h-64 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
+                                                        onError={(e) => {
+                                                            e.target.src = '/default-portfolio.jpg'
+                                                            e.target.alt = 'Image failed to load'
+                                                        }}
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1 text-center">Portfolio {index + 1}</p>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Modal Footer */}
+                                    <div className="border-t border-gray-200 px-6 py-4">
+                                        <button
+                                            onClick={() => {
+                                                setShowPortfolioModal(false)
+                                                setSelectedCompanyForPortfolio(null)
+                                            }}
+                                            className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition"
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {/* Modal Footer */}
                         <div className="border-t border-gray-200 px-6 py-4">
                             <button
