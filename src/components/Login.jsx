@@ -644,10 +644,38 @@ export default function Login() {
                         {/* Error Display */}
                         {error && (
                             <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 mb-2">
                                     <span className="text-red-500">⚠️</span>
                                     <p className="text-red-700 font-medium">{error}</p>
                                 </div>
+
+                                {/* Add resend confirmation for email not confirmed errors */}
+                                {error.includes('not confirmed') || error.includes('Email not confirmed') ? (
+                                    <div className="mt-3">
+                                        <p className="text-sm text-red-600 mb-2">Your email needs to be confirmed.</p>
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                try {
+                                                    const { error: resendError } = await supabase.auth.resend({
+                                                        type: 'signup',
+                                                        email: email,
+                                                        options: {
+                                                            emailRedirectTo: window.location.origin + '/login?confirmed=true'
+                                                        }
+                                                    });
+                                                    if (resendError) throw resendError;
+                                                    alert('✅ Confirmation email resent! Check your inbox.');
+                                                } catch (err) {
+                                                    setError('Failed to resend: ' + err.message);
+                                                }
+                                            }}
+                                            className="px-4 py-2 bg-red-500 text-white text-sm rounded-lg hover:bg-red-600 transition-colors"
+                                        >
+                                            Resend Confirmation Email
+                                        </button>
+                                    </div>
+                                ) : null}
                             </div>
                         )}
 
