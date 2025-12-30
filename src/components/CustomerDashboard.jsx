@@ -571,86 +571,39 @@ export default function CustomerDashboard() {
             </div>
 
             {/* MODERN PROFESSIONAL BANNER */}
+            {/* MODERN PROFESSIONAL BANNER - SAME COLORS & SIZE */}
             {currentView === 'dashboard' && (
-                <div className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-16 sm:py-24 px-4">
-                    {/* Subtle geometric pattern overlay */}
+                <div className="relative bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-12 sm:py-20 text-center px-4 overflow-hidden">
+                    {/* Subtle wave pattern */}
                     <div className="absolute inset-0 opacity-10">
-                        <div className="absolute top-0 left-1/4 w-64 h-64 bg-gradient-to-r from-naijaGreen/30 to-transparent rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-to-l from-darkGreen/20 to-transparent rounded-full blur-3xl"></div>
-                    </div>
-
-                    {/* Animated gradient dots */}
-                    <div className="absolute inset-0">
-                        {[...Array(20)].map((_, i) => (
-                            <div
-                                key={i}
-                                className="absolute w-1 h-1 bg-gradient-to-r from-naijaGreen/40 to-darkGreen/40 rounded-full animate-pulse"
-                                style={{
-                                    top: `${Math.random() * 100}%`,
-                                    left: `${Math.random() * 100}%`,
-                                    animationDelay: `${i * 0.2}s`
-                                }}
-                            ></div>
-                        ))}
+                        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/20 rounded-full blur-3xl"></div>
+                        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-white/20 rounded-full blur-3xl"></div>
                     </div>
 
                     <div className="relative max-w-7xl mx-auto">
-                        {/* Main headline with elegant typography */}
-                        <div className="mb-8">
-                            <div className="inline-block px-4 py-2 bg-gradient-to-r from-naijaGreen/20 to-darkGreen/20 rounded-2xl backdrop-blur-sm border border-white/10 mb-6">
-                                <span className="text-sm font-medium tracking-wider uppercase">Mount Platform</span>
+                        {/* Main headline with refined typography */}
+                        <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
+                            <span className="block">Bringing Essential Services</span>
+                            <span className="block">To Your Comfort Zone</span>
+                        </h2>
+
+                        {/* Enhanced subtitle with decorative elements */}
+                        <div className="flex items-center justify-center space-x-6 text-lg sm:text-2xl opacity-95">
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-white rounded-full mr-2 animate-pulse"></div>
+                                <span className="font-medium">Verified companies</span>
                             </div>
-
-                            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-                                <span className="block mb-2">Bringing Essential</span>
-                                <span className="relative inline-block">
-                                    <span className="relative z-10 bg-gradient-to-r from-naijaGreen via-emerald-400 to-darkGreen bg-clip-text text-transparent">
-                                        Services To Your
-                                    </span>
-                                    <span className="absolute -bottom-1 left-0 w-full h-1 bg-gradient-to-r from-naijaGreen to-darkGreen rounded-full"></span>
-                                </span>
-                                <span className="block mt-2">Comfort Zone</span>
-                            </h2>
-                        </div>
-
-                        {/* Subtitle with enhanced typography */}
-                        <div className="max-w-3xl mx-auto">
-                            <div className="relative">
-                                <p className="text-xl sm:text-2xl md:text-3xl font-light tracking-wide opacity-90 leading-relaxed">
-                                    <span className="inline-flex items-center">
-                                        <span className="w-3 h-3 bg-gradient-to-r from-naijaGreen to-darkGreen rounded-full mr-3 animate-pulse"></span>
-                                        Verified Companies
-                                    </span>
-                                    <span className="mx-4 text-gray-400">•</span>
-                                    <span className="inline-flex items-center">
-                                        <span className="w-3 h-3 bg-gradient-to-r from-naijaGreen to-darkGreen rounded-full mr-3 animate-pulse"></span>
-                                        Highly Skilled Artisans
-                                    </span>
-                                </p>
-
-                                {/* Decorative line */}
-                                <div className="mt-10 pt-6 border-t border-white/10 relative">
-                                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-1 bg-gradient-to-r from-transparent via-naijaGreen to-transparent rounded-full"></div>
-                                </div>
+                            <div className="text-white/50">•</div>
+                            <div className="flex items-center">
+                                <div className="w-3 h-3 bg-white rounded-full mr-2 animate-pulse"></div>
+                                <span className="font-medium">Highly skilled artisans</span>
                             </div>
                         </div>
 
-                        {/* Subtle tech-inspired elements */}
-                        <div className="mt-12 flex justify-center space-x-8 opacity-60">
-                            <div className="flex items-center space-x-2">
-                                <div className="w-8 h-px bg-gradient-to-r from-transparent to-naijaGreen"></div>
-                                <span className="text-sm font-medium tracking-wider">Trust</span>
-                                <div className="w-8 h-px bg-gradient-to-l from-transparent to-darkGreen"></div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <div className="w-8 h-px bg-gradient-to-r from-transparent to-naijaGreen"></div>
-                                <span className="text-sm font-medium tracking-wider">Quality</span>
-                                <div className="w-8 h-px bg-gradient-to-l from-transparent to-darkGreen"></div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <div className="w-8 h-px bg-gradient-to-r from-transparent to-naijaGreen"></div>
-                                <span className="text-sm font-medium tracking-wider">Reliability</span>
-                                <div className="w-8 h-px bg-gradient-to-l from-transparent to-darkGreen"></div>
+                        {/* Subtle bottom accent */}
+                        <div className="mt-10 pt-6 border-t border-white/20 relative">
+                            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                                <div className="w-20 h-1 bg-white/30 rounded-full"></div>
                             </div>
                         </div>
                     </div>
