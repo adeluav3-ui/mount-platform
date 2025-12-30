@@ -69,6 +69,32 @@ const services = {
         "Concrete patching",
         "Fence repair",
         "Other"
+    ],
+    "Beauty & Personal Care": [
+        "Women's Hairstyling",
+        "Men's Haircut",
+        "Women's Haircut",
+        "Kids Hair Styling",
+        "Hair Braiding",
+        "Hair Weaving",
+        "Manicure",
+        "Pedicure",
+        "Nail Art",
+        "Nail Extensions",
+        "Lash Extensions",
+        "Makeup Services",
+        "Facial Treatment",
+        "Other"
+    ],
+
+    "Cleaning Services": [
+        // No subcategories - just "Other"
+        "Other"
+    ],
+
+    "Pest Control & Fumigation": [
+        // No subcategories - just "Other"
+        "Other"
     ]
 }
 

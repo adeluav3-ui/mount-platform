@@ -17,8 +17,96 @@ const mainCategories = [
     "Painting & Finishing",
     "Home Appliances",
     "Security & Smart Home",
-    "Roofing & Masonry"
+    "Roofing & Masonry",
+    "Beauty & Personal Care",
+    "Cleaning Services",
+    "Pest Control & Fumigation"
 ]
+
+const subCategoriesByMain = {
+    "Electrical": [
+        "Light fixture installation and replacement",
+        "Socket and switch repairs",
+        "Circuit breaker fixes",
+        "Ceiling fan installation",
+        "Wiring faults and rewiring",
+        "Inverter installation and troubleshooting",
+        "Other"
+    ],
+    "Plumbing": [
+        "Leaking taps and pipes",
+        "Toilet repairs and replacements",
+        "Water heater installation and servicing",
+        "Drain unclogging",
+        "Pump installation and repairs",
+        "Shower and sink installation",
+        "Other"
+    ],
+    "Carpentry / Woodwork": [
+        "Door installation and alignment",
+        "Cabinet repairs and custom builds",
+        "Wardrobe installation",
+        "Furniture repair",
+        "Shelving and storage builds",
+        "Other"
+    ],
+    "AC & Refrigeration": [
+        "AC installation",
+        "AC servicing",
+        "Refrigeration repair",
+        "Thermostat issues",
+        "Other"
+    ],
+    "Painting & Finishing": [
+        "Interior and exterior painting",
+        "Wall repairs",
+        "POP patching and finishing",
+        "Other"
+    ],
+    "Home Appliances": [
+        "Washing machine repair",
+        "Gas cooker installation and repair",
+        "Microwave repair",
+        "TV mounting",
+        "Other"
+    ],
+    "Security & Smart Home": [
+        "CCTV installation",
+        "Doorbell camera (smart bell) installation",
+        "Smart lock installation",
+        "Alarm system installation",
+        "Other"
+    ],
+    "Roofing & Masonry": [
+        "Roof leakage repair",
+        "Tile installation and repairs",
+        "Concrete patching",
+        "Fence repair",
+        "Other"
+    ],
+    "Beauty & Personal Care": [
+        "Women's Hairstyling",
+        "Men's Haircut",
+        "Women's Haircut",
+        "Kids Hair Styling",
+        "Hair Braiding",
+        "Hair Weaving",
+        "Manicure",
+        "Pedicure",
+        "Nail Art",
+        "Nail Extensions",
+        "Lash Extensions",
+        "Makeup Services",
+        "Facial Treatment",
+        "Other"
+    ],
+    "Cleaning Services": [
+        "Other"
+    ],
+    "Pest Control & Fumigation": [
+        "Other"
+    ]
+}
 
 export default function Login() {
     const [isSignUp, setIsSignUp] = useState(false)
@@ -42,16 +130,40 @@ export default function Login() {
     const [companyFormData, setCompanyFormData] = useState({});
     const [showPassword, setShowPassword] = useState(false); // NEW: Password visibility state
     const [searchParams] = useSearchParams();
+    const [selectedSubCategories, setSelectedSubCategories] = useState({})
 
     const { signUp, signIn, supabase } = useSupabase()
     const navigate = useNavigate();
 
-    const toggleService = (service) => {
-        setSelectedServices(prev =>
-            prev.includes(service)
+    const toggleMainService = (service) => {
+        setSelectedServices(prev => {
+            const newSelected = prev.includes(service)
                 ? prev.filter(s => s !== service)
                 : [...prev, service]
-        )
+
+            // If unselecting a main category, also clear its subcategories
+            if (prev.includes(service) && !newSelected.includes(service)) {
+                const newSubCategories = { ...selectedSubCategories }
+                delete newSubCategories[service]
+                setSelectedSubCategories(newSubCategories)
+            }
+
+            return newSelected
+        })
+    }
+
+    const toggleSubService = (mainCategory, subService) => {
+        setSelectedSubCategories(prev => {
+            const currentSubs = prev[mainCategory] || []
+            const newSubs = currentSubs.includes(subService)
+                ? currentSubs.filter(s => s !== subService)
+                : [...currentSubs, subService]
+
+            return {
+                ...prev,
+                [mainCategory]: newSubs.length > 0 ? newSubs : undefined
+            }
+        })
     }
     useEffect(() => {
         const handleEmailConfirmation = async () => {
@@ -173,6 +285,12 @@ export default function Login() {
                 .eq('code', enteredCode);
 
             console.log("2. Code marked as used");
+            const subcategory_prices = {}
+            selectedSubCategories.forEach(([mainCategory, subCats]) => {
+                subCats.forEach(subCat => {
+                    subcategory_prices[subCat] = "TBD" // Default to "To Be Determined"
+                })
+            })
 
             // CREATE AUTH USER
             const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -234,8 +352,8 @@ export default function Login() {
                 address: address,
                 phone: phone,
                 email: email,
-                services: selectedServices,
-                subcategory_prices: {},
+                services: selectedServices, // Main categories
+                subcategory_prices: subcategory_prices, // Specific subcategories with "TBD"
                 bank_name: bankName,
                 bank_account: bankAccount,
                 approved: true,
@@ -303,7 +421,21 @@ export default function Login() {
             if (selectedServices.length === 0) {
                 throw new Error("Please select at least one service category");
             }
+            // Check subcategories for categories that require them
+            const missingSubCategories = selectedServices.filter(mainCat => {
+                const subCats = subCategoriesByMain[mainCat] || []
+                const hasMultipleOptions = subCats.length > 1 || (subCats.length === 1 && subCats[0] !== "Other")
 
+                if (hasMultipleOptions) {
+                    const selectedSubs = selectedSubCategories[mainCat] || []
+                    return selectedSubs.length === 0
+                }
+                return false
+            })
+
+            if (missingSubCategories.length > 0) {
+                throw new Error(`Please select specific services for: ${missingSubCategories.join(', ')}`);
+            }
             const enteredCode = code.trim().toUpperCase();
             console.log("5. Entered code (trimmed):", enteredCode);
 
@@ -331,6 +463,7 @@ export default function Login() {
                 address,
                 phone,
                 selectedServices,
+                selectedSubCategories,
                 bankName,
                 bankAccount,
                 code: enteredCode,
@@ -519,12 +652,15 @@ export default function Login() {
                                 </div>
 
                                 {/* Services Selection */}
+                                {/* Services Selection */}
                                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                                     <div className="mb-4">
                                         <p className="font-semibold text-gray-800 text-lg mb-1">Services You Offer *</p>
                                         <p className="text-sm text-gray-600">Select at least one service category</p>
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                                    {/* Main Categories */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
                                         {mainCategories.map(service => (
                                             <label
                                                 key={service}
@@ -535,13 +671,52 @@ export default function Login() {
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedServices.includes(service)}
-                                                    onChange={() => toggleService(service)}
+                                                    onChange={() => toggleMainService(service)}
                                                     className="w-5 h-5 text-naijaGreen rounded focus:ring-naijaGreen"
                                                 />
                                                 <span className="font-medium text-gray-700">{service}</span>
                                             </label>
                                         ))}
                                     </div>
+
+                                    {/* Subcategories for selected main categories */}
+                                    {selectedServices.map(mainCategory => {
+                                        const subCategories = subCategoriesByMain[mainCategory] || []
+
+                                        // Don't show subcategory selection for categories with only "Other"
+                                        if (subCategories.length === 1 && subCategories[0] === "Other") {
+                                            return null
+                                        }
+
+                                        return (
+                                            <div key={`subs-${mainCategory}`} className="mb-4 p-4 bg-white rounded-lg border border-gray-300">
+                                                <h4 className="font-semibold text-gray-800 mb-3">
+                                                    {mainCategory} - Select specific services you offer:
+                                                </h4>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    {subCategories.map(subService => (
+                                                        <label
+                                                            key={subService}
+                                                            className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all ${selectedSubCategories[mainCategory]?.includes(subService)
+                                                                ? 'bg-blue-50 border border-blue-300'
+                                                                : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'}`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedSubCategories[mainCategory]?.includes(subService) || false}
+                                                                onChange={() => toggleSubService(mainCategory, subService)}
+                                                                className="w-4 h-4 text-naijaGreen rounded focus:ring-naijaGreen"
+                                                            />
+                                                            <span className="text-sm text-gray-700">{subService}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    Selected: {selectedSubCategories[mainCategory]?.length || 0} services
+                                                </p>
+                                            </div>
+                                        )
+                                    })}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
