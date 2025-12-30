@@ -574,7 +574,7 @@ export default function CustomerDashboard() {
             {currentView === 'dashboard' && (
                 <div className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-12 sm:py-20 text-center px-4">
                     <h2 className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4">
-                        Get Your Home Fixed Fast & Safe
+                        Bringing Essential Services To Your Comfort Zone
                     </h2>
                     <p className="text-lg sm:text-2xl opacity-90">
                         Verified companies • Highly skilled artisans
