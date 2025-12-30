@@ -22,6 +22,7 @@ import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
+import LandingPage from './pages/LandingPage';
 
 // Move AppRoutes inside the Providers
 function AppRoutes() {
@@ -49,6 +50,7 @@ function AppRoutes() {
     console.log('No user, showing public routes');
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         {/* Welcome screen as default */}
         <Route path="/" element={<WelcomeScreen />} />
 
