@@ -443,7 +443,7 @@ export default function CustomerDashboard() {
                 </div>
 
                 <p className="text-lg sm:text-xl text-gray-600 mb-6 sm:mb-8">
-                    Ready to find a trusted expert for your home fix?
+                    Need reliable services delivered to your doorstep?
                 </p>
                 <button
                     onClick={() => setViewWithHistory('postJob')}
