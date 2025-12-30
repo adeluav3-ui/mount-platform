@@ -570,43 +570,15 @@ export default function CustomerDashboard() {
                 </div>
             </div>
 
-            {/* MODERN PROFESSIONAL BANNER */}
-            {/* MODERN PROFESSIONAL BANNER - SAME COLORS & SIZE */}
+            {/* BANNER */}
             {currentView === 'dashboard' && (
-                <div className="relative bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-12 sm:py-20 text-center px-4 overflow-hidden">
-                    {/* Subtle wave pattern */}
-                    <div className="absolute inset-0 opacity-10">
-                        <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/20 rounded-full blur-3xl"></div>
-                        <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-white/20 rounded-full blur-3xl"></div>
-                    </div>
-
-                    <div className="relative max-w-7xl mx-auto">
-                        {/* Main headline with refined typography */}
-                        <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight">
-                            <span className="block">Bringing Essential Services</span>
-                            <span className="block">To Your Comfort Zone</span>
-                        </h2>
-
-                        {/* Enhanced subtitle with decorative elements */}
-                        <div className="flex items-center justify-center space-x-6 text-lg sm:text-2xl opacity-95">
-                            <div className="flex items-center">
-                                <div className="w-3 h-3 bg-white rounded-full mr-2 animate-pulse"></div>
-                                <span className="font-medium">Verified companies</span>
-                            </div>
-                            <div className="text-white/50">•</div>
-                            <div className="flex items-center">
-                                <div className="w-3 h-3 bg-white rounded-full mr-2 animate-pulse"></div>
-                                <span className="font-medium">Highly skilled artisans</span>
-                            </div>
-                        </div>
-
-                        {/* Subtle bottom accent */}
-                        <div className="mt-10 pt-6 border-t border-white/20 relative">
-                            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                                <div className="w-20 h-1 bg-white/30 rounded-full"></div>
-                            </div>
-                        </div>
-                    </div>
+                <div className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-12 sm:py-20 text-center px-4">
+                    <h2 className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4">
+                        Bringing Essential Services To Your Comfort Zone
+                    </h2>
+                    <p className="text-lg sm:text-2xl opacity-90">
+                        Verified companies • Highly skilled artisans
+                    </p>
                 </div>
             )}
 
