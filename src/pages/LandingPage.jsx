@@ -196,7 +196,7 @@ export default function LandingPage() {
                                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                         <span className="text-green-600">✓</span>
                                     </div>
-                                    <span className="text-gray-700">Secure payments with 5% platform fee</span>
+                                    <span className="text-gray-700">Secure payments</span>
                                 </div>
                             </div>
                         </div>
