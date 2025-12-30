@@ -138,7 +138,6 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
                                                     to arrange work outside our platform. Violation results in:
                                                 </p>
                                                 <ul className="list-disc pl-5 mt-2 space-y-1">
-                                                    <li>₦500,000 penalty per violation</li>
                                                     <li>Immediate platform suspension</li>
                                                     <li>Legal action for damages</li>
                                                 </ul>
@@ -155,9 +154,9 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
                                             <div>
                                                 <h4 className="font-bold text-gray-900">2.1 Response Time Requirements</h4>
                                                 <ul className="list-disc pl-5 mt-2 space-y-2">
-                                                    <li><strong>Job Proposals:</strong> Respond within 24 hours</li>
-                                                    <li><strong>Customer Messages:</strong> Respond within 12 hours</li>
-                                                    <li><strong>Onsite Requests:</strong> Schedule within 72 hours if requested</li>
+                                                    <li><strong>Job Proposals:</strong> Respond within 1 hour</li>
+                                                    <li><strong>Customer Messages:</strong> Respond within 1 hour</li>
+                                                    <li><strong>Onsite Requests:</strong> Schedule within 48 hours if requested</li>
                                                 </ul>
                                             </div>
 
@@ -214,7 +213,7 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
                                                     <strong>Governing Law:</strong> Laws of the Federal Republic of Nigeria
                                                 </p>
                                                 <p className="mt-2">
-                                                    <strong>Dispute Venue:</strong> Courts in Lagos State, Nigeria
+                                                    <strong>Dispute Venue:</strong> Courts in Ogun State, Nigeria
                                                 </p>
                                                 <p className="mt-2 text-sm">
                                                     This agreement is enforceable in Nigerian courts.

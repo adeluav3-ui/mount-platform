@@ -269,6 +269,7 @@ export default function Login() {
                 address,
                 phone,
                 selectedServices,
+                selectedSubCategories, // OBJECT, not array
                 bankName,
                 bankAccount,
                 code: enteredCode,
@@ -276,21 +277,14 @@ export default function Login() {
             } = companyFormData;
 
             console.log("=== COMPANY SIGNUP AFTER AGREEMENT ACCEPTANCE ===");
-            console.log("1. Code:", enteredCode);
+            console.log("1. Selected Services:", selectedServices);
+            console.log("2. Selected Subcategories:", selectedSubCategories);
 
             // Mark code as used
             await supabase
                 .from('verification_codes')
                 .update({ used: true })
                 .eq('code', enteredCode);
-
-            console.log("2. Code marked as used");
-            const subcategory_prices = {}
-            selectedSubCategories.forEach(([mainCategory, subCats]) => {
-                subCats.forEach(subCat => {
-                    subcategory_prices[subCat] = "TBD" // Default to "To Be Determined"
-                })
-            })
 
             // CREATE AUTH USER
             const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -308,13 +302,11 @@ export default function Login() {
             if (authError) throw authError;
 
             const userId = authData.user.id;
-            console.log("3. Company User ID:", userId);
 
             let pictureUrl = null;
 
             // Upload picture if provided
             if (companyPicture) {
-                console.log("4. Uploading company picture...");
                 const fileExt = companyPicture.name.split('.').pop();
                 const fileName = `${userId}/profile.${fileExt}`;
 
@@ -329,8 +321,23 @@ export default function Login() {
                     .getPublicUrl(fileName);
 
                 pictureUrl = urlData.publicUrl;
-                console.log("5. Picture uploaded:", pictureUrl);
             }
+
+            // Create subcategory_prices object from selected subcategories
+            const subcategory_prices = {}
+
+            // FIX: Iterate over object entries, not array
+            if (selectedSubCategories && typeof selectedSubCategories === 'object') {
+                Object.entries(selectedSubCategories).forEach(([mainCategory, subCats]) => {
+                    if (subCats && Array.isArray(subCats)) {
+                        subCats.forEach(subCat => {
+                            subcategory_prices[subCat] = "TBD"
+                        })
+                    }
+                })
+            }
+
+            console.log("3. Subcategory prices to save:", subcategory_prices);
 
             // INSERT PROFILE
             const { error: profileError } = await supabase.from('profiles').upsert({
@@ -342,18 +349,17 @@ export default function Login() {
                 updated_at: new Date().toISOString()
             });
 
-            console.log("6. Profile insert:", profileError?.message || "Success");
             if (profileError) throw profileError;
 
-            // INSERT COMPANY DETAILS WITH AGREEMENT ACCEPTANCE
+            // INSERT COMPANY DETAILS
             const { error: companyInsertError } = await supabase.from('companies').insert({
                 id: userId,
                 company_name: companyName,
                 address: address,
                 phone: phone,
                 email: email,
-                services: selectedServices, // Main categories
-                subcategory_prices: subcategory_prices, // Specific subcategories with "TBD"
+                services: selectedServices, // Main categories array
+                subcategory_prices: subcategory_prices, // Subcategories object
                 bank_name: bankName,
                 bank_account: bankAccount,
                 approved: true,
@@ -364,7 +370,6 @@ export default function Login() {
                 created_at: new Date().toISOString()
             });
 
-            console.log("7. Company insert:", companyInsertError?.message || "Success");
             if (companyInsertError) throw companyInsertError;
 
             alert('Company created successfully! Agreement accepted. You can now log in.');
