@@ -151,7 +151,7 @@ export default function Login() {
                         name: companyName,
                         phone: phone
                     },
-                    emailRedirectTo: window.location.origin + '/dashboard'
+                    emailRedirectTo: window.location.origin + '/login?confirmed=true'
                 }
             });
 
