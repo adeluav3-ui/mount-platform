@@ -6,6 +6,8 @@ import { useSupabase } from '../context/SupabaseContext'
 import TermsAndConditions from './TermsAndConditions';
 import CompanyAgreement from './CompanyAgreement';
 import logo from '../assets/logo.png';
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const mainCategories = [
     "Electrical",
@@ -39,6 +41,7 @@ export default function Login() {
     const [showCompanyAgreement, setShowCompanyAgreement] = useState(false);
     const [companyFormData, setCompanyFormData] = useState({});
     const [showPassword, setShowPassword] = useState(false); // NEW: Password visibility state
+    const [searchParams] = useSearchParams();
 
     const { signUp, signIn, supabase } = useSupabase()
     const navigate = useNavigate();
@@ -50,7 +53,24 @@ export default function Login() {
                 : [...prev, service]
         )
     }
+    useEffect(() => {
+        const handleEmailConfirmation = async () => {
+            const confirmed = searchParams.get('confirmed');
 
+            if (confirmed === 'true') {
+                // Show success message
+                alert('✅ Email confirmed successfully! You can now log in.');
+
+                // Optional: Auto-switch to login form
+                setIsSignUp(false);
+
+                // Clear the URL parameters
+                window.history.replaceState({}, '', '/login');
+            }
+        };
+
+        handleEmailConfirmation();
+    }, [searchParams]);
     const handleTermsAccept = async () => {
         setShowTerms(false);
         setLoading(true);
@@ -64,8 +84,20 @@ export default function Login() {
             console.log("2. Name:", name);
             console.log("3. Phone:", phone);
 
-            const { data: authData, error: authError } = await signUp(email, password)
-            if (authError) throw authError
+            // FIX: Use supabase.auth.signUp directly with redirectTo
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: email.trim(),
+                password: password.trim(),
+                options: {
+                    data: {
+                        name: name,
+                        phone: phone
+                    },
+                    emailRedirectTo: window.location.origin + '/login?confirmed=true'
+                }
+            });
+
+            if (authError) throw authError;
 
             console.log("4. Auth User ID:", authData.user?.id);
 
