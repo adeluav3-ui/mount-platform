@@ -27,20 +27,16 @@ import LandingPage from './pages/LandingPage';
 function AppRoutes() {
   const { user, loading } = useSupabase();
 
-
   console.log('AppRoutes render:', {
     user,
     loading,
-    path: window.location.pathname,
-    hash: window.location.hash,
-    fullUrl: window.location.href
+    path: window.location.pathname
   });
 
   if (loading) {
-    console.log('Loading state');
     return (
       <div className="min-h-screen bg-naijaGreen flex items-center justify-center">
-        <p className="text-white text-4xl font-bold animate-pulse">Mount</p>
+        <p className="text-white text-4xl font-bold animate-pulse">Loading Mount...</p>
       </div>
     );
   }
@@ -49,13 +45,13 @@ function AppRoutes() {
     console.log('No user, showing public routes');
     return (
       <Routes>
+        {/* Landing page is the homepage */}
         <Route path="/" element={<LandingPage />} />
-
 
         {/* Login/Signup screen */}
         <Route path="/login" element={<Login />} />
 
-        {/* Catch-all redirect to welcome screen */}
+        {/* Catch-all redirect to landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -65,26 +61,23 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* TEST ROUTE - Add this first */}
+      {/* Test route - optional */}
       <Route path="/test-route" element={<div className="p-8 text-2xl">Test Route Works!</div>} />
 
-      {/* Payment verification route */}
+      {/* Payment routes */}
       <Route path="/payment/pending" element={<PaymentPending />} />
-
-      {/* Bank Transfer Payment */}
       <Route path="/payment/bank-transfer/:jobId" element={<BankTransferPayment />} />
 
+      {/* Main routes */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="/payment/:jobId" element={<PaymentPage />} />
 
-      {/* Add Review Route */}
+      {/* Review routes */}
       <Route path="/review/:jobId" element={<ReviewSubmission />} />
-
-      {/* Add Company Reviews Route */}
       <Route path="/company/:companyId/reviews" element={<CompanyReviewsPage />} />
 
-      {/* Admin Routes */}
+      {/* Admin routes */}
       <Route path="/admin" element={<AdminDashboard />}>
         <Route index element={<AdminStats />} />
         <Route path="stats" element={<AdminStats />} />
