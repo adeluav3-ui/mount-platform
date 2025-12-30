@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { SupabaseProvider, useSupabase } from './context/SupabaseContext';
 import { SettingsProvider } from './context/SettingsContext';
 import AuthCheck from './components/AuthCheck';
-import WelcomeScreen from './components/WelcomeScreen';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PaymentPage from './components/payment/PaymentPage';
@@ -51,8 +50,7 @@ function AppRoutes() {
     return (
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        {/* Welcome screen as default */}
-        <Route path="/" element={<WelcomeScreen />} />
+
 
         {/* Login/Signup screen */}
         <Route path="/login" element={<Login />} />
