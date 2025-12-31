@@ -241,7 +241,6 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="front-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                    onClick={(e) => e.preventDefault()}  // ← ADD THIS LINE
                                 >
                                     Choose File
                                 </label>
