@@ -222,6 +222,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                     </div>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => setFrontImage(null)}
                                     className="text-red-500 hover:text-red-700"
                                 >
@@ -241,6 +242,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="front-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                    onClick={(e) => e.preventDefault()}  // ← ADD THIS LINE
                                 >
                                     Choose File
                                 </label>
@@ -265,6 +267,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                     </div>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => setBackImage(null)}
                                     className="text-red-500 hover:text-red-700"
                                 >
@@ -284,6 +287,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="back-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                    onClick={(e) => e.preventDefault()}
                                 >
                                     Choose File
                                 </label>
@@ -309,6 +313,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                     </div>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={() => setSelfieImage(null)}
                                     className="text-red-500 hover:text-red-700"
                                 >
@@ -328,6 +333,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="selfie-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                    onClick={(e) => e.preventDefault()}
                                 >
                                     Choose File
                                 </label>
@@ -376,6 +382,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                         <p className="text-gray-600">Get verified to build trust with service providers</p>
                     </div>
                     <button
+                        type="button"
                         onClick={handleClose}
                         className="text-gray-500 hover:text-gray-700 text-2xl"
                         disabled={uploading}
