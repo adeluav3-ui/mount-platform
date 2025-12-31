@@ -200,7 +200,18 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         }
     };
     const renderStep2 = () => (
-        <form onSubmit={(e) => e.preventDefault()}> {/* ← ADD FORM WRAPPER */}
+        <div
+            onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }}
+            onReset={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }}
+        >
             <h3 className="text-xl font-bold text-gray-800 mb-4">Step 2: Upload Documents</h3>
 
             <div className="space-y-6">
@@ -235,14 +246,17 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    onChange={(e) => handleImageUpload(e, setFrontImage, 'Front ID')}
+                                    onChange={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleImageUpload(e, setFrontImage, 'Front ID');
+                                    }}
                                     className="hidden"
                                     id="front-upload"
                                 />
                                 <label
                                     htmlFor="front-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                // NO onClick handler here
                                 >
                                     Choose File
                                 </label>
@@ -251,7 +265,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     </div>
                 </div>
 
-                {/* Back of ID (Optional) */}
+                {/* Back of ID */}
                 <div>
                     <label className="block text-gray-700 mb-2">Back of ID (Optional)</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
@@ -280,7 +294,11 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    onChange={(e) => handleImageUpload(e, setBackImage)}
+                                    onChange={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleImageUpload(e, setBackImage, 'Back ID');
+                                    }}
                                     className="hidden"
                                     id="back-upload"
                                 />
@@ -295,7 +313,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     </div>
                 </div>
 
-                {/* Selfie with ID (Optional) */}
+                {/* Selfie with ID */}
                 <div>
                     <label className="block text-gray-700 mb-2">Selfie with ID (Optional)</label>
                     <p className="text-sm text-gray-500 mb-2">Helps speed up verification</p>
@@ -325,7 +343,11 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    onChange={(e) => handleImageUpload(e, setSelfieImage)}
+                                    onChange={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleImageUpload(e, setSelfieImage, 'Selfie');
+                                    }}
                                     className="hidden"
                                     id="selfie-upload"
                                 />
@@ -358,13 +380,6 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     {uploading ? 'Submitting...' : 'Submit Verification'}
                 </button>
             </div>
-        </form>
-    );
-    const renderStep3 = () => (
-        <div className="text-center py-8">
-            <div className="w-16 h-16 border-4 border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Submitting Verification</h3>
-            <p className="text-gray-600">Please wait while we process your documents...</p>
         </div>
     );
 
