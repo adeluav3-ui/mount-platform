@@ -177,6 +177,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
 
             <div className="flex justify-end">
                 <button
+                    type="button"
                     onClick={() => idType ? setStep(2) : setError('Please select an ID type')}
                     className="bg-naijaGreen text-white px-6 py-3 rounded-xl font-medium hover:bg-darkGreen"
                 >
@@ -240,6 +241,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="front-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                    onClick={(e) => e.preventDefault()}  // ← ADD THIS LINE
                                 >
                                     Choose File
                                 </label>
@@ -338,12 +340,14 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
 
             <div className="flex justify-between mt-8">
                 <button
+                    type="button"
                     onClick={() => setStep(1)}
                     className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50"
                 >
                     ← Back
                 </button>
                 <button
+                    type="button"
                     onClick={handleSubmit}
                     disabled={!frontImage || uploading}
                     className="bg-naijaGreen text-white px-6 py-3 rounded-xl font-medium hover:bg-darkGreen disabled:opacity-50"
