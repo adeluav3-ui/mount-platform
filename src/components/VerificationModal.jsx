@@ -200,7 +200,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         }
     };
     const renderStep2 = () => (
-        <div
+        <form
             onSubmit={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -211,6 +211,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                 e.stopPropagation();
                 return false;
             }}
+            style={{ display: 'contents' }}
         >
             <h3 className="text-xl font-bold text-gray-800 mb-4">Step 2: Upload Documents</h3>
 
@@ -380,6 +381,16 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     {uploading ? 'Submitting...' : 'Submit Verification'}
                 </button>
             </div>
+        </form>  // ← CORRECT CLOSING TAG
+    );
+
+    // Add this after renderStep2() function, before the main return
+
+    const renderStep3 = () => (
+        <div className="text-center py-8">
+            <div className="w-16 h-16 border-4 border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Submitting Verification</h3>
+            <p className="text-gray-600">Please wait while we process your documents...</p>
         </div>
     );
 
