@@ -200,7 +200,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         }
     };
     const renderStep2 = () => (
-        <div>
+        <form onSubmit={(e) => e.preventDefault()}> {/* ← ADD FORM WRAPPER */}
             <h3 className="text-xl font-bold text-gray-800 mb-4">Step 2: Upload Documents</h3>
 
             <div className="space-y-6">
@@ -242,7 +242,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="front-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                    onClick={(e) => e.preventDefault()}  // ← ADD THIS LINE
+                                // NO onClick handler here
                                 >
                                     Choose File
                                 </label>
@@ -287,7 +287,6 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="back-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                    onClick={(e) => e.preventDefault()}
                                 >
                                     Choose File
                                 </label>
@@ -333,7 +332,6 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <label
                                     htmlFor="selfie-upload"
                                     className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                    onClick={(e) => e.preventDefault()}
                                 >
                                     Choose File
                                 </label>
@@ -360,9 +358,8 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     {uploading ? 'Submitting...' : 'Submit Verification'}
                 </button>
             </div>
-        </div>
+        </form>
     );
-
     const renderStep3 = () => (
         <div className="text-center py-8">
             <div className="w-16 h-16 border-4 border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
