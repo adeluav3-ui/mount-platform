@@ -116,7 +116,49 @@ export default function ProfileSection({ company, editing, setEditing }) {
     const [selectedPortfolioFiles, setSelectedPortfolioFiles] = useState([])
     const [uploadingPortfolio, setUploadingPortfolio] = useState(false)
     const [activeServicesTab, setActiveServicesTab] = useState('main')
+    const [showNewServiceDropdown, setShowNewServiceDropdown] = useState({})
     const navigate = useNavigate();
+
+
+    // Function to get available services to add (services not already selected)
+    const getAvailableServices = (category) => {
+        const allServices = servicesData[category] || []
+        const displaySubs = getDisplaySubcategories(category)
+        return allServices.filter(service => !displaySubs.includes(service))
+    }
+
+    // Function to toggle dropdown
+    const toggleDropdown = (category) => {
+        setShowNewServiceDropdown(prev => ({
+            ...prev,
+            [category]: !prev[category]
+        }))
+    }
+
+    // Function to add service from dropdown
+    const addServiceFromDropdown = (category, service) => {
+        // Check if already exists
+        if (getDisplaySubcategories(category).includes(service)) {
+            alert(`"${service}" is already added for ${category}`)
+            return
+        }
+
+        // Add to new subcategories list
+        setNewSubcategories(prev => ({
+            ...prev,
+            [category]: [...(prev[category] || []), service]
+        }))
+
+        // Initialize as TBD
+        handleTBD(service)
+
+        // Close dropdown
+        setShowNewServiceDropdown(prev => ({
+            ...prev,
+            [category]: false
+        }))
+    }
+
 
     // Initialize original subcategories from company data
     useEffect(() => {
@@ -676,6 +718,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                         {selectedCategories.map(category => {
                                             const displaySubs = getDisplaySubcategories(category)
                                             const hasOriginalSubs = originalSubcategories[category]?.length > 0
+                                            const availableServices = getAvailableServices(category)
 
                                             return (
                                                 <div key={category} className="border border-gray-200 rounded-xl p-5">
@@ -696,37 +739,59 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                                             )}
                                                         </div>
 
-                                                        {/* Add new subcategory input */}
-                                                        <div className="flex gap-2">
-                                                            <input
-                                                                type="text"
-                                                                value={newSubcategoryInputs[category] || ''}
-                                                                onChange={(e) => setNewSubcategoryInputs(prev => ({
-                                                                    ...prev,
-                                                                    [category]: e.target.value
-                                                                }))}
-                                                                placeholder="Add new service..."
-                                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 min-w-0"
-                                                                onKeyPress={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        addNewSubcategory(category, newSubcategoryInputs[category])
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <button
-                                                                onClick={() => addNewSubcategory(category, newSubcategoryInputs[category])}
-                                                                disabled={!newSubcategoryInputs[category]?.trim()}
-                                                                className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
-                                                            >
-                                                                Add New
-                                                            </button>
+                                                        {/* Add new service dropdown */}
+                                                        <div className="relative">
+                                                            {availableServices.length > 0 ? (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => toggleDropdown(category)}
+                                                                        className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-2"
+                                                                    >
+                                                                        <span>+ Add Service</span>
+                                                                        <svg
+                                                                            className={`w-4 h-4 transition-transform ${showNewServiceDropdown[category] ? 'rotate-180' : ''}`}
+                                                                            fill="none"
+                                                                            stroke="currentColor"
+                                                                            viewBox="0 0 24 24"
+                                                                        >
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                                        </svg>
+                                                                    </button>
+
+                                                                    {showNewServiceDropdown[category] && (
+                                                                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10 max-h-60 overflow-y-auto">
+                                                                            <div className="p-2">
+                                                                                <div className="px-3 py-2 text-xs text-gray-500 border-b">
+                                                                                    Select from available services:
+                                                                                </div>
+                                                                                {availableServices.map(service => (
+                                                                                    <button
+                                                                                        key={service}
+                                                                                        onClick={() => addServiceFromDropdown(category, service)}
+                                                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md flex items-center gap-2"
+                                                                                    >
+                                                                                        <span>+</span>
+                                                                                        <span className="truncate">{service}</span>
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            ) : (
+                                                                <div className="text-sm text-gray-500 px-3 py-2">
+                                                                    All services added
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
 
                                                     {displaySubs.length === 0 ? (
                                                         <div className="text-center py-6 bg-gray-50 rounded-lg">
                                                             <p className="text-gray-500">No services selected for this category</p>
-                                                            <p className="text-sm text-gray-400 mt-1">Add a service above to get started</p>
+                                                            <p className="text-sm text-gray-400 mt-1">
+                                                                Click "Add Service" to add from available options
+                                                            </p>
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-4">
@@ -743,7 +808,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                                                                 <span className="font-medium text-gray-800">{sub}</span>
                                                                                 {isNew && (
                                                                                     <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                                                                        New
+                                                                                        Added
                                                                                     </span>
                                                                                 )}
                                                                                 {isOriginal && (
@@ -832,6 +897,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                 )}
                             </div>
                         )}
+
                     </div>
 
                     {/* Portfolio Pictures Card */}
