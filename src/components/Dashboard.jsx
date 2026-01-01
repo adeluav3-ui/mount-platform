@@ -1,16 +1,18 @@
-// src/components/Dashboard.jsx — DEBUG VERSION
+// src/components/Dashboard.jsx — UPDATED WITH DEVICE REGISTRATION
 import React from 'react';
 import { useSupabase } from '../context/SupabaseContext'
 import CustomerDashboard from './CustomerDashboard'
 import CompanyDashboard from './company/CompanyDashboard'
+import DeviceRegistration from './DeviceRegistration'; // ADD THIS IMPORT
 import { useEffect, useState } from 'react'
 import { Navigate } from 'react-router-dom'
+
 
 export default function Dashboard() {
     const { user, supabase } = useSupabase()
     const [role, setRole] = useState('customer') // Default to customer
     const [loading, setLoading] = useState(false)
-    // Start as not loading
+    const [showDeviceCheck, setShowDeviceCheck] = useState(false); // NEW STATE
 
     useEffect(() => {
         if (!user) {
@@ -73,6 +75,8 @@ export default function Dashboard() {
                 if (companyData?.data) {
                     console.log('✅ User is COMPANY')
                     setRole('company')
+                    // Show device check for companies
+                    setShowDeviceCheck(true);
                 } else {
                     console.log('✅ User is CUSTOMER')
                     setRole('customer')
@@ -110,6 +114,15 @@ export default function Dashboard() {
     }
 
     console.log('Rendering dashboard for role:', role)
-    // Render appropriate dashboard
-    return role === 'company' ? <CompanyDashboard /> : <CustomerDashboard />
+
+    // Render appropriate dashboard with DeviceRegistration for companies
+    return (
+        <>
+            {/* Add DeviceRegistration for companies */}
+            {role === 'company' && showDeviceCheck && <DeviceRegistration />}
+
+            {/* Render the appropriate dashboard */}
+            {role === 'company' ? <CompanyDashboard /> : <CustomerDashboard />}
+        </>
+    );
 }

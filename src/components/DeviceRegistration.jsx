@@ -1,0 +1,230 @@
+// src/components/DeviceRegistration.jsx
+import { useEffect, useState } from 'react';
+import { useSupabase } from '../context/SupabaseContext';
+
+export default function DeviceRegistration() {
+    const { user, supabase } = useSupabase();
+    const [status, setStatus] = useState('initializing');
+    const [showPrompt, setShowPrompt] = useState(false);
+
+    useEffect(() => {
+        if (!user) return;
+
+        const registerDevice = async () => {
+            try {
+                console.log('=== DEVICE REGISTRATION START ===');
+                setStatus('checking');
+
+                // Wait for OneSignal
+                let retries = 0;
+                const maxRetries = 5;
+
+                while (!window.OneSignal && retries < maxRetries) {
+                    console.log('Waiting for OneSignal...', retries);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    retries++;
+                }
+
+                if (!window.OneSignal) {
+                    console.error('OneSignal not available after retries');
+                    setStatus('onesignal-not-loaded');
+                    return;
+                }
+
+                console.log('OneSignal is ready');
+
+                // Check current subscription
+                const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
+                console.log('Current subscription status:', isSubscribed);
+
+                // Check if already registered in database
+                const { data: company } = await supabase
+                    .from('companies')
+                    .select('onesignal_player_id')
+                    .eq('id', user.id)
+                    .single();
+
+                const hasPlayerId = company?.onesignal_player_id;
+
+                if (!isSubscribed || !hasPlayerId) {
+                    // Show permission prompt
+                    setShowPrompt(true);
+
+                    if (!isSubscribed) {
+                        console.log('Not subscribed, requesting permission...');
+                        setStatus('requesting');
+
+                        // Request permission
+                        const permission = await window.OneSignal.Notifications.requestPermission();
+                        console.log('Permission result:', permission);
+
+                        if (permission === 'granted') {
+                            // Get player ID
+                            const playerId = await window.OneSignal.User.PushSubscription.id;
+
+                            if (playerId) {
+                                console.log('Player ID obtained:', playerId);
+                                await storePlayerId(user.id, playerId);
+                                setStatus('registered');
+
+                                // Hide prompt after success
+                                setTimeout(() => setShowPrompt(false), 3000);
+                            } else {
+                                setStatus('no-player-id');
+                            }
+                        } else {
+                            setStatus('denied');
+                            // Keep prompt visible for a bit
+                            setTimeout(() => setShowPrompt(false), 5000);
+                        }
+                    } else if (isSubscribed && !hasPlayerId) {
+                        // Subscribed but not in database
+                        const playerId = await window.OneSignal.User.PushSubscription.id;
+                        if (playerId) {
+                            await storePlayerId(user.id, playerId);
+                            setStatus('registered');
+                            setShowPrompt(false);
+                        }
+                    }
+                } else {
+                    // Already subscribed and registered
+                    console.log('Device already registered');
+                    setStatus('already-registered');
+                    setShowPrompt(false);
+                }
+
+            } catch (error) {
+                console.error('Device registration error:', error);
+                setStatus('error');
+            }
+        };
+
+        // Start registration after a short delay
+        setTimeout(registerDevice, 1000);
+    }, [user, supabase]);
+
+    const storePlayerId = async (userId, playerId) => {
+        try {
+            console.log('Storing player ID:', playerId);
+
+            // Store in company_devices table
+            const { error: deviceError } = await supabase
+                .from('company_devices')
+                .upsert({
+                    company_id: userId,
+                    player_id: playerId,
+                    device_type: 'web',
+                    device_name: navigator.userAgent.substring(0, 100),
+                    is_active: true,
+                    last_active: new Date().toISOString()
+                }, {
+                    onConflict: 'player_id'
+                });
+
+            if (deviceError) {
+                console.warn('Could not save to company_devices:', deviceError);
+            }
+
+            // Also update companies table for backward compatibility
+            const { error: companyError } = await supabase
+                .from('companies')
+                .update({ onesignal_player_id: playerId })
+                .eq('id', userId);
+
+            if (companyError) {
+                console.warn('Could not update companies table:', companyError);
+            }
+
+            console.log('✅ Player ID stored successfully');
+            return true;
+        } catch (error) {
+            console.error('Error storing player ID:', error);
+            return false;
+        }
+    };
+
+    // Status messages
+    const statusMessages = {
+        'initializing': 'Setting up notifications...',
+        'checking': 'Checking notification status...',
+        'requesting': 'Please allow notifications to get job alerts...',
+        'registered': '✅ Notifications enabled! You will now receive job alerts.',
+        'already-registered': '✅ Notifications already enabled',
+        'denied': '❌ Notifications were blocked. You can enable them later in browser settings.',
+        'no-player-id': 'Could not get device ID. Please refresh the page.',
+        'onesignal-not-loaded': 'OneSignal not loaded. Please refresh.',
+        'error': 'An error occurred. Please refresh the page.'
+    };
+
+    return (
+        <>
+            {/* Hidden status for debugging */}
+            <div className="hidden">
+                Device Registration: {statusMessages[status] || status}
+            </div>
+
+            {/* Permission Prompt Modal */}
+            {showPrompt && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+                        <div className="text-center mb-6">
+                            <div className="text-6xl mb-4">🔔</div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">
+                                Enable Job Notifications
+                            </h3>
+                            <p className="text-gray-600">
+                                Get instant alerts when customers send you jobs. Never miss an opportunity!
+                            </p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* Status display */}
+                            <div className={`p-3 rounded-lg text-center ${status === 'requesting' ? 'bg-blue-50 text-blue-800' :
+                                    status === 'registered' ? 'bg-green-50 text-green-800' :
+                                        status === 'denied' ? 'bg-yellow-50 text-yellow-800' :
+                                            'bg-gray-50 text-gray-800'
+                                }`}>
+                                {statusMessages[status]}
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="flex gap-3">
+                                {status === 'denied' || status === 'error' ? (
+                                    <>
+                                        <button
+                                            onClick={() => setShowPrompt(false)}
+                                            className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-medium"
+                                        >
+                                            Skip for Now
+                                        </button>
+                                        <button
+                                            onClick={() => window.location.reload()}
+                                            className="flex-1 bg-naijaGreen text-white py-3 rounded-lg font-medium hover:bg-darkGreen"
+                                        >
+                                            Try Again
+                                        </button>
+                                    </>
+                                ) : status === 'registered' || status === 'already-registered' ? (
+                                    <button
+                                        onClick={() => setShowPrompt(false)}
+                                        className="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600"
+                                    >
+                                        Got It!
+                                    </button>
+                                ) : null}
+                            </div>
+
+                            {/* Help text */}
+                            <p className="text-xs text-gray-500 text-center mt-4">
+                                {status === 'denied' ?
+                                    'To enable later: Click the lock icon in your address bar → Site settings → Notifications → Allow' :
+                                    'Click "Allow" in the browser permission dialog'
+                                }
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
