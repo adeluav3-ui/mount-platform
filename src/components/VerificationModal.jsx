@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
+import { useEffect } from 'react';
 
 const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
     const { user, supabase } = useSupabase();
@@ -11,6 +12,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
     const [selfieImage, setSelfieImage] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
+    const [cameraProcessing, setCameraProcessing] = useState(false);
 
     const ID_TYPES = [
         { value: 'nin', label: 'NIN (National Identification Number)' },
@@ -18,48 +20,123 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         { value: 'passport', label: 'International Passport' }
     ];
 
-    const handleImageUpload = async (e, setImageFunction, fieldName) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    console.log('📱 Camera Debug:', {
-        hasFile: !!e.target.files?.[0],
-        fileType: e.target.files?.[0]?.type,
-        fileName: e.target.files?.[0]?.name
-    });
 
-    const file = e.target.files[0];
-    if (file) {
-        // Check file size
-        if (file.size > 5 * 1024 * 1024) {
-            setError(`${fieldName} file size must be less than 5MB`);
+
+    // Add this inside your component, after state declarations
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const preventNavigation = (e) => {
+            // Prevent page refresh/back navigation during camera use
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        };
+
+        // Add event listeners
+        window.addEventListener('beforeunload', preventNavigation);
+        window.addEventListener('unload', preventNavigation);
+
+        // Also prevent back button
+        window.history.pushState(null, '', window.location.pathname);
+        window.addEventListener('popstate', preventNavigation);
+
+        return () => {
+            window.removeEventListener('beforeunload', preventNavigation);
+            window.removeEventListener('unload', preventNavigation);
+            window.removeEventListener('popstate', preventNavigation);
+        };
+    }, [isOpen]);
+
+    const handleCameraCapture = async (e, setImageFunction, fieldName) => {
+        console.log('📸 Camera capture started');
+
+        // Set processing state
+        setCameraProcessing(true);
+
+        // Prevent all default behaviors
+        e.preventDefault();
+        e.stopPropagation();
+
+        // IMPORTANT: Stop immediate propagation
+        e.nativeEvent.stopImmediatePropagation();
+
+        const file = e.target.files[0];
+        if (!file) {
+            setCameraProcessing(false);
             return;
         }
-        
-        // Check file type
-        if (!file.type.startsWith('image/')) {
-            setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
-            return;
-        }
-        
-        // For camera photos, they might be blob URLs
-        // Convert to proper file if needed
-        let processedFile = file;
-        
-        // If file is from camera (no name or temporary)
-        if (!file.name || file.name === 'image.jpg' || file.name === 'blob') {
+
+        console.log('Camera file captured:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
+
+        // Process the file
+        try {
             // Create a proper file name
             const fileName = `${fieldName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.jpg`;
-            processedFile = new File([file], fileName, { type: file.type });
+            const processedFile = new File([file], fileName, { type: file.type });
+
+            // Set the image
+            setImageFunction(processedFile);
+            setError('');
+
+            // Clear input value
+            e.target.value = '';
+
+            console.log('✅ Camera photo processed successfully');
+        } catch (err) {
+            console.error('Camera processing error:', err);
+            setError('Failed to process camera photo. Please try again.');
+        } finally {
+            setCameraProcessing(false);
         }
-        
-        setImageFunction(processedFile);
-        setError('');
-        
-        // Clear the input value to allow re-upload of same file
-        e.target.value = '';
-    }
-};
+    };
+
+    const handleImageUpload = async (e, setImageFunction, fieldName) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        console.log('📱 Camera Debug:', {
+            hasFile: !!e.target.files?.[0],
+            fileType: e.target.files?.[0]?.type,
+            fileName: e.target.files?.[0]?.name
+        });
+
+        const file = e.target.files[0];
+        if (file) {
+            // Check file size
+            if (file.size > 5 * 1024 * 1024) {
+                setError(`${fieldName} file size must be less than 5MB`);
+                return;
+            }
+
+            // Check file type
+            if (!file.type.startsWith('image/')) {
+                setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
+                return;
+            }
+
+            // For camera photos, they might be blob URLs
+            // Convert to proper file if needed
+            let processedFile = file;
+
+            // If file is from camera (no name or temporary)
+            if (!file.name || file.name === 'image.jpg' || file.name === 'blob') {
+                // Create a proper file name
+                const fileName = `${fieldName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.jpg`;
+                processedFile = new File([file], fileName, { type: file.type });
+            }
+
+            setImageFunction(processedFile);
+            setError('');
+
+            // Clear the input value to allow re-upload of same file
+            e.target.value = '';
+        }
+    };
     const uploadToStorage = async (file, path) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
@@ -248,7 +325,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     <label className="block text-gray-700 mb-2">
                         Front of ID <span className="text-red-500">* Required</span>
                     </label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6">
                         {frontImage ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center">
@@ -270,25 +347,41 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                             </div>
                         ) : (
                             <div>
-                                <p className="text-gray-500 mb-2">Upload front photo of your ID</p>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                      capture="environment"
-                                    onChange={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleImageUpload(e, setFrontImage, 'Front ID');
-                                    }}
-                                    className="hidden"
-                                    id="front-upload"
-                                />
-                                <label
-                                    htmlFor="front-upload"
-                                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                >
-                                    Choose File
-                                </label>
+                                <p className="text-gray-500 mb-3 text-center">Upload front photo of your ID</p>
+                                <div className="flex flex-col gap-3">
+                                    {/* Camera option */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        onChange={(e) => handleCameraCapture(e, setFrontImage, 'Front ID')}
+                                        className="hidden"
+                                        id="front-camera"
+                                    />
+                                    <label
+                                        htmlFor="front-camera"
+                                        className="inline-flex items-center justify-center gap-2 bg-blue-100 text-blue-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-blue-200 transition-colors"
+                                    >
+                                        <span className="text-xl">📸</span>
+                                        <span>Take Photo with Camera</span>
+                                    </label>
+
+                                    {/* Gallery option */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageUpload(e, setFrontImage, 'Front ID')}
+                                        className="hidden"
+                                        id="front-gallery"
+                                    />
+                                    <label
+                                        htmlFor="front-gallery"
+                                        className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                                    >
+                                        <span className="text-xl">📁</span>
+                                        <span>Choose from Gallery</span>
+                                    </label>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -296,8 +389,10 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
 
                 {/* Back of ID */}
                 <div>
-                    <label className="block text-gray-700 mb-2">Back of ID (Optional)</label>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                    <label className="block text-gray-700 mb-2">
+                        Back of ID <span className="text-gray-500">(Optional)</span>
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6">
                         {backImage ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center">
@@ -319,24 +414,41 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                             </div>
                         ) : (
                             <div>
-                                <p className="text-gray-500 mb-2">Upload back photo of your ID</p>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleImageUpload(e, setBackImage, 'Back ID');
-                                    }}
-                                    className="hidden"
-                                    id="back-upload"
-                                />
-                                <label
-                                    htmlFor="back-upload"
-                                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                >
-                                    Choose File
-                                </label>
+                                <p className="text-gray-500 mb-3 text-center">Upload back photo of your ID</p>
+                                <div className="flex flex-col gap-3">
+                                    {/* Camera option */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        onChange={(e) => handleCameraCapture(e, setBackImage, 'Back ID')}
+                                        className="hidden"
+                                        id="back-camera"
+                                    />
+                                    <label
+                                        htmlFor="back-camera"
+                                        className="inline-flex items-center justify-center gap-2 bg-blue-100 text-blue-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-blue-200 transition-colors"
+                                    >
+                                        <span className="text-xl">📸</span>
+                                        <span>Take Photo with Camera</span>
+                                    </label>
+
+                                    {/* Gallery option */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageUpload(e, setBackImage, 'Back ID')}
+                                        className="hidden"
+                                        id="back-gallery"
+                                    />
+                                    <label
+                                        htmlFor="back-gallery"
+                                        className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                                    >
+                                        <span className="text-xl">📁</span>
+                                        <span>Choose from Gallery</span>
+                                    </label>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -344,9 +456,11 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
 
                 {/* Selfie with ID */}
                 <div>
-                    <label className="block text-gray-700 mb-2">Selfie with ID (Optional)</label>
-                    <p className="text-sm text-gray-500 mb-2">Helps speed up verification</p>
-                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
+                    <label className="block text-gray-700 mb-2">
+                        Selfie with ID <span className="text-gray-500">(Optional)</span>
+                    </label>
+                    <p className="text-sm text-gray-500 mb-3">Helps speed up verification</p>
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-6">
                         {selfieImage ? (
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center">
@@ -368,25 +482,41 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                             </div>
                         ) : (
                             <div>
-                                <p className="text-gray-500 mb-2">Upload selfie holding your ID</p>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                     capture="user"
-                                    onChange={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleImageUpload(e, setSelfieImage, 'Selfie');
-                                    }}
-                                    className="hidden"
-                                    id="selfie-upload"
-                                />
-                                <label
-                                    htmlFor="selfie-upload"
-                                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
-                                >
-                                    Choose File
-                                </label>
+                                <p className="text-gray-500 mb-3 text-center">Upload selfie holding your ID</p>
+                                <div className="flex flex-col gap-3">
+                                    {/* Camera option (front camera for selfie) */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        capture="user"  // Front camera for selfie
+                                        onChange={(e) => handleCameraCapture(e, setSelfieImage, 'Selfie')}
+                                        className="hidden"
+                                        id="selfie-camera"
+                                    />
+                                    <label
+                                        htmlFor="selfie-camera"
+                                        className="inline-flex items-center justify-center gap-2 bg-blue-100 text-blue-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-blue-200 transition-colors"
+                                    >
+                                        <span className="text-xl">🤳</span>
+                                        <span>Take Selfie with Camera</span>
+                                    </label>
+
+                                    {/* Gallery option */}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageUpload(e, setSelfieImage, 'Selfie')}
+                                        className="hidden"
+                                        id="selfie-gallery"
+                                    />
+                                    <label
+                                        htmlFor="selfie-gallery"
+                                        className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors"
+                                    >
+                                        <span className="text-xl">📁</span>
+                                        <span>Choose from Gallery</span>
+                                    </label>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -404,13 +534,13 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                 <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={!frontImage || uploading}
+                    disabled={!frontImage || uploading || cameraProcessing}
                     className="bg-naijaGreen text-white px-6 py-3 rounded-xl font-medium hover:bg-darkGreen disabled:opacity-50"
                 >
-                    {uploading ? 'Submitting...' : 'Submit Verification'}
+                    {cameraProcessing ? 'Processing Camera...' : uploading ? 'Submitting...' : 'Submit Verification'}
                 </button>
             </div>
-        </form>  // ← CORRECT CLOSING TAG
+        </form>
     );
 
     const renderStep3 = () => (
