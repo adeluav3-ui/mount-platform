@@ -1,12 +1,22 @@
-// src/components/DeviceRegistration.jsx - FIXED VERSION
-import { useEffect, useState } from 'react';
+// src/components/DeviceRegistration.jsx - UPDATED WITH onComplete PROP
+import { useEffect, useState, useCallback } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 
-export default function DeviceRegistration() {
+export default function DeviceRegistration({ onComplete }) {
     const { user, supabase } = useSupabase();
     const [status, setStatus] = useState('initializing');
     const [showPrompt, setShowPrompt] = useState(false);
     const [hasChecked, setHasChecked] = useState(false);
+
+    // Mark as completed and notify parent
+    const markAsCompleted = useCallback(() => {
+        console.log('DeviceRegistration marking as completed');
+        setHasChecked(true);
+        if (onComplete) {
+            console.log('Calling onComplete callback');
+            onComplete();
+        }
+    }, [onComplete]);
 
     useEffect(() => {
         if (!user || hasChecked) return;
@@ -18,7 +28,7 @@ export default function DeviceRegistration() {
 
                 // Wait for OneSignal
                 let retries = 0;
-                const maxRetries = 10; // Increased retries
+                const maxRetries = 5;
 
                 while (!window.OneSignal && retries < maxRetries) {
                     console.log('Waiting for OneSignal...', retries);
@@ -29,7 +39,7 @@ export default function DeviceRegistration() {
                 if (!window.OneSignal) {
                     console.error('OneSignal not available after retries');
                     setStatus('onesignal-not-loaded');
-                    setHasChecked(true);
+                    markAsCompleted();
                     return;
                 }
 
@@ -62,8 +72,11 @@ export default function DeviceRegistration() {
                 if (isSubscribed && playerId && playerId === hasPlayerIdInDb) {
                     console.log('✅ Device already registered and subscribed');
                     setStatus('already-registered');
-                    setShowPrompt(false);
-                    setHasChecked(true);
+                    setShowPrompt(true); // Show briefly to confirm
+                    setTimeout(() => {
+                        setShowPrompt(false);
+                        markAsCompleted();
+                    }, 1500);
                     return;
                 }
 
@@ -72,8 +85,11 @@ export default function DeviceRegistration() {
                     console.log('Subscribed but player ID not in database. Updating...');
                     await storePlayerId(user.id, playerId);
                     setStatus('updated-database');
-                    setShowPrompt(false);
-                    setHasChecked(true);
+                    setShowPrompt(true);
+                    setTimeout(() => {
+                        setShowPrompt(false);
+                        markAsCompleted();
+                    }, 1500);
                     return;
                 }
 
@@ -84,13 +100,13 @@ export default function DeviceRegistration() {
                     // Check browser notification permission
                     if (Notification.permission === 'granted') {
                         // Browser says granted but OneSignal says not subscribed
-                        console.log('Browser permission granted but OneSignal not subscribed. Requesting subscription...');
+                        console.log('Browser permission granted but OneSignal not subscribed.');
                         setShowPrompt(true);
                         setStatus('needs-resubscribe');
                     } else if (Notification.permission === 'denied') {
                         console.log('Browser notifications denied');
                         setStatus('browser-denied');
-                        setHasChecked(true);
+                        setShowPrompt(true);
                         return;
                     } else {
                         // Default or prompt state
@@ -112,7 +128,7 @@ export default function DeviceRegistration() {
                     } else if (Notification.permission === 'denied') {
                         console.log('Browser notifications denied');
                         setStatus('browser-denied');
-                        setHasChecked(true);
+                        setShowPrompt(true);
                         return;
                     } else {
                         // Show prompt to request permission
@@ -122,61 +138,16 @@ export default function DeviceRegistration() {
                     }
                 }
 
-                // If we're showing prompt, start the subscription process
-                if (showPrompt && status === 'requesting') {
-                    // Small delay to let user see the prompt
-                    setTimeout(async () => {
-                        try {
-                            console.log('Requesting notification permission...');
-                            const permission = await window.OneSignal.Notifications.requestPermission();
-                            console.log('Permission result:', permission);
-
-                            if (permission === 'granted') {
-                                // Get the new player ID
-                                const newPlayerId = await window.OneSignal.User.PushSubscription.id;
-
-                                if (newPlayerId) {
-                                    console.log('New player ID obtained:', newPlayerId);
-                                    await storePlayerId(user.id, newPlayerId);
-                                    setStatus('registered');
-
-                                    // Hide prompt after success
-                                    setTimeout(() => {
-                                        setShowPrompt(false);
-                                        setHasChecked(true);
-                                    }, 2000);
-                                } else {
-                                    setStatus('no-player-id');
-                                }
-                            } else {
-                                setStatus('denied');
-                                // Hide prompt after 5 seconds
-                                setTimeout(() => {
-                                    setShowPrompt(false);
-                                    setHasChecked(true);
-                                }, 5000);
-                            }
-                        } catch (error) {
-                            console.error('Subscription error:', error);
-                            setStatus('error');
-                            setTimeout(() => {
-                                setShowPrompt(false);
-                                setHasChecked(true);
-                            }, 3000);
-                        }
-                    }, 1500); // Give user time to see the prompt
-                }
-
             } catch (error) {
                 console.error('Device registration error:', error);
                 setStatus('error');
-                setHasChecked(true);
+                setShowPrompt(true);
             }
         };
 
         // Start check with a small delay to ensure OneSignal is loaded
         setTimeout(checkAndRegisterDevice, 1000);
-    }, [user, supabase, hasChecked]);
+    }, [user, supabase, hasChecked, markAsCompleted]);
 
     const storePlayerId = async (userId, playerId) => {
         try {
@@ -218,6 +189,47 @@ export default function DeviceRegistration() {
         }
     };
 
+    // Handle request permission
+    const handleRequestPermission = async () => {
+        try {
+            console.log('Requesting notification permission...');
+            const permission = await window.OneSignal.Notifications.requestPermission();
+            console.log('Permission result:', permission);
+
+            if (permission === 'granted') {
+                // Get the new player ID
+                const newPlayerId = await window.OneSignal.User.PushSubscription.id;
+
+                if (newPlayerId) {
+                    console.log('New player ID obtained:', newPlayerId);
+                    await storePlayerId(user.id, newPlayerId);
+                    setStatus('registered');
+
+                    // Hide after success
+                    setTimeout(() => {
+                        setShowPrompt(false);
+                        markAsCompleted();
+                    }, 1500);
+                } else {
+                    setStatus('no-player-id');
+                }
+            } else {
+                setStatus('denied');
+                // User can close manually
+            }
+        } catch (error) {
+            console.error('Subscription error:', error);
+            setStatus('error');
+        }
+    };
+
+    // Handle close button click
+    const handleClose = () => {
+        console.log('User closed device registration');
+        setShowPrompt(false);
+        markAsCompleted();
+    };
+
     // Status messages
     const statusMessages = {
         'initializing': 'Checking notification status...',
@@ -234,37 +246,9 @@ export default function DeviceRegistration() {
         'error': 'An error occurred. Please refresh the page.'
     };
 
-    // Determine if we should show the close button
-    const showCloseButton = status === 'denied' ||
-        status === 'browser-denied' ||
-        status === 'error' ||
-        status === 'no-player-id' ||
-        status === 'onesignal-not-loaded';
-
-    // Determine if prompt should auto-close
-    const shouldAutoClose = status === 'registered' ||
-        status === 'updated-database' ||
-        status === 'already-registered';
-
-    // Auto-close if already registered
-    useEffect(() => {
-        if (shouldAutoClose && showPrompt) {
-            const timer = setTimeout(() => {
-                setShowPrompt(false);
-                setHasChecked(true);
-            }, 2000);
-            return () => clearTimeout(timer);
-        }
-    }, [shouldAutoClose, showPrompt]);
-
     return (
         <>
-            {/* Hidden status for debugging */}
-            <div className="hidden">
-                Device Registration Status: {status}
-            </div>
-
-            {/* Permission Prompt Modal - Only show if needed */}
+            {/* Permission Prompt Modal */}
             {showPrompt && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
@@ -272,13 +256,13 @@ export default function DeviceRegistration() {
                             <div className="text-6xl mb-4">🔔</div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">
                                 {status === 'already-registered' ? 'Notifications Active' :
-                                    status === 'registered' ? 'Notifications Enabled!' :
+                                    status === 'registered' || status === 'updated-database' ? 'Notifications Enabled!' :
                                         'Enable Job Notifications'}
                             </h3>
                             <p className="text-gray-600">
                                 {status === 'already-registered' ?
                                     'You are already set up to receive job notifications.' :
-                                    status === 'registered' ?
+                                    status === 'registered' || status === 'updated-database' ?
                                         'You will now receive instant alerts when customers send you jobs!' :
                                         'Get instant alerts when customers send you jobs. Never miss an opportunity!'
                                 }
@@ -287,56 +271,53 @@ export default function DeviceRegistration() {
 
                         <div className="space-y-4">
                             {/* Status display */}
-                            {status !== 'already-registered' && (
-                                <div className={`p-3 rounded-lg text-center ${status === 'requesting' || status === 'needs-resubscribe' ? 'bg-blue-50 text-blue-800' :
-                                        status === 'registered' ? 'bg-green-50 text-green-800' :
-                                            status === 'denied' ? 'bg-yellow-50 text-yellow-800' :
-                                                'bg-gray-50 text-gray-800'
-                                    }`}>
-                                    {statusMessages[status]}
-                                </div>
-                            )}
+                            <div className={`p-3 rounded-lg text-center ${status === 'requesting' || status === 'needs-resubscribe' ? 'bg-blue-50 text-blue-800' :
+                                status === 'registered' || status === 'updated-database' || status === 'already-registered' ? 'bg-green-50 text-green-800' :
+                                    status === 'denied' || status === 'browser-denied' ? 'bg-yellow-50 text-yellow-800' :
+                                        'bg-gray-50 text-gray-800'
+                                }`}>
+                                {statusMessages[status]}
+                            </div>
 
                             {/* Action buttons */}
                             <div className="flex gap-3">
-                                {showCloseButton ? (
+                                {status === 'requesting' || status === 'needs-resubscribe' ? (
                                     <>
                                         <button
-                                            onClick={() => {
-                                                setShowPrompt(false);
-                                                setHasChecked(true);
-                                            }}
+                                            onClick={handleClose}
                                             className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-medium hover:bg-gray-300 transition"
                                         >
                                             Skip for Now
                                         </button>
                                         <button
-                                            onClick={() => window.location.reload()}
+                                            onClick={handleRequestPermission}
                                             className="flex-1 bg-naijaGreen text-white py-3 rounded-lg font-medium hover:bg-darkGreen transition"
                                         >
-                                            Try Again
+                                            Allow Notifications
                                         </button>
                                     </>
-                                ) : shouldAutoClose ? (
+                                ) : status === 'registered' || status === 'updated-database' || status === 'already-registered' ? (
                                     <button
-                                        onClick={() => {
-                                            setShowPrompt(false);
-                                            setHasChecked(true);
-                                        }}
+                                        onClick={handleClose}
                                         className="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 transition"
                                     >
                                         Got It!
                                     </button>
                                 ) : (
-                                    <button
-                                        onClick={() => {
-                                            setShowPrompt(false);
-                                            setHasChecked(true);
-                                        }}
-                                        className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-medium hover:bg-gray-300 transition"
-                                    >
-                                        Not Now
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={handleClose}
+                                            className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-medium hover:bg-gray-300 transition"
+                                        >
+                                            Close
+                                        </button>
+                                        <button
+                                            onClick={() => window.location.reload()}
+                                            className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 transition"
+                                        >
+                                            Try Again
+                                        </button>
+                                    </>
                                 )}
                             </div>
 
@@ -345,18 +326,6 @@ export default function DeviceRegistration() {
                                 <p className="text-xs text-gray-500 text-center mt-4">
                                     To enable later: Click the lock icon in your address bar → Site settings → Notifications → Allow
                                 </p>
-                            )}
-
-                            {/* Already registered message */}
-                            {status === 'already-registered' && (
-                                <div className="text-center mt-4">
-                                    <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                        <span>All set! You'll receive job notifications.</span>
-                                    </div>
-                                </div>
                             )}
                         </div>
                     </div>

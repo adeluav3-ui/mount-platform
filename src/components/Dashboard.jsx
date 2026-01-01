@@ -1,4 +1,4 @@
-// src/components/Dashboard.jsx — COMPLETE VERSION WITH LOCALSTORAGE TRACKING
+// src/components/Dashboard.jsx — COMPLETE FIXED VERSION
 import React from 'react';
 import { useSupabase } from '../context/SupabaseContext'
 import CustomerDashboard from './CustomerDashboard'
@@ -11,26 +11,7 @@ export default function Dashboard() {
     const { user, supabase } = useSupabase()
     const [role, setRole] = useState('customer')
     const [loading, setLoading] = useState(false)
-    const [showDeviceCheck, setShowDeviceCheck] = useState(() => {
-        // Initialize from localStorage to prevent repeated prompts
-        if (typeof window !== 'undefined') {
-            const hasBeenShown = localStorage.getItem('deviceCheckShown');
-            const userType = localStorage.getItem('lastUserType');
-            const lastUserId = localStorage.getItem('lastUserId');
-
-            // Check if we need to show based on:
-            // 1. Never shown before
-            // 2. Different user logged in
-            // 3. User type changed (customer to company)
-            if (!hasBeenShown ||
-                lastUserId !== user?.id ||
-                userType !== 'company') {
-                return true; // Show the prompt
-            }
-            return false; // Don't show, already seen
-        }
-        return true; // Default to showing
-    });
+    const [showDeviceCheck, setShowDeviceCheck] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -41,10 +22,23 @@ export default function Dashboard() {
         console.log('=== DASHBOARD DEBUG START ===')
         console.log('User ID:', user.id)
         console.log('User email:', user.email)
-        console.log('Device check should show?', showDeviceCheck)
-        console.log('LocalStorage deviceCheckShown:', localStorage.getItem('deviceCheckShown'))
 
         setLoading(true)
+
+        // Check if we should show device check
+        const shouldShowDeviceCheck = () => {
+            // Check localStorage first
+            const deviceCheckKey = `deviceCheckShown_${user.id}`;
+            const hasBeenShown = localStorage.getItem(deviceCheckKey);
+
+            if (hasBeenShown === 'true') {
+                console.log('Device check already shown for user:', user.id);
+                return false;
+            }
+
+            // Check if it's a company
+            return true; // Will be refined after role check
+        };
 
         // SIMPLE check - first check profiles for admin
         supabase
@@ -54,7 +48,6 @@ export default function Dashboard() {
             .maybeSingle()
             .then(({ data: profile, error: profileError }) => {
                 console.log('Profile check result:', profile)
-                console.log('Profile error:', profileError)
 
                 if (profileError) {
                     console.error('Profile error:', profileError)
@@ -94,24 +87,20 @@ export default function Dashboard() {
                     console.log('✅ User is COMPANY')
                     setRole('company')
 
-                    // Store user info in localStorage
-                    localStorage.setItem('lastUserType', 'company');
-                    localStorage.setItem('lastUserId', user.id);
+                    // Determine if we should show device check
+                    const deviceCheckKey = `deviceCheckShown_${user.id}`;
+                    const hasBeenShown = localStorage.getItem(deviceCheckKey);
 
-                    // Only show device check if we haven't shown it for this user
-                    const hasBeenShownForUser = localStorage.getItem(`deviceCheckShown_${user.id}`);
-                    if (!hasBeenShownForUser) {
-                        console.log('First time for this company user, showing device check');
-                        setShowDeviceCheck(true);
-                    } else {
-                        console.log('Device check already shown for this user');
+                    if (hasBeenShown === 'true') {
+                        console.log('Device check already shown for this company');
                         setShowDeviceCheck(false);
+                    } else {
+                        console.log('Showing device check for company');
+                        setShowDeviceCheck(true);
                     }
                 } else {
                     console.log('✅ User is CUSTOMER')
                     setRole('customer')
-                    localStorage.setItem('lastUserType', 'customer');
-                    localStorage.setItem('lastUserId', user.id);
                     setShowDeviceCheck(false);
                 }
             })
@@ -127,6 +116,17 @@ export default function Dashboard() {
 
     console.log('Current role:', role)
     console.log('Loading:', loading)
+    console.log('Show device check:', showDeviceCheck)
+
+    // Handle device check completion
+    const handleDeviceCheckComplete = () => {
+        console.log('Device check marked as complete for user:', user?.id);
+        if (user?.id) {
+            localStorage.setItem(`deviceCheckShown_${user.id}`, 'true');
+            console.log('Saved to localStorage: deviceCheckShown_' + user.id);
+        }
+        setShowDeviceCheck(false);
+    };
 
     // Show loading only if we're actively loading
     if (loading) {
@@ -147,16 +147,6 @@ export default function Dashboard() {
     }
 
     console.log('Rendering dashboard for role:', role)
-
-    // Handle device check completion
-    const handleDeviceCheckComplete = () => {
-        console.log('Device check marked as complete for user:', user?.id);
-        localStorage.setItem('deviceCheckShown', 'true');
-        if (user?.id) {
-            localStorage.setItem(`deviceCheckShown_${user.id}`, 'true');
-        }
-        setShowDeviceCheck(false);
-    };
 
     // Render appropriate dashboard with DeviceRegistration for companies
     return (
