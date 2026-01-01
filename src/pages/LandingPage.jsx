@@ -321,7 +321,7 @@ export default function LandingPage() {
                                     required
                                     value={betaCode}
                                     onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
-                                    placeholder="Enter code (e.g., MOUNTBETA2024)"
+                                    placeholder="Enter code (e.g., MOUNT)"
                                     className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors font-mono tracking-wider"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
