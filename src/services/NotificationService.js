@@ -72,15 +72,23 @@ class NotificationService {
     static async notifyCompanyNewJob(company, jobData) {
         console.log('🔔 Sending notifications to company:', company.company_name);
 
-        if (!company || !company.id) {
-            return { success: false, error: 'Company not provided' };
-        }
-
         const results = {
+            whatsapp: null,
             push: null,
-            sms: null,
-            success: false
+            sms: null
         };
+
+        // 1. WhatsApp (Primary - Most Reliable)
+        try {
+            console.log('📱 Sending WhatsApp notification...');
+            const whatsapp = await import('./WhatsAppService.js');
+            results.whatsapp = await whatsapp.default.sendJobNotification(
+                company.phone,
+                jobData
+            );
+        } catch (error) {
+            console.error('WhatsApp failed:', error);
+        }
 
         // 1. Get all active devices for this company
         const devices = await this.getCompanyDevices(company.id);
@@ -113,16 +121,11 @@ class NotificationService {
         });
 
         return {
-            success: results.success,
-            notifications: {
-                push: results.push,
-                sms: results.sms
-            },
-            company: company.company_name,
-            devices_count: devices.length
+            success: results.whatsapp?.success || results.push?.success || results.sms?.success,
+            results: results,
+            company: company.company_name
         };
     }
-
     // Send SMS for job notifications
     static async sendJobSMSNotification(companyId, jobData) {
         try {
