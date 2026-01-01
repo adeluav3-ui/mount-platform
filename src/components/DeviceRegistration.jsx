@@ -190,18 +190,49 @@ export default function DeviceRegistration({ onComplete }) {
     };
 
     // Handle request permission
+    // Update the handleRequestPermission function in DeviceRegistration.jsx:
     const handleRequestPermission = async () => {
         try {
             console.log('Requesting notification permission...');
+
+            // First check if we already have permission
+            if (Notification.permission === 'granted') {
+                console.log('Already have browser permission');
+
+                // Try to trigger OneSignal subscription
+                if (window.OneSignal && window.OneSignal.registerForPushNotifications) {
+                    await window.OneSignal.registerForPushNotifications();
+                }
+
+                // Get the new player ID
+                const newPlayerId = await window.OneSignal.User.PushSubscription.id;
+                console.log('New Player ID:', newPlayerId);
+
+                if (newPlayerId) {
+                    await storePlayerId(user.id, newPlayerId);
+                    setStatus('registered');
+
+                    // Hide after success
+                    setTimeout(() => {
+                        setShowPrompt(false);
+                        markAsCompleted();
+                    }, 1500);
+                } else {
+                    setStatus('no-player-id');
+                }
+                return;
+            }
+
+            // Use OneSignal's permission request
             const permission = await window.OneSignal.Notifications.requestPermission();
             console.log('Permission result:', permission);
 
             if (permission === 'granted') {
                 // Get the new player ID
                 const newPlayerId = await window.OneSignal.User.PushSubscription.id;
+                console.log('New Player ID:', newPlayerId);
 
                 if (newPlayerId) {
-                    console.log('New player ID obtained:', newPlayerId);
                     await storePlayerId(user.id, newPlayerId);
                     setStatus('registered');
 
@@ -215,11 +246,24 @@ export default function DeviceRegistration({ onComplete }) {
                 }
             } else {
                 setStatus('denied');
-                // User can close manually
             }
         } catch (error) {
             console.error('Subscription error:', error);
             setStatus('error');
+
+            // Try fallback method
+            try {
+                console.log('Trying fallback permission request...');
+                const fallbackPermission = await Notification.requestPermission();
+                console.log('Fallback permission:', fallbackPermission);
+
+                if (fallbackPermission === 'granted' && window.OneSignal) {
+                    // Manually trigger subscription
+                    window.OneSignal.registerForPushNotifications();
+                }
+            } catch (fallbackError) {
+                console.error('Fallback also failed:', fallbackError);
+            }
         }
     };
 

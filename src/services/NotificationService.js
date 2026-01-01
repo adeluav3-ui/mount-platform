@@ -3,28 +3,38 @@ import smsService from './SMSService';
 class NotificationService {
     // Get all active devices for a company
     // In NotificationService.js, update getCompanyDevices method:
+    // In NotificationService.js, update getCompanyDevices:
     static async getCompanyDevices(companyId) {
         try {
-            // Use DeviceService instead of direct query
-            const DeviceService = await import('./DeviceService.js');
-            const result = await DeviceService.default.getCompanyDevices(companyId);
+            const { supabase } = await import('../context/SupabaseContext.jsx');
 
-            if (result.success && result.devices.length > 0) {
-                // Get player IDs from devices
-                const playerIds = result.devices.map(d => d.player_id);
-                console.log(`📱 Found ${playerIds.length} devices for company ${companyId}`);
-                return playerIds;
+            // Get ALL active devices for this company
+            const { data: devices, error } = await supabase
+                .from('company_devices')
+                .select('player_id, device_type, last_active')
+                .eq('company_id', companyId)
+                .eq('is_active', true)
+                .order('last_active', { ascending: false });
+
+            if (error) {
+                console.error('Error getting company devices:', error);
+                return [];
             }
 
-            // Fallback to single Player ID from companies table
-            const { supabase } = await import('../context/SupabaseContext.jsx');
-            const { data: company } = await supabase
-                .from('companies')
-                .select('onesignal_player_id')
-                .eq('id', companyId)
-                .single();
+            console.log(`📱 Found ${devices?.length || 0} active devices for company ${companyId}`);
 
-            return company?.onesignal_player_id ? [company.onesignal_player_id] : [];
+            // Filter to valid Player IDs
+            const validPlayerIds = devices
+                ?.filter(device => {
+                    const isValid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(device.player_id);
+                    if (!isValid) {
+                        console.warn('Invalid Player ID:', device.player_id);
+                    }
+                    return isValid;
+                })
+                .map(device => device.player_id) || [];
+
+            return validPlayerIds;
 
         } catch (error) {
             console.error('❌ Error getting company devices:', error);
