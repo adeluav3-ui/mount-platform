@@ -273,7 +273,18 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     Providing your ID number helps speed up verification
                 </p>
             </div>
-
+            <div className="bg-yellow-50 p-4 rounded-xl mb-6">
+                <h4 className="font-bold text-yellow-800 mb-2">📋 How to Prepare Photos:</h4>
+                <ul className="text-sm text-yellow-700 space-y-1">
+                    <li>• Take photos with your phone camera first</li>
+                    <li>• Save them to your gallery</li>
+                    <li>• Then browse and select from gallery</li>
+                    <li>• Ensure photos are clear and well-lit</li>
+                </ul>
+                <p className="text-xs text-yellow-600 mt-2">
+                    <strong>Note:</strong> Select photos from your gallery only. Take photos with your camera app first.
+                </p>
+            </div>
             <div className="bg-yellow-50 p-4 rounded-xl mb-6">
                 <h4 className="font-bold text-yellow-800 mb-2">📋 Required Documents:</h4>
                 <ul className="text-sm text-yellow-700 space-y-1">
@@ -294,19 +305,6 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                 >
                     Next: Upload Documents →
                 </button>
-            </div>
-
-            <div className="bg-yellow-50 p-4 rounded-xl mb-6">
-                <h4 className="font-bold text-yellow-800 mb-2">📋 How to Prepare Photos:</h4>
-                <ul className="text-sm text-yellow-700 space-y-1">
-                    <li>• Take photos with your phone camera first</li>
-                    <li>• Save them to your gallery</li>
-                    <li>• Then browse and select from gallery</li>
-                    <li>• Ensure photos are clear and well-lit</li>
-                </ul>
-                <p className="text-xs text-yellow-600 mt-2">
-                    <strong>Note:</strong> Select photos from your gallery only. Take photos with your camera app first.
-                </p>
             </div>
         </div>
     );
