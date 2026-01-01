@@ -84,22 +84,14 @@ export default function LandingPage() {
                 return;
             }
 
-            // Mark as beta tester in waitlist (optional)
-            const userEmail = prompt('Enter your email to register as beta tester:');
-            if (userEmail) {
-                await supabase
-                    .from('waitlist')
-                    .upsert({
-                        email: userEmail.trim().toLowerCase(),
-                        user_type: 'beta_tester',
-                        is_beta_tester: true
-                    }, {
-                        onConflict: 'email',
-                        ignoreDuplicates: false
-                    });
-            }
+            // ✅ NO EMAIL PROMPT - Direct redirect to login
+            console.log('Beta code accepted, redirecting to login...');
 
-            // Redirect to login page
+            // Optional: Store in localStorage that user has a valid beta code
+            localStorage.setItem('hasValidBetaCode', 'true');
+            localStorage.setItem('betaCodeUsed', enteredCode);
+
+            // Direct redirect to login page
             navigate('/login');
 
         } catch (err) {
@@ -315,7 +307,7 @@ export default function LandingPage() {
                                 Beta Tester Access
                             </h2>
                             <p className="text-gray-600">
-                                Enter your beta access code to log in to the platform
+                                Enter your beta access code to access the platform
                             </p>
                         </div>
 
@@ -329,7 +321,7 @@ export default function LandingPage() {
                                     required
                                     value={betaCode}
                                     onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
-                                    placeholder="Enter code (e.g., MOUNT)"
+                                    placeholder="Enter code (e.g., MOUNTBETA2024)"
                                     className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-colors font-mono tracking-wider"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
