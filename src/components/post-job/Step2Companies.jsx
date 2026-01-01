@@ -35,6 +35,22 @@ export default function Step2Companies({
     // Minimum swipe distance
     const minSwipeDistance = 50
 
+    console.log('🔍 [DEBUG] Companies received by Step2Companies:', {
+        totalCompanies: companies.length,
+        firstCompany: companies[0] ? {
+            id: companies[0].id,
+            company_name: companies[0].company_name,
+            phone: companies[0].phone,
+            hasPhone: !!companies[0].phone
+        } : 'No companies',
+        allPhones: companies.map(c => ({
+            name: c.company_name,
+            phone: c.phone,
+            hasPhone: !!c.phone
+        }))
+    });
+
+
     // Touch handlers
     const onTouchStart = (e) => {
         setTouchEnd(null)
@@ -251,13 +267,15 @@ export default function Step2Companies({
         }
     };
     const sendJobToCompany = async (company) => {
-        console.log('📝 Sending job to company:', {
+        console.log('📝 [DEBUG] Sending job to company - FULL DETAILS:', {
             companyId: company.id,
             companyName: company.company_name,
-            customerId: user.id,
-            customerName: user.email,
-            timestamp: new Date().toISOString()
+            companyPhone: company.phone,
+            phoneExists: !!company.phone,
+            phoneLength: company.phone?.length,
+            companyObjectKeys: Object.keys(company)
         });
+
 
         if (isSending) return // Prevent multiple clicks
 

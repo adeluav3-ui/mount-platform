@@ -1,9 +1,12 @@
-// src/services/NotificationService.js - FIXED VERSION
+// src/services/NotificationService.js - COMPLETE VERSION WITH SMS
 import smsService from './SMSService';
+
 class NotificationService {
+    constructor() {
+        // We'll use dynamic imports for Supabase context
+    }
+
     // Get all active devices for a company
-    // In NotificationService.js, update getCompanyDevices method:
-    // In NotificationService.js, update getCompanyDevices:
     static async getCompanyDevices(companyId) {
         try {
             const { supabase } = await import('../context/SupabaseContext.jsx');
@@ -42,7 +45,30 @@ class NotificationService {
         }
     }
 
-    // Main notification method
+    // Get company phone number
+    static async getCompanyPhone(companyId) {
+        try {
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            const { data: company, error } = await supabase
+                .from('companies')
+                .select('phone, company_name')
+                .eq('id', companyId)
+                .single();
+
+            if (error) {
+                console.error('❌ Error getting company phone:', error);
+                return null;
+            }
+
+            return company;
+        } catch (error) {
+            console.error('❌ Error in getCompanyPhone:', error);
+            return null;
+        }
+    }
+
+    // Main notification method with SMS fallback
     static async notifyCompanyNewJob(company, jobData) {
         console.log('🔔 Sending notifications to company:', company.company_name);
 
@@ -50,50 +76,100 @@ class NotificationService {
             return { success: false, error: 'Company not provided' };
         }
 
+        const results = {
+            push: null,
+            sms: null,
+            success: false
+        };
+
         // 1. Get all active devices for this company
         const devices = await this.getCompanyDevices(company.id);
 
-        if (devices.length === 0) {
-            console.log('⚠️ No active devices found for company');
-
-            // Fallback to single player_id
-            if (company.onesignal_player_id) {
-                console.log('🔄 Falling back to single Player ID');
-                const fallbackResult = await this.sendOneSignalPush(
-                    company.onesignal_player_id,
-                    jobData,
-                    company.company_name
-                );
-                return {
-                    success: fallbackResult.success,
-                    notifications: [{ type: 'push', success: fallbackResult.success, fallback: true }],
-                    company: company.company_name,
-                    devices: 1
-                };
-            }
-
-            return { success: false, error: 'No active devices' };
+        // 2. Send push notifications if devices exist
+        if (devices.length > 0) {
+            console.log(`📤 Sending push to ${devices.length} devices`);
+            results.push = await this.sendOneSignalPush(devices, jobData, company.company_name);
+        } else {
+            console.log('⚠️ No active devices found for push notifications');
         }
 
-        // 2. Send to all devices
-        const playerIds = devices;
-        console.log(`📤 Sending to ${devices.length} devices:`, devices, 'Type:', typeof devices[0]);
+        // 3. Always send SMS as backup (even if push succeeds)
+        console.log('📱 Sending SMS backup notification');
+        results.sms = await this.sendJobSMSNotification(company.id, jobData);
 
-        const pushResult = await this.sendOneSignalPush(playerIds, jobData, company.company_name);
+        // 4. Determine overall success
+        results.success = results.push?.success || results.sms?.success;
 
-        // 3. Return results
+        // 5. Log all notifications to database
+        await this.logNotification({
+            user_id: company.id,
+            job_id: jobData.id,
+            title: `New ${jobData.category} Job`,
+            message: `${jobData.sub_service} in ${jobData.location}`,
+            type: 'new_job',
+            push_success: results.push?.success || false,
+            sms_success: results.sms?.success || false,
+            devices_count: devices.length
+        });
+
         return {
-            success: pushResult.success,
-            notifications: [{
-                type: 'push',
-                success: pushResult.success,
-                devices: playerIds.length,
-                playerIds: playerIds,
-                recipients: pushResult.recipients
-            }],
+            success: results.success,
+            notifications: {
+                push: results.push,
+                sms: results.sms
+            },
             company: company.company_name,
-            devices: playerIds.length
+            devices_count: devices.length
         };
+    }
+
+    // Send SMS for job notifications
+    static async sendJobSMSNotification(companyId, jobData) {
+        try {
+            // Get company phone
+            const company = await this.getCompanyPhone(companyId);
+
+            if (!company?.phone) {
+                console.log('📵 No phone number found for company');
+                return { success: false, error: 'No phone number' };
+            }
+
+            // Create SMS message
+            const smsMessage = `Mount: New ${jobData.category} job! ${jobData.sub_service} in ${jobData.location}. Price: ₦${jobData.budget}. Reply YES to accept.`;
+
+            // Send SMS
+            const smsResult = await smsService.sendSMS(
+                company.phone,
+                smsMessage
+            );
+
+            console.log('📲 SMS sent result:', {
+                success: smsResult.success,
+                to: company.phone,
+                company: company.company_name
+            });
+
+            // Log SMS specifically
+            await this.logNotification({
+                user_id: companyId,
+                job_id: jobData.id,
+                title: 'SMS Job Alert',
+                message: smsMessage,
+                type: 'sms',
+                sms_status: smsResult.success ? 'sent' : 'failed',
+                sms_message_id: smsResult.messageId
+            });
+
+            return {
+                ...smsResult,
+                phone: company.phone,
+                companyName: company.company_name
+            };
+
+        } catch (error) {
+            console.error('❌ SMS notification error:', error);
+            return { success: false, error: error.message };
+        }
     }
 
     // Send to multiple player IDs
@@ -200,70 +276,57 @@ class NotificationService {
             return false;
         }
     }
-    async sendSMSNotification(companyId, message, jobId = null) {
-        try {
-            // Get company phone number from database
-            const { data: company, error } = await this.supabase
-                .from('companies')
-                .select('phone, company_name')
-                .eq('id', companyId)
-                .single();
 
-            if (error || !company?.phone) {
-                console.error('No phone number found for company:', companyId);
-                return { success: false, error: 'No phone number' };
+    // Log notification to database
+    static async logNotification(notificationData) {
+        try {
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            const { error } = await supabase
+                .from('notifications')
+                .insert({
+                    user_id: notificationData.user_id,
+                    job_id: notificationData.job_id,
+                    title: notificationData.title,
+                    message: notificationData.message,
+                    type: notificationData.type,
+                    sms_status: notificationData.sms_status,
+                    sms_message_id: notificationData.sms_message_id,
+                    push_success: notificationData.push_success,
+                    sms_success: notificationData.sms_success,
+                    devices_count: notificationData.devices_count,
+                    created_at: new Date().toISOString()
+                });
+
+            if (error) {
+                console.error('❌ Error logging notification:', error);
+                return false;
             }
 
-            // Send SMS via SendChamp
-            const smsResult = await smsService.sendSMS(
-                company.phone,
-                message
-            );
-
-            // Log SMS notification
-            await this.logNotification({
-                user_id: companyId,
-                job_id: jobId,
-                title: 'SMS Alert',
-                message: message,
-                type: 'sms',
-                sms_status: smsResult.success ? 'sent' : 'failed',
-                sms_message_id: smsResult.messageId
-            });
-
-            return smsResult;
+            return true;
         } catch (error) {
-            console.error('SMS notification error:', error);
-            return { success: false, error: error.message };
+            console.error('❌ Error in logNotification:', error);
+            return false;
         }
     }
 
-    // Update your main sendNotification method to include SMS fallback
-    async sendNotification(userId, notification, jobId = null) {
+    // Optional: Send urgent SMS only (for critical alerts)
+    static async sendUrgentSMS(companyId, message) {
         try {
-            // 1. Try push notification first
-            const pushResult = await this.sendPushNotification(userId, notification);
+            const company = await this.getCompanyPhone(companyId);
 
-            // 2. If push fails or after 5 minutes no response, send SMS
-            if (!pushResult.success) {
-                console.log('Push failed, falling back to SMS...');
-
-                // Create SMS-friendly message
-                const smsMessage = `Mount: ${notification.title} - ${notification.message}`;
-
-                // Send SMS
-                const smsResult = await this.sendSMSNotification(userId, smsMessage, jobId);
-
-                return {
-                    ...smsResult,
-                    fallbackUsed: 'sms',
-                    originalPushFailed: true
-                };
+            if (!company?.phone) {
+                return { success: false, error: 'No phone number' };
             }
 
-            return pushResult;
+            const smsResult = await smsService.sendSMS(
+                company.phone,
+                `URGENT: ${message}`
+            );
+
+            return smsResult;
         } catch (error) {
-            console.error('Notification sending error:', error);
+            console.error('Urgent SMS error:', error);
             return { success: false, error: error.message };
         }
     }

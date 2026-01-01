@@ -67,12 +67,14 @@ export default function Step1Form({
         const { data, error } = await supabase
             .from('companies')
             .select(`
-        *,
-        average_rating,
-        total_reviews,
-        subcategory_prices
-    `)
-            .eq('approved', true) // Only show approved companies
+            *,
+            average_rating,
+            total_reviews,
+            subcategory_prices,
+            phone  
+        `)
+            .eq('approved', true)
+
 
         if (error) {
             alert('Failed to load companies: ' + error.message)

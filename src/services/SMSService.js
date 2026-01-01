@@ -2,12 +2,19 @@
 import axios from 'axios';
 
 class SMSService {
-    constructor() {
-        // Initialize with your SendChamp credentials
-        this.apiKey = import.meta.env.VITE_SENDCHAMP_API_KEY || '';
-        this.baseURL = 'https://api.sendchamp.com/api/v1';
-        this.senderId = import.meta.env.VITE_SENDCHAMP_SENDER_ID || 'Mount';
-    }
+    // Update the constructor in src/services/SMSService.js
+constructor() {
+    // Initialize with your SendChamp credentials
+    this.apiKey = import.meta.env.VITE_SENDCHAMP_API_KEY || '';
+    this.baseURL = 'https://api.sendchamp.com/api/v1';
+    this.senderId = import.meta.env.VITE_SENDCHAMP_SENDER_ID || 'Mount';
+    
+    // Log for debugging (remove in production)
+    console.log('SMS Service initialized:', {
+        hasApiKey: !!this.apiKey,
+        senderId: this.senderId
+    });
+}
 
     /**
      * Send SMS to a single phone number
