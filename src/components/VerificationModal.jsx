@@ -99,43 +99,50 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         e.preventDefault();
         e.stopPropagation();
 
-        console.log('📱 Camera Debug:', {
-            hasFile: !!e.target.files?.[0],
-            fileType: e.target.files?.[0]?.type,
-            fileName: e.target.files?.[0]?.name
-        });
+        // ABSOLUTELY CRITICAL: Stop all event propagation
+        e.nativeEvent.stopImmediatePropagation();
 
         const file = e.target.files[0];
-        if (file) {
-            // Check file size
-            if (file.size > 5 * 1024 * 1024) {
-                setError(`${fieldName} file size must be less than 5MB`);
-                return;
-            }
+        if (!file) return;
 
-            // Check file type
-            if (!file.type.startsWith('image/')) {
-                setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
-                return;
-            }
+        console.log('File selected:', file.name, file.size);
 
-            // For camera photos, they might be blob URLs
-            // Convert to proper file if needed
-            let processedFile = file;
-
-            // If file is from camera (no name or temporary)
-            if (!file.name || file.name === 'image.jpg' || file.name === 'blob') {
-                // Create a proper file name
-                const fileName = `${fieldName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.jpg`;
-                processedFile = new File([file], fileName, { type: file.type });
-            }
-
-            setImageFunction(processedFile);
-            setError('');
-
-            // Clear the input value to allow re-upload of same file
-            e.target.value = '';
+        // Check file size
+        if (file.size > 5 * 1024 * 1024) {
+            setError(`${fieldName} file size must be less than 5MB`);
+            return;
         }
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            setError(`${fieldName} must be an image file`);
+            return;
+        }
+
+        // For camera photos, convert to Base64 first
+        if (file.name === 'image.jpg' || file.name === 'blob' || !file.name) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const base64 = event.target.result;
+                // Convert base64 back to File
+                const byteString = atob(base64.split(',')[1]);
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                const blob = new Blob([ab], { type: file.type });
+                const newFile = new File([blob], `${fieldName}-${Date.now()}.jpg`, { type: file.type });
+                setImageFunction(newFile);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            // Regular gallery file
+            setImageFunction(file);
+        }
+
+        setError('');
+        // Don't clear input value - causes issues on mobile
     };
     const uploadToStorage = async (file, path) => {
         const fileExt = file.name.split('.').pop();
