@@ -21,6 +21,7 @@ export default function DeviceRegistration({ onComplete }) {
     useEffect(() => {
         if (!user || hasChecked) return;
 
+        // Update the checkAndRegisterDevice function in DeviceRegistration.jsx:
         const checkAndRegisterDevice = async () => {
             try {
                 console.log('=== DEVICE REGISTRATION START ===');
@@ -49,90 +50,41 @@ export default function DeviceRegistration({ onComplete }) {
                 const playerId = await window.OneSignal.User.PushSubscription.id;
                 const isSubscribed = await window.OneSignal.User.PushSubscription.optedIn;
 
-                console.log('Current subscription status:', {
+                console.log('Device status:', {
                     isSubscribed,
-                    playerId: playerId ? `${playerId.substring(0, 10)}...` : 'none'
+                    playerId: playerId ? `${playerId.substring(0, 10)}...` : 'none',
+                    browserPermission: Notification.permission
                 });
 
-                // Check if already registered in database
-                const { data: company } = await supabase
-                    .from('companies')
-                    .select('onesignal_player_id')
-                    .eq('id', user.id)
-                    .single();
-
-                const hasPlayerIdInDb = company?.onesignal_player_id;
-
-                console.log('Database check:', {
-                    hasPlayerIdInDb,
-                    playerIdMatches: hasPlayerIdInDb === playerId
-                });
-
-                // SCENARIO 1: Already subscribed and player ID matches database
-                if (isSubscribed && playerId && playerId === hasPlayerIdInDb) {
-                    console.log('✅ Device already registered and subscribed');
-                    setStatus('already-registered');
-                    setShowPrompt(true); // Show briefly to confirm
-                    setTimeout(() => {
-                        setShowPrompt(false);
-                        markAsCompleted();
-                    }, 1500);
-                    return;
-                }
-
-                // SCENARIO 2: Subscribed but player ID not in database
-                if (isSubscribed && playerId && playerId !== hasPlayerIdInDb) {
-                    console.log('Subscribed but player ID not in database. Updating...');
+                // SIMPLE LOGIC: Always register this device if we have a Player ID
+                if (playerId) {
+                    console.log('📱 Registering current device with Player ID:', playerId);
                     await storePlayerId(user.id, playerId);
-                    setStatus('updated-database');
-                    setShowPrompt(true);
-                    setTimeout(() => {
-                        setShowPrompt(false);
-                        markAsCompleted();
-                    }, 1500);
-                    return;
-                }
 
-                // SCENARIO 3: Player ID in database but not currently subscribed
-                if (hasPlayerIdInDb && !isSubscribed) {
-                    console.log('Player ID in database but not subscribed. Checking browser permission...');
-
-                    // Check browser notification permission
-                    if (Notification.permission === 'granted') {
-                        // Browser says granted but OneSignal says not subscribed
-                        console.log('Browser permission granted but OneSignal not subscribed.');
-                        setShowPrompt(true);
-                        setStatus('needs-resubscribe');
-                    } else if (Notification.permission === 'denied') {
-                        console.log('Browser notifications denied');
-                        setStatus('browser-denied');
-                        setShowPrompt(true);
-                        return;
-                    } else {
-                        // Default or prompt state
-                        console.log('Browser permission:', Notification.permission);
+                    // Check if we need to request subscription
+                    if (!isSubscribed && Notification.permission !== 'denied') {
+                        console.log('Device has Player ID but not subscribed. Showing prompt...');
                         setShowPrompt(true);
                         setStatus('requesting');
+                    } else {
+                        console.log('✅ Device already registered');
+                        setStatus('already-registered');
+                        setShowPrompt(true);
+                        setTimeout(() => {
+                            setShowPrompt(false);
+                            markAsCompleted();
+                        }, 1500);
                     }
-                }
+                } else {
+                    // No Player ID yet, need to request permission
+                    console.log('No Player ID yet. Need to request permission...');
 
-                // SCENARIO 4: Not subscribed and no player ID
-                if (!isSubscribed && !hasPlayerIdInDb) {
-                    console.log('Not subscribed and no player ID in database');
-
-                    // Check browser permission first
-                    if (Notification.permission === 'granted') {
-                        console.log('Browser permission already granted, requesting OneSignal subscription...');
-                        setShowPrompt(true);
-                        setStatus('requesting');
-                    } else if (Notification.permission === 'denied') {
+                    if (Notification.permission === 'denied') {
                         console.log('Browser notifications denied');
                         setStatus('browser-denied');
                         setShowPrompt(true);
-                        return;
                     } else {
-                        // Show prompt to request permission
-                        console.log('Need to request browser permission');
+                        console.log('Requesting notification permission...');
                         setShowPrompt(true);
                         setStatus('requesting');
                     }
@@ -151,15 +103,20 @@ export default function DeviceRegistration({ onComplete }) {
 
     const storePlayerId = async (userId, playerId) => {
         try {
-            console.log('Storing player ID:', playerId);
+            console.log('📱 Storing device:', {
+                userId,
+                playerId,
+                deviceType: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+                userAgent: navigator.userAgent
+            });
 
-            // Store in company_devices table
+            // ALWAYS store in company_devices table
             const { error: deviceError } = await supabase
                 .from('company_devices')
                 .upsert({
                     company_id: userId,
                     player_id: playerId,
-                    device_type: 'web',
+                    device_type: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
                     device_name: navigator.userAgent.substring(0, 100),
                     is_active: true,
                     last_active: new Date().toISOString()
@@ -169,19 +126,25 @@ export default function DeviceRegistration({ onComplete }) {
 
             if (deviceError) {
                 console.warn('Could not save to company_devices:', deviceError);
+            } else {
+                console.log('✅ Device saved to company_devices');
             }
 
-            // Also update companies table for backward compatibility
+            // Also update companies table for backward compatibility (latest device)
             const { error: companyError } = await supabase
                 .from('companies')
-                .update({ onesignal_player_id: playerId })
+                .update({
+                    onesignal_player_id: playerId,
+                    updated_at: new Date().toISOString()
+                })
                 .eq('id', userId);
 
             if (companyError) {
                 console.warn('Could not update companies table:', companyError);
+            } else {
+                console.log('✅ Updated companies table with latest device');
             }
 
-            console.log('✅ Player ID stored successfully');
             return true;
         } catch (error) {
             console.error('Error storing player ID:', error);
