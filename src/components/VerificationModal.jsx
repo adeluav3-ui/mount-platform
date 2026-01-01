@@ -95,54 +95,20 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         }
     };
 
-    const handleImageUpload = async (e, setImageFunction, fieldName) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        // ABSOLUTELY CRITICAL: Stop all event propagation
-        e.nativeEvent.stopImmediatePropagation();
-
+    const handleImageUpload = (e, setImageFunction, fieldName) => {
         const file = e.target.files[0];
-        if (!file) return;
-
-        console.log('File selected:', file.name, file.size);
-
-        // Check file size
-        if (file.size > 5 * 1024 * 1024) {
-            setError(`${fieldName} file size must be less than 5MB`);
-            return;
-        }
-
-        // Check file type
-        if (!file.type.startsWith('image/')) {
-            setError(`${fieldName} must be an image file`);
-            return;
-        }
-
-        // For camera photos, convert to Base64 first
-        if (file.name === 'image.jpg' || file.name === 'blob' || !file.name) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const base64 = event.target.result;
-                // Convert base64 back to File
-                const byteString = atob(base64.split(',')[1]);
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) {
-                    ia[i] = byteString.charCodeAt(i);
-                }
-                const blob = new Blob([ab], { type: file.type });
-                const newFile = new File([blob], `${fieldName}-${Date.now()}.jpg`, { type: file.type });
-                setImageFunction(newFile);
-            };
-            reader.readAsDataURL(file);
-        } else {
-            // Regular gallery file
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                setError(`${fieldName} file size must be less than 5MB`);
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
+                return;
+            }
             setImageFunction(file);
+            setError('');
         }
-
-        setError('');
-        // Don't clear input value - causes issues on mobile
     };
     const uploadToStorage = async (file, path) => {
         const fileExt = file.name.split('.').pop();
@@ -340,67 +306,40 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                     </label>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
                         {frontImage ? (
-                            <div className="flex flex-col items-center">
-                                <div className="w-32 h-32 mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <span className="text-3xl">📷</span>
-                                </div>
-                                <div className="text-center mb-4">
-                                    <p className="font-medium text-lg">{frontImage.name}</p>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        {(frontImage.size / 1024 / 1024).toFixed(2)} MB
-                                    </p>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                        📷
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{frontImage.name}</p>
+                                        <p className="text-sm text-gray-500">{(frontImage.size / 1024 / 1024).toFixed(2)} MB</p>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setFrontImage(null)}
-                                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                    className="text-red-500 hover:text-red-700"
                                 >
-                                    Remove & Choose Different File
+                                    Remove
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                <div className="flex justify-center">
-                                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
-                                        <span className="text-4xl">📁</span>
-                                    </div>
-                                </div>
-                                <p className="text-gray-600 font-medium">Upload front photo of your ID</p>
-                                <p className="text-sm text-gray-500">
-                                    • Clear, well-lit photo of ID front<br />
-                                    • Entire ID should be visible<br />
-                                    • File size limit: 5MB
-                                </p>
-                                <div>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                if (file.size > 5 * 1024 * 1024) {
-                                                    setError('File size must be less than 5MB');
-                                                    return;
-                                                }
-                                                if (!file.type.startsWith('image/')) {
-                                                    setError('Please select an image file (JPEG, PNG)');
-                                                    return;
-                                                }
-                                                setFrontImage(file);
-                                                setError('');
-                                            }
-                                        }}
-                                        className="hidden"
-                                        id="front-upload"
-                                    />
-                                    <label
-                                        htmlFor="front-upload"
-                                        className="inline-flex items-center justify-center gap-2 bg-naijaGreen text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-darkGreen transition-colors font-medium"
-                                    >
-                                        <span className="text-xl">📂</span>
-                                        <span>Browse Gallery</span>
-                                    </label>
-                                </div>
+                            <div>
+                                <p className="text-gray-500 mb-2">Upload front photo of your ID</p>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleImageUpload(e, setFrontImage, 'Front ID')}
+                                    className="hidden"
+                                    id="front-upload"
+                                />
+                                <label
+                                    htmlFor="front-upload"
+                                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                >
+                                    Choose File
+                                </label>
                             </div>
                         )}
                     </div>
@@ -408,72 +347,43 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
 
                 {/* Back of ID (Optional) */}
                 <div>
-                    <label className="block text-gray-700 mb-2">
-                        Back of ID <span className="text-gray-500">(Optional)</span>
-                    </label>
+                    <label className="block text-gray-700 mb-2">Back of ID (Optional)</label>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
                         {backImage ? (
-                            <div className="flex flex-col items-center">
-                                <div className="w-32 h-32 mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <span className="text-3xl">📷</span>
-                                </div>
-                                <div className="text-center mb-4">
-                                    <p className="font-medium text-lg">{backImage.name}</p>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        {(backImage.size / 1024 / 1024).toFixed(2)} MB
-                                    </p>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                        📷
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{backImage.name}</p>
+                                        <p className="text-sm text-gray-500">{(backImage.size / 1024 / 1024).toFixed(2)} MB</p>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setBackImage(null)}
-                                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                    className="text-red-500 hover:text-red-700"
                                 >
-                                    Remove & Choose Different File
+                                    Remove
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                <div className="flex justify-center">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                                        <span className="text-3xl">📁</span>
-                                    </div>
-                                </div>
-                                <p className="text-gray-600 font-medium">Upload back photo of your ID</p>
-                                <p className="text-sm text-gray-500">
-                                    • Required for some ID types<br />
-                                    • Helps with verification<br />
-                                    • File size limit: 5MB
-                                </p>
-                                <div>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                if (file.size > 5 * 1024 * 1024) {
-                                                    setError('File size must be less than 5MB');
-                                                    return;
-                                                }
-                                                if (!file.type.startsWith('image/')) {
-                                                    setError('Please select an image file');
-                                                    return;
-                                                }
-                                                setBackImage(file);
-                                                setError('');
-                                            }
-                                        }}
-                                        className="hidden"
-                                        id="back-upload"
-                                    />
-                                    <label
-                                        htmlFor="back-upload"
-                                        className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors font-medium"
-                                    >
-                                        <span className="text-xl">📂</span>
-                                        <span>Browse Gallery (Optional)</span>
-                                    </label>
-                                </div>
+                            <div>
+                                <p className="text-gray-500 mb-2">Upload back photo of your ID</p>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleImageUpload(e, setBackImage, 'Back ID')}
+                                    className="hidden"
+                                    id="back-upload"
+                                />
+                                <label
+                                    htmlFor="back-upload"
+                                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                >
+                                    Choose File
+                                </label>
                             </div>
                         )}
                     </div>
@@ -481,88 +391,49 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
 
                 {/* Selfie with ID (Optional) */}
                 <div>
-                    <label className="block text-gray-700 mb-2">
-                        Selfie with ID <span className="text-gray-500">(Optional)</span>
-                    </label>
-                    <p className="text-sm text-gray-500 mb-4">Helps speed up verification</p>
+                    <label className="block text-gray-700 mb-2">Selfie with ID (Optional)</label>
+                    <p className="text-sm text-gray-500 mb-2">Helps speed up verification</p>
                     <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center">
                         {selfieImage ? (
-                            <div className="flex flex-col items-center">
-                                <div className="w-32 h-32 mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                                    <span className="text-3xl">📸</span>
-                                </div>
-                                <div className="text-center mb-4">
-                                    <p className="font-medium text-lg">{selfieImage.name}</p>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        {(selfieImage.size / 1024 / 1024).toFixed(2)} MB
-                                    </p>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                        📸
+                                    </div>
+                                    <div>
+                                        <p className="font-medium">{selfieImage.name}</p>
+                                        <p className="text-sm text-gray-500">{(selfieImage.size / 1024 / 1024).toFixed(2)} MB</p>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={() => setSelfieImage(null)}
-                                    className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                    className="text-red-500 hover:text-red-700"
                                 >
-                                    Remove & Choose Different File
+                                    Remove
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                <div className="flex justify-center">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center">
-                                        <span className="text-3xl">🤳</span>
-                                    </div>
-                                </div>
-                                <p className="text-gray-600 font-medium">Upload selfie holding your ID</p>
-                                <p className="text-sm text-gray-500">
-                                    • Face and ID clearly visible<br />
-                                    • Good lighting recommended<br />
-                                    • Optional but recommended
-                                </p>
-                                <div>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            const file = e.target.files[0];
-                                            if (file) {
-                                                if (file.size > 5 * 1024 * 1024) {
-                                                    setError('File size must be less than 5MB');
-                                                    return;
-                                                }
-                                                if (!file.type.startsWith('image/')) {
-                                                    setError('Please select an image file');
-                                                    return;
-                                                }
-                                                setSelfieImage(file);
-                                                setError('');
-                                            }
-                                        }}
-                                        className="hidden"
-                                        id="selfie-upload"
-                                    />
-                                    <label
-                                        htmlFor="selfie-upload"
-                                        className="inline-flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-6 py-3 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors font-medium"
-                                    >
-                                        <span className="text-xl">📂</span>
-                                        <span>Browse Gallery (Optional)</span>
-                                    </label>
-                                </div>
+                            <div>
+                                <p className="text-gray-500 mb-2">Upload selfie holding your ID</p>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleImageUpload(e, setSelfieImage, 'Selfie')}
+                                    className="hidden"
+                                    id="selfie-upload"
+                                />
+                                <label
+                                    htmlFor="selfie-upload"
+                                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-200"
+                                >
+                                    Choose File
+                                </label>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
-
-            {/* Error Display */}
-            {error && (
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
-                    <div className="flex items-center gap-2">
-                        <span className="text-red-500">⚠️</span>
-                        <p className="text-red-700 font-medium">{error}</p>
-                    </div>
-                </div>
-            )}
 
             <div className="flex justify-between mt-8">
                 <button
