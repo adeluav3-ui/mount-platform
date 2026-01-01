@@ -1,4 +1,4 @@
-// src/components/company/ProfileSection.jsx — MODERN MOBILE-FRIENDLY VERSION
+// src/components/company/ProfileSection.jsx — COMPLETE MODIFIED VERSION
 import React from 'react'
 import { useSupabase } from '../../context/SupabaseContext'
 import { useState, useRef, useEffect } from 'react'
@@ -101,8 +101,15 @@ export default function ProfileSection({ company, editing, setEditing }) {
     // Store selected main categories
     const [selectedCategories, setSelectedCategories] = useState(company?.services || [])
 
-    // Store price ranges per subcategory
+    // Store price ranges per subcategory - ONLY for subcategories selected during signup
     const [subcategoryPrices, setSubcategoryPrices] = useState(company?.subcategory_prices || {})
+
+    // Track which subcategories were originally selected during signup
+    const [originalSubcategories, setOriginalSubcategories] = useState({})
+
+    // Track new subcategories being added
+    const [newSubcategories, setNewSubcategories] = useState({})
+    const [newSubcategoryInputs, setNewSubcategoryInputs] = useState({})
 
     const [pictureKey, setPictureKey] = useState(Date.now())
     const [portfolioPictures, setPortfolioPictures] = useState(company?.portfolio_pictures || [])
@@ -111,6 +118,28 @@ export default function ProfileSection({ company, editing, setEditing }) {
     const [activeServicesTab, setActiveServicesTab] = useState('main')
     const navigate = useNavigate();
 
+    // Initialize original subcategories from company data
+    useEffect(() => {
+        if (company?.subcategory_prices) {
+            // Extract original subcategories from prices
+            const originalSubs = {}
+            Object.keys(company.subcategory_prices).forEach(sub => {
+                // Find which main category this subcategory belongs to
+                Object.entries(servicesData).forEach(([mainCat, subs]) => {
+                    if (subs.includes(sub)) {
+                        if (!originalSubs[mainCat]) {
+                            originalSubs[mainCat] = []
+                        }
+                        if (!originalSubs[mainCat].includes(sub)) {
+                            originalSubs[mainCat].push(sub)
+                        }
+                    }
+                })
+            })
+            setOriginalSubcategories(originalSubs)
+        }
+    }, [company])
+
     // Initialize portfolio pictures from company data
     useEffect(() => {
         if (company?.portfolio_pictures) {
@@ -118,7 +147,26 @@ export default function ProfileSection({ company, editing, setEditing }) {
         }
     }, [company])
 
+    // Function to check if a subcategory was selected during signup
+    const isOriginalSubcategory = (mainCategory, subcategory) => {
+        return originalSubcategories[mainCategory]?.includes(subcategory) || false
+    }
+
+    // Function to check if a subcategory is new (added in profile)
+    const isNewSubcategory = (mainCategory, subcategory) => {
+        return newSubcategories[mainCategory]?.includes(subcategory) || false
+    }
+
     const toggleCategory = (cat) => {
+        // Check if this category has original subcategories
+        const hasOriginalSubs = originalSubcategories[cat]?.length > 0
+
+        // If it has original subcategories, we can't unselect it
+        if (hasOriginalSubs && selectedCategories.includes(cat)) {
+            alert(`Cannot unselect "${cat}" because it has services you originally selected during signup.`)
+            return
+        }
+
         const newSelected = selectedCategories.includes(cat)
             ? selectedCategories.filter(c => c !== cat)
             : [...selectedCategories, cat]
@@ -126,12 +174,21 @@ export default function ProfileSection({ company, editing, setEditing }) {
         setSelectedCategories(newSelected)
 
         // When unselecting a category, remove all its subcategory prices
-        if (selectedCategories.includes(cat)) {
+        if (selectedCategories.includes(cat) && !hasOriginalSubs) {
             const updatedPrices = { ...subcategoryPrices }
-            servicesData[cat]?.forEach(sub => {
-                delete updatedPrices[sub]
+            Object.keys(updatedPrices).forEach(sub => {
+                if (servicesData[cat]?.includes(sub)) {
+                    delete updatedPrices[sub]
+                }
             })
             setSubcategoryPrices(updatedPrices)
+
+            // Also remove from new subcategories
+            setNewSubcategories(prev => {
+                const newSubs = { ...prev }
+                delete newSubs[cat]
+                return newSubs
+            })
         }
     }
 
@@ -158,8 +215,66 @@ export default function ProfileSection({ company, editing, setEditing }) {
 
     const removeTBD = (subcategory) => {
         const updatedPrices = { ...subcategoryPrices }
-        delete updatedPrices[subcategory]
-        setSubcategoryPrices(updatedPrices)
+        if (updatedPrices[subcategory]?.status === "TBD") {
+            delete updatedPrices[subcategory]
+            setSubcategoryPrices(updatedPrices)
+        }
+    }
+
+    // Function to add a new subcategory
+    const addNewSubcategory = (mainCategory, subcategoryName) => {
+        if (!subcategoryName?.trim()) return
+
+        const newSub = subcategoryName.trim()
+
+        // Check if already exists
+        const existingSubs = [
+            ...(originalSubcategories[mainCategory] || []),
+            ...(newSubcategories[mainCategory] || [])
+        ]
+
+        if (existingSubs.includes(newSub)) {
+            alert(`"${newSub}" already exists for ${mainCategory}`)
+            return
+        }
+
+        // Add to new subcategories list
+        setNewSubcategories(prev => ({
+            ...prev,
+            [mainCategory]: [...(prev[mainCategory] || []), newSub]
+        }))
+
+        // Initialize as TBD
+        handleTBD(newSub)
+
+        // Clear input
+        setNewSubcategoryInputs(prev => ({
+            ...prev,
+            [mainCategory]: ''
+        }))
+    }
+
+    // Function to remove a new subcategory (only new ones can be removed)
+    const removeNewSubcategory = (mainCategory, subcategory) => {
+        if (isNewSubcategory(mainCategory, subcategory)) {
+            // Remove from new subcategories
+            setNewSubcategories(prev => ({
+                ...prev,
+                [mainCategory]: prev[mainCategory]?.filter(s => s !== subcategory) || []
+            }))
+
+            // Remove from prices
+            const updatedPrices = { ...subcategoryPrices }
+            delete updatedPrices[subcategory]
+            setSubcategoryPrices(updatedPrices)
+        }
+    }
+
+    // Get subcategories that should be displayed (original + new)
+    const getDisplaySubcategories = (mainCategory) => {
+        const original = originalSubcategories[mainCategory] || []
+        const newOnes = newSubcategories[mainCategory] || []
+        return [...original, ...newOnes]
     }
 
     const handlePortfolioFileChange = (e) => {
@@ -268,6 +383,13 @@ export default function ProfileSection({ company, editing, setEditing }) {
             return
         }
 
+        // Ensure all original categories with subcategories are selected
+        Object.keys(originalSubcategories).forEach(cat => {
+            if (originalSubcategories[cat]?.length > 0 && !selectedCategories.includes(cat)) {
+                setSelectedCategories(prev => [...prev, cat])
+            }
+        })
+
         const updates = {
             company_name: form.company_name.trim(),
             address: form.address?.trim() || '',
@@ -276,7 +398,8 @@ export default function ProfileSection({ company, editing, setEditing }) {
             bank_account: form.bank_account?.trim() || '',
             services: selectedCategories,
             subcategory_prices: subcategoryPrices,
-            portfolio_pictures: portfolioPictures
+            portfolio_pictures: portfolioPictures,
+            updated_at: new Date().toISOString()
         }
 
         try {
@@ -306,13 +429,6 @@ export default function ProfileSection({ company, editing, setEditing }) {
             console.error('Save error:', error)
             alert('Save failed: ' + error.message)
         }
-    }
-
-    // Get only selected categories' subcategories
-    const getSelectedSubcategories = () => {
-        return selectedCategories.flatMap(cat =>
-            servicesData[cat]?.map(sub => ({ category: cat, subcategory: sub })) || []
-        )
     }
 
     return (
@@ -476,7 +592,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                     onClick={() => setActiveServicesTab('sub')}
                                     className={`px-4 py-2 text-sm font-medium ${activeServicesTab === 'sub' ? 'bg-naijaGreen text-white' : 'bg-gray-100 text-gray-700'}`}
                                 >
-                                    Set Prices ({getSelectedSubcategories().length})
+                                    Set Prices ({Object.keys(subcategoryPrices).length})
                                 </button>
                             </div>
                         </div>
@@ -486,41 +602,63 @@ export default function ProfileSection({ company, editing, setEditing }) {
                             <div>
                                 <p className="text-gray-600 mb-4">Select the main services you offer:</p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    {Object.keys(servicesData).map(category => (
-                                        <div key={category} className="relative">
-                                            <input
-                                                type="checkbox"
-                                                id={`cat-${category}`}
-                                                checked={selectedCategories.includes(category)}
-                                                onChange={() => toggleCategory(category)}
-                                                className="hidden"
-                                            />
-                                            <label
-                                                htmlFor={`cat-${category}`}
-                                                className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedCategories.includes(category)
-                                                    ? 'border-naijaGreen bg-green-50'
-                                                    : 'border-gray-200 hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedCategories.includes(category)
-                                                        ? 'bg-naijaGreen border-naijaGreen'
-                                                        : 'border-gray-300'
-                                                        }`}>
-                                                        {selectedCategories.includes(category) && (
-                                                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
-                                                            </svg>
+                                    {Object.keys(servicesData).map(category => {
+                                        const hasOriginalSubs = originalSubcategories[category]?.length > 0
+                                        const isSelected = selectedCategories.includes(category)
+
+                                        return (
+                                            <div key={category} className="relative">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`cat-${category}`}
+                                                    checked={isSelected}
+                                                    onChange={() => toggleCategory(category)}
+                                                    className="hidden"
+                                                    disabled={hasOriginalSubs && isSelected}
+                                                />
+                                                <label
+                                                    htmlFor={`cat-${category}`}
+                                                    className={`block p-4 rounded-xl border-2 cursor-pointer transition-all ${isSelected
+                                                        ? 'border-naijaGreen bg-green-50'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                        } ${hasOriginalSubs && isSelected ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected
+                                                                ? 'bg-naijaGreen border-naijaGreen'
+                                                                : 'border-gray-300'
+                                                                }`}>
+                                                                {isSelected && (
+                                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                )}
+                                                            </div>
+                                                            <span className="font-medium">{category}</span>
+                                                        </div>
+                                                        {hasOriginalSubs && (
+                                                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                {originalSubcategories[category]?.length || 0} services
+                                                            </span>
                                                         )}
                                                     </div>
-                                                    <span className="font-medium">{category}</span>
-                                                </div>
-                                                <div className="mt-2 text-xs text-gray-500">
-                                                    {servicesData[category].length} services available
-                                                </div>
-                                            </label>
-                                        </div>
-                                    ))}
+                                                    <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                                                        <span>{servicesData[category].length} total services</span>
+                                                        {hasOriginalSubs && isSelected && (
+                                                            <span className="text-blue-600">Required</span>
+                                                        )}
+                                                    </div>
+                                                </label>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                    <p className="text-sm text-blue-800">
+                                        <span className="font-bold">Note:</span> Categories with existing services cannot be unselected.
+                                        You can add new services in the "Set Prices" tab.
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -535,88 +673,161 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
-                                        {selectedCategories.map(category => (
-                                            <div key={category} className="border border-gray-200 rounded-xl p-5">
-                                                <h4 className="font-bold text-lg text-gray-800 mb-4 flex items-center gap-2">
-                                                    <span className="bg-naijaGreen text-white px-3 py-1 rounded-full text-sm">
-                                                        {category}
-                                                    </span>
-                                                    <span className="text-sm text-gray-500">
-                                                        ({servicesData[category].length} services)
-                                                    </span>
-                                                </h4>
+                                        {selectedCategories.map(category => {
+                                            const displaySubs = getDisplaySubcategories(category)
+                                            const hasOriginalSubs = originalSubcategories[category]?.length > 0
 
-                                                <div className="space-y-4">
-                                                    {servicesData[category].map(sub => {
-                                                        const priceData = subcategoryPrices[sub]
-                                                        const isTBD = priceData?.status === "TBD"
+                                            return (
+                                                <div key={category} className="border border-gray-200 rounded-xl p-5">
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                                                                <span className="bg-naijaGreen text-white px-3 py-1 rounded-full text-sm">
+                                                                    {category}
+                                                                </span>
+                                                                <span className="text-sm text-gray-500">
+                                                                    ({displaySubs.length} services)
+                                                                </span>
+                                                            </h4>
+                                                            {hasOriginalSubs && (
+                                                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                    {originalSubcategories[category]?.length} original
+                                                                </span>
+                                                            )}
+                                                        </div>
 
-                                                        return (
-                                                            <div key={sub} className="bg-gray-50 rounded-lg p-4">
-                                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                                                                    <span className="font-medium text-gray-800">{sub}</span>
+                                                        {/* Add new subcategory input */}
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={newSubcategoryInputs[category] || ''}
+                                                                onChange={(e) => setNewSubcategoryInputs(prev => ({
+                                                                    ...prev,
+                                                                    [category]: e.target.value
+                                                                }))}
+                                                                placeholder="Add new service..."
+                                                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm flex-1 min-w-0"
+                                                                onKeyPress={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        addNewSubcategory(category, newSubcategoryInputs[category])
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <button
+                                                                onClick={() => addNewSubcategory(category, newSubcategoryInputs[category])}
+                                                                disabled={!newSubcategoryInputs[category]?.trim()}
+                                                                className="bg-green-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+                                                            >
+                                                                Add New
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                                                    {isTBD ? (
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                                                                                💭 TBD
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() => removeTBD(sub)}
-                                                                                className="text-sm text-gray-600 hover:text-red-600 underline"
-                                                                            >
-                                                                                Set Price
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="flex items-center gap-2">
-                                                                            {priceData?.min && priceData?.max ? (
-                                                                                <span className="text-sm font-medium text-green-600">
-                                                                                    ₦{Number(priceData.min).toLocaleString()} - ₦{Number(priceData.max).toLocaleString()}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-sm text-gray-500">No price set</span>
-                                                                            )}
-                                                                            <button
-                                                                                onClick={() => handleTBD(sub)}
-                                                                                className="text-sm text-gray-600 hover:text-naijaGreen underline"
-                                                                            >
-                                                                                Mark as TBD
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
+                                                    {displaySubs.length === 0 ? (
+                                                        <div className="text-center py-6 bg-gray-50 rounded-lg">
+                                                            <p className="text-gray-500">No services selected for this category</p>
+                                                            <p className="text-sm text-gray-400 mt-1">Add a service above to get started</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-4">
+                                                            {displaySubs.map(sub => {
+                                                                const priceData = subcategoryPrices[sub]
+                                                                const isTBD = priceData?.status === "TBD"
+                                                                const isNew = isNewSubcategory(category, sub)
+                                                                const isOriginal = isOriginalSubcategory(category, sub)
 
-                                                                {!isTBD && (
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                                        <div>
-                                                                            <label className="block text-xs text-gray-600 mb-1">Min Price (₦)</label>
-                                                                            <input
-                                                                                type="number"
-                                                                                placeholder="5000"
-                                                                                value={priceData?.min || ''}
-                                                                                onChange={e => handlePriceChange(sub, 'min', e.target.value)}
-                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
-                                                                            />
+                                                                return (
+                                                                    <div key={sub} className={`bg-gray-50 rounded-lg p-4 ${isNew ? 'border-l-4 border-l-green-500' : ''}`}>
+                                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="font-medium text-gray-800">{sub}</span>
+                                                                                {isNew && (
+                                                                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                                                                        New
+                                                                                    </span>
+                                                                                )}
+                                                                                {isOriginal && (
+                                                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                                                                        Original
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div className="flex items-center gap-3">
+                                                                                {isTBD ? (
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                                                                            💭 TBD
+                                                                                        </span>
+                                                                                        <button
+                                                                                            onClick={() => removeTBD(sub)}
+                                                                                            className="text-sm text-gray-600 hover:text-blue-600 underline"
+                                                                                        >
+                                                                                            Set Price
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        {priceData?.min && priceData?.max ? (
+                                                                                            <span className="text-sm font-medium text-green-600">
+                                                                                                ₦{Number(priceData.min).toLocaleString()} - ₦{Number(priceData.max).toLocaleString()}
+                                                                                            </span>
+                                                                                        ) : (
+                                                                                            <span className="text-sm text-gray-500">No price set</span>
+                                                                                        )}
+                                                                                        <button
+                                                                                            onClick={() => handleTBD(sub)}
+                                                                                            className="text-sm text-gray-600 hover:text-naijaGreen underline"
+                                                                                        >
+                                                                                            Mark as TBD
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {isNew && (
+                                                                                    <button
+                                                                                        onClick={() => removeNewSubcategory(category, sub)}
+                                                                                        className="text-sm text-red-600 hover:text-red-800 ml-2"
+                                                                                        title="Remove this service"
+                                                                                    >
+                                                                                        × Remove
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
                                                                         </div>
-                                                                        <div>
-                                                                            <label className="block text-xs text-gray-600 mb-1">Max Price (₦)</label>
-                                                                            <input
-                                                                                type="number"
-                                                                                placeholder="15000"
-                                                                                value={priceData?.max || ''}
-                                                                                onChange={e => handlePriceChange(sub, 'max', e.target.value)}
-                                                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
-                                                                            />
-                                                                        </div>
+
+                                                                        {!isTBD && (
+                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                                <div>
+                                                                                    <label className="block text-xs text-gray-600 mb-1">Min Price (₦)</label>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        placeholder="5000"
+                                                                                        value={priceData?.min || ''}
+                                                                                        onChange={e => handlePriceChange(sub, 'min', e.target.value)}
+                                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
+                                                                                    />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-xs text-gray-600 mb-1">Max Price (₦)</label>
+                                                                                    <input
+                                                                                        type="number"
+                                                                                        placeholder="15000"
+                                                                                        value={priceData?.max || ''}
+                                                                                        onChange={e => handlePriceChange(sub, 'max', e.target.value)}
+                                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
+                                                                                    />
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    })}
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -755,6 +966,9 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                 ❌ Cancel Editing
                             </button>
                         </div>
+                        <p className="text-xs text-gray-500 text-center mt-2">
+                            Note: Original services cannot be removed. You can add new services and set prices.
+                        </p>
                     </div>
                 </div>
             )}

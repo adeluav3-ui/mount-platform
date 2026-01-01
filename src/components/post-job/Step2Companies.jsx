@@ -58,7 +58,23 @@ export default function Step2Companies({
             handlePortfolioNavigation('prev')
         }
     }
+    const filteredCompanies = companies.filter(company => {
+        // Check if company offers this main category
+        if (!company.services?.includes(job.category)) {
+            return false
+        }
 
+        // Check if company offers this specific sub-service
+        const prices = company.subcategory_prices || {}
+
+        // If sub_service is "Other", check if company has any "Other" subcategory
+        if (job.sub_service === "Other") {
+            return Object.keys(prices).some(sub => sub === "Other")
+        }
+
+        // Check if company has price for this specific sub-service
+        return prices.hasOwnProperty(job.sub_service)
+    })
     // Fetch recent reviews for each company
     useEffect(() => {
         const fetchReviewsForCompanies = async () => {
@@ -420,7 +436,7 @@ export default function Step2Companies({
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {companies.map(c => {
+                    {filteredCompanies.map(c => {
                         const getPriceDisplay = () => {
                             // NEW LOGIC: Always check if company has price for this specific sub-service
                             const prices = c.subcategory_prices || {}
