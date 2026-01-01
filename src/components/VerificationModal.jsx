@@ -18,21 +18,48 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
         { value: 'passport', label: 'International Passport' }
     ];
 
-    const handleImageUpload = (e, setImageFunction, fieldName) => {
-        const file = e.target.files[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                setError(`${fieldName} file size must be less than 5MB`);
-                return;
-            }
-            if (!file.type.startsWith('image/')) {
-                setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
-                return;
-            }
-            setImageFunction(file);
-            setError('');
+    const handleImageUpload = async (e, setImageFunction, fieldName) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('📱 Camera Debug:', {
+        hasFile: !!e.target.files?.[0],
+        fileType: e.target.files?.[0]?.type,
+        fileName: e.target.files?.[0]?.name
+    });
+
+    const file = e.target.files[0];
+    if (file) {
+        // Check file size
+        if (file.size > 5 * 1024 * 1024) {
+            setError(`${fieldName} file size must be less than 5MB`);
+            return;
         }
-    };
+        
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            setError(`${fieldName} must be an image file (JPEG, PNG, etc.)`);
+            return;
+        }
+        
+        // For camera photos, they might be blob URLs
+        // Convert to proper file if needed
+        let processedFile = file;
+        
+        // If file is from camera (no name or temporary)
+        if (!file.name || file.name === 'image.jpg' || file.name === 'blob') {
+            // Create a proper file name
+            const fileName = `${fieldName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}.jpg`;
+            processedFile = new File([file], fileName, { type: file.type });
+        }
+        
+        setImageFunction(processedFile);
+        setError('');
+        
+        // Clear the input value to allow re-upload of same file
+        e.target.value = '';
+    }
+};
     const uploadToStorage = async (file, path) => {
         const fileExt = file.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
@@ -247,6 +274,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <input
                                     type="file"
                                     accept="image/*"
+                                      capture="environment"
                                     onChange={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -344,6 +372,7 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
                                 <input
                                     type="file"
                                     accept="image/*"
+                                     capture="user"
                                     onChange={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
@@ -383,8 +412,6 @@ const VerificationModal = ({ isOpen, onClose, onVerificationSubmitted }) => {
             </div>
         </form>  // ← CORRECT CLOSING TAG
     );
-
-    // Add this after renderStep2() function, before the main return
 
     const renderStep3 = () => (
         <div className="text-center py-8">
