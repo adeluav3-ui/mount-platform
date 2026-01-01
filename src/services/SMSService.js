@@ -1,137 +1,134 @@
-// src/services/SMSService.js
+// src/services/SMSService.js - Africa's Talking Version
 import axios from 'axios';
 
 class SMSService {
-    // Update the constructor in src/services/SMSService.js
-constructor() {
-    // Initialize with your SendChamp credentials
-    this.apiKey = import.meta.env.VITE_SENDCHAMP_API_KEY || '';
-    this.baseURL = 'https://api.sendchamp.com/api/v1';
-    this.senderId = import.meta.env.VITE_SENDCHAMP_SENDER_ID || 'Mount';
-    
-    // Log for debugging (remove in production)
-    console.log('SMS Service initialized:', {
-        hasApiKey: !!this.apiKey,
-        senderId: this.senderId
-    });
-}
+    constructor() {
+        // Toggle between providers
+        this.provider = 'africastalking'; // 'africastalking', 'sendchamp', or 'sendbox'
 
-    /**
-     * Send SMS to a single phone number
-     * @param {string} to - Recipient phone number (e.g., "2348012345678")
-     * @param {string} message - SMS content
-     * @param {string} route - 'dnd', 'non_dnd', or 'international'
-     * @returns {Promise<object>} - SendChamp API response
-     */
+        // Africa's Talking credentials
+        this.atApiKey = import.meta.env.VITE_AFRICASTALKING_API_KEY || '';
+        this.atUsername = import.meta.env.VITE_AFRICASTALKING_USERNAME || 'sandbox';
+        this.atSenderId = import.meta.env.VITE_AFRICASTALKING_SENDER_ID || 'Mount';
+        this.atBaseURL = 'https://api.africastalking.com/version1';
+
+        // SendChamp credentials (keep for fallback)
+        this.sendchampApiKey = import.meta.env.VITE_SENDCHAMP_API_KEY || '';
+        this.sendchampSenderId = import.meta.env.VITE_SENDCHAMP_SENDER_ID || 'Mount';
+        this.sendchampBaseURL = 'https://api.sendchamp.com/api/v1';
+
+        console.log('📱 SMS Service initialized with:', {
+            provider: this.provider,
+            hasAtKey: !!this.atApiKey,
+            atUsername: this.atUsername
+        });
+    }
+
     async sendSMS(to, message, route = 'dnd') {
+        if (this.provider === 'africastalking') {
+            return this.sendViaAfricaTalking(to, message);
+        } else {
+            return this.sendViaSendchamp(to, message, route);
+        }
+    }
+
+    // Africa's Talking implementation
+    async sendViaAfricaTalking(to, message) {
         try {
-            // Format phone number for Nigeria (add 234 country code)
+            const formattedTo = this.formatPhoneNumber(to);
+
+            console.log('📤 Sending via Africa\'s Talking:', {
+                to: formattedTo,
+                messageLength: message.length,
+                username: this.atUsername
+            });
+
+            // Africa's Talking uses form-urlencoded
+            const params = new URLSearchParams();
+            params.append('username', this.atUsername);
+            params.append('to', formattedTo);
+            params.append('message', message);
+            params.append('from', this.atSenderId);
+
+            const response = await axios.post(
+                `${this.atBaseURL}/messaging`,
+                params,
+                {
+                    headers: {
+                        'apikey': this.atApiKey,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'Accept': 'application/json'
+                    }
+                }
+            );
+
+            console.log('✅ Africa\'s Talking Response:', response.data);
+
+            // Parse Africa's Talking response
+            const atData = response.data?.SMSMessageData;
+            return {
+                success: atData?.Recipients?.length > 0,
+                data: response.data,
+                messageId: atData?.Recipients?.[0]?.messageId,
+                provider: 'africastalking',
+                recipients: atData?.Recipients || [],
+                status: atData?.Recipients?.[0]?.status,
+                cost: atData?.Recipients?.[0]?.cost
+            };
+        } catch (error) {
+            console.error('❌ Africa\'s Talking SMS failed:', {
+                status: error.response?.status,
+                data: error.response?.data,
+                message: error.message
+            });
+
+            // Fallback to SendChamp
+            console.log('🔄 Falling back to SendChamp...');
+            return this.sendViaSendchamp(to, message);
+        }
+    }
+
+    // Keep existing SendChamp implementation
+    async sendViaSendchamp(to, message, route = 'dnd') {
+        try {
             const formattedTo = this.formatPhoneNumber(to);
 
             const response = await axios.post(
-                `${this.baseURL}/sms/send`,
+                `${this.sendchampBaseURL}/sms/send`,
                 {
                     to: formattedTo,
                     message: message,
-                    sender_name: this.senderId,
+                    sender_name: this.sendchampSenderId,
                     route: route
                 },
                 {
                     headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
+                        'Authorization': `Bearer ${this.sendchampApiKey}`,
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
                     }
                 }
             );
 
-            console.log('SMS sent successfully:', response.data);
+            console.log('✅ SendChamp SMS sent:', response.data);
             return {
                 success: true,
                 data: response.data,
-                messageId: response.data?.data?.message_id
+                messageId: response.data?.data?.message_id,
+                provider: 'sendchamp'
             };
         } catch (error) {
-            console.error('SMS sending failed:', error.response?.data || error.message);
+            console.error('❌ SendChamp SMS failed:', error.response?.data || error.message);
             return {
                 success: false,
-                error: error.response?.data || error.message
-            };
-        }
-    }
-
-    /**
-     * Send bulk SMS to multiple recipients
-     * @param {Array<string>} recipients - List of phone numbers
-     * @param {string} message - SMS content
-     * @returns {Promise<object>} - SendChamp API response
-     */
-    async sendBulkSMS(recipients, message) {
-        try {
-            const formattedRecipients = recipients.map(num => this.formatPhoneNumber(num));
-
-            const response = await axios.post(
-                `${this.baseURL}/sms/send/bulk`,
-                {
-                    to: formattedRecipients,
-                    message: message,
-                    sender_name: this.senderId,
-                    route: 'dnd'
-                },
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            return {
-                success: true,
-                data: response.data
-            };
-        } catch (error) {
-            console.error('Bulk SMS sending failed:', error);
-            return {
-                success: false,
-                error: error.response?.data || error.message
-            };
-        }
-    }
-
-    /**
-     * Check SMS delivery status
-     * @param {string} messageId - Message ID from sendSMS response
-     * @returns {Promise<object>} - Delivery status
-     */
-    async checkDeliveryStatus(messageId) {
-        try {
-            const response = await axios.get(
-                `${this.baseURL}/sms/status/${messageId}`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`
-                    }
-                }
-            );
-
-            return {
-                success: true,
-                status: response.data
-            };
-        } catch (error) {
-            console.error('Status check failed:', error);
-            return {
-                success: false,
-                error: error.message
+                error: error.response?.data || error.message,
+                provider: 'sendchamp'
             };
         }
     }
 
     /**
      * Format Nigerian phone number to international format
-     * @param {string} phone - Nigerian phone number
-     * @returns {string} - Formatted number (234xxxxxxxxxx)
      */
     formatPhoneNumber(phone) {
         if (!phone) return '';
@@ -156,30 +153,54 @@ constructor() {
     }
 
     /**
-     * Get account balance
-     * @returns {Promise<object>} - Account balance info
+     * Get account balance - Africa's Talking version
      */
     async getBalance() {
         try {
-            const response = await axios.get(
-                `${this.baseURL}/wallet/wallet_balance`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`
+            if (this.provider === 'africastalking') {
+                const response = await axios.get(
+                    `${this.atBaseURL}/user`,
+                    {
+                        params: {
+                            username: this.atUsername
+                        },
+                        headers: {
+                            'apikey': this.atApiKey,
+                            'Accept': 'application/json'
+                        }
                     }
-                }
-            );
+                );
 
-            return {
-                success: true,
-                balance: response.data?.data?.balance,
-                currency: response.data?.data?.currency
-            };
+                return {
+                    success: true,
+                    balance: response.data?.UserData?.balance,
+                    currency: 'KES', // Africa's Talking uses Kenyan Shillings
+                    provider: 'africastalking'
+                };
+            } else {
+                // SendChamp balance check (your existing code)
+                const response = await axios.get(
+                    `${this.sendchampBaseURL}/wallet/wallet_balance`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${this.sendchampApiKey}`
+                        }
+                    }
+                );
+
+                return {
+                    success: true,
+                    balance: response.data?.data?.balance,
+                    currency: response.data?.data?.currency,
+                    provider: 'sendchamp'
+                };
+            }
         } catch (error) {
             console.error('Balance check failed:', error);
             return {
                 success: false,
-                error: error.message
+                error: error.message,
+                provider: this.provider
             };
         }
     }

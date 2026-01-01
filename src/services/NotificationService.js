@@ -1,5 +1,6 @@
 // src/services/NotificationService.js - COMPLETE VERSION WITH SMS
 import smsService from './SMSService';
+import whatsappService from './WhatsAppService.js';
 
 class NotificationService {
     constructor() {
@@ -81,14 +82,18 @@ class NotificationService {
         // 1. WhatsApp (Primary - Most Reliable)
         try {
             console.log('📱 Sending WhatsApp notification...');
-            const whatsapp = await import('./WhatsAppService.js');
-            results.whatsapp = await whatsapp.default.sendJobNotification(
+
+            results.whatsapp = await whatsappService.sendJobNotification(
                 company.phone,
                 jobData
             );
+
+            console.log('✅ WhatsApp result:', results.whatsapp);
         } catch (error) {
             console.error('WhatsApp failed:', error);
+            results.whatsapp = { success: false, error: error.message };
         }
+
 
         // 1. Get all active devices for this company
         const devices = await this.getCompanyDevices(company.id);
