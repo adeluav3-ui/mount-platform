@@ -6,6 +6,7 @@ import ProfileSection from './ProfileSection'
 import JobsSection from './JobsSection'
 import logo from '../../assets/logo.png';
 import OneSignalService from "../../services/OneSignalService";
+import TelegramSetupGuide from './TelegramSetupGuide';
 
 export default function CompanyDashboard() {
   const { user, signOut, supabase } = useSupabase()
@@ -1716,7 +1717,10 @@ export default function CompanyDashboard() {
                     </div>
                   </div>
                 </div>
-
+                {/* Telegram Setup Guide - Show if not linked */}
+                {company && !company.telegram_chat_id && (
+                  <TelegramSetupGuide companyName={company.company_name} />
+                )}
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">

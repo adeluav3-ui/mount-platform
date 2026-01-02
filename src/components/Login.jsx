@@ -603,6 +603,21 @@ export default function Login() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Telegram Username (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="@username"
+                                            value={telegramUsername}
+                                            onChange={e => setTelegramUsername(e.target.value)}
+                                            className="w-full px-4 py-3 rounded-lg border border-gray-300"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Add your Telegram username to get instant job notifications
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Phone Number *
                                         </label>
                                         <input

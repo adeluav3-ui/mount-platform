@@ -70,63 +70,94 @@ class NotificationService {
     }
 
     // Main notification method with SMS fallback
+    // Add to your NotificationService.js
+    static async sendTelegramJobNotification(company, jobData) {
+        try {
+            // Check if company has Telegram chat ID
+            if (!company.telegram_chat_id) {
+                console.log('📭 Company has no Telegram chat ID:', company.company_name);
+                return {
+                    success: false,
+                    error: 'No Telegram chat ID',
+                    provider: 'telegram'
+                };
+            }
+
+            // Format job message
+            const message = `🚨 *NEW JOB REQUEST*\n\n` +
+                `🏷️ *Category:* ${jobData.category}\n` +
+                `🔧 *Service:* ${jobData.sub_service}\n` +
+                `📍 *Location:* ${jobData.location}\n` +
+                `💰 *Budget:* ₦${Number(jobData.budget).toLocaleString()}\n\n` +
+                `📝 *Description:*\n${jobData.description || 'No additional details'}\n\n` +
+                `⏰ *Reply within 1 hour*\n\n` +
+                `[Accept Job](https://mountltd.com/company/jobs/${jobData.id}?action=accept) | ` +
+                `[View Details](https://mountltd.com/company/jobs/${jobData.id})`;
+
+            // Call Telegram webhook (we'll create this endpoint next)
+            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/send-job-notification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: company.telegram_chat_id,
+                    message: message,
+                    job_id: jobData.id,
+                    company_name: company.company_name
+                })
+            });
+
+            const result = await response.json();
+
+            return {
+                success: result.success,
+                messageId: result.messageId,
+                provider: 'telegram'
+            };
+        } catch (error) {
+            console.error('❌ Telegram notification error:', error);
+            return {
+                success: false,
+                error: error.message,
+                provider: 'telegram'
+            };
+        }
+    }
+
+    // Update your main notifyCompanyNewJob method
     static async notifyCompanyNewJob(company, jobData) {
         console.log('🔔 Sending notifications to company:', company.company_name);
 
         const results = {
-            whatsapp: null,
+            telegram: null,
             push: null,
             sms: null
         };
 
-        // 1. WhatsApp (Primary - Most Reliable)
-        try {
-            console.log('📱 Sending WhatsApp notification...');
-
-            results.whatsapp = await whatsappService.sendJobNotification(
-                company.phone,
-                jobData
-            );
-
-            console.log('✅ WhatsApp result:', results.whatsapp);
-        } catch (error) {
-            console.error('WhatsApp failed:', error);
-            results.whatsapp = { success: false, error: error.message };
+        // 1. Telegram (Most reliable - if company has linked Telegram)
+        if (company.telegram_chat_id) {
+            console.log('🤖 Sending Telegram notification');
+            results.telegram = await this.sendTelegramJobNotification(company, jobData);
         }
 
-
-        // 1. Get all active devices for this company
+        // 2. Push notifications
         const devices = await this.getCompanyDevices(company.id);
-
-        // 2. Send push notifications if devices exist
         if (devices.length > 0) {
-            console.log(`📤 Sending push to ${devices.length} devices`);
             results.push = await this.sendOneSignalPush(devices, jobData, company.company_name);
-        } else {
-            console.log('⚠️ No active devices found for push notifications');
         }
 
-        // 3. Always send SMS as backup (even if push succeeds)
-        console.log('📱 Sending SMS backup notification');
+        // 3. SMS (backup)
         results.sms = await this.sendJobSMSNotification(company.id, jobData);
 
-        // 4. Determine overall success
-        results.success = results.push?.success || results.sms?.success;
-
-        // 5. Log all notifications to database
-        await this.logNotification({
-            user_id: company.id,
-            job_id: jobData.id,
-            title: `New ${jobData.category} Job`,
-            message: `${jobData.sub_service} in ${jobData.location}`,
-            type: 'new_job',
-            push_success: results.push?.success || false,
-            sms_success: results.sms?.success || false,
-            devices_count: devices.length
+        // Log all results
+        console.log('📊 Notification results:', {
+            company: company.company_name,
+            telegram: results.telegram?.success ? '✅' : '❌',
+            push: results.push?.success ? '✅' : '❌',
+            sms: results.sms?.success ? '✅' : '❌'
         });
 
         return {
-            success: results.whatsapp?.success || results.push?.success || results.sms?.success,
+            success: results.telegram?.success || results.push?.success || results.sms?.success,
             results: results,
             company: company.company_name
         };
