@@ -71,6 +71,7 @@ class NotificationService {
 
     // Main notification method with SMS fallback
     // Add to your NotificationService.js
+    // Update this function in NotificationService.js
     static async sendTelegramJobNotification(company, jobData) {
         try {
             // Check if company has Telegram chat ID
@@ -83,30 +84,60 @@ class NotificationService {
                 };
             }
 
-            // Format job message
+            // Format job message with inline buttons
             const message = `🚨 *NEW JOB REQUEST*\n\n` +
                 `🏷️ *Category:* ${jobData.category}\n` +
                 `🔧 *Service:* ${jobData.sub_service}\n` +
                 `📍 *Location:* ${jobData.location}\n` +
                 `💰 *Budget:* ₦${Number(jobData.budget).toLocaleString()}\n\n` +
                 `📝 *Description:*\n${jobData.description || 'No additional details'}\n\n` +
-                `⏰ *Reply within 1 hour*\n\n` +
-                `[Accept Job](https://mountltd.com/company/jobs/${jobData.id}?action=accept) | ` +
-                `[View Details](https://mountltd.com/company/jobs/${jobData.id})`;
+                `⏰ *Reply within 1 hour*`;
 
-            // Call Telegram webhook (we'll create this endpoint next)
-            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/send-job-notification', {
+            // Build inline keyboard for Accept/Decline
+            const inlineKeyboard = {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "✅ Accept Job",
+                            callback_data: `accept_${jobData.id}`
+                        },
+                        {
+                            text: "❌ Decline",
+                            callback_data: `decline_${jobData.id}`
+                        }
+                    ],
+                    [
+                        {
+                            text: "📋 View Details",
+                            url: `https://mountltd.com/company/jobs/${jobData.id}`
+                        }
+                    ]
+                ]
+            };
+
+            console.log('🤖 Sending Telegram job notification:', {
+                chatId: company.telegram_chat_id,
+                jobId: jobData.id,
+                company: company.company_name
+            });
+
+            // Call your existing telegram-webhook function
+            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook/job-notification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    action: 'send_job_notification',
                     chat_id: company.telegram_chat_id,
                     message: message,
                     job_id: jobData.id,
+                    reply_markup: inlineKeyboard,
                     company_name: company.company_name
                 })
             });
 
             const result = await response.json();
+
+            console.log('📩 Telegram notification response:', result);
 
             return {
                 success: result.success,

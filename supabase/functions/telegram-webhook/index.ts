@@ -105,6 +105,71 @@ serve(async (req) => {
 
     console.log('Request received:', req.method, req.url)
 
+    // NEW: Handle job notifications from your app (via POST to /job-notification)
+    const url = new URL(req.url);
+    if (url.pathname.includes('/job-notification')) {
+        console.log('📤 Received job notification request from app');
+
+        try {
+            const body = await req.json();
+            console.log('Job notification details:', {
+                action: body.action,
+                chatId: body.chat_id,
+                jobId: body.job_id,
+                company: body.company_name
+            });
+
+            if (body.action === 'send_job_notification') {
+                const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+
+                // Format message with proper Markdown
+                const message = body.message ||
+                    `🚨 *NEW JOB REQUEST*\n\n` +
+                    `🏷️ *Category:* ${body.category || 'Unknown'}\n` +
+                    `🔧 *Service:* ${body.sub_service || 'Unknown'}\n` +
+                    `📍 *Location:* ${body.location || 'Unknown'}\n` +
+                    `💰 *Budget:* ₦${Number(body.budget || 0).toLocaleString()}\n\n` +
+                    `📝 *Description:*\n${body.description || 'No additional details'}\n\n` +
+                    `⏰ *Reply within 1 hour*`;
+
+                const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: body.chat_id,
+                        text: message,
+                        parse_mode: 'Markdown',
+                        reply_markup: body.reply_markup || null
+                    })
+                });
+
+                const result = await response.json();
+                console.log('Telegram send result:', result);
+
+                return new Response(
+                    JSON.stringify({
+                        success: result.ok,
+                        messageId: result.result?.message_id,
+                        error: result.description
+                    }),
+                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+            }
+
+            return new Response(
+                JSON.stringify({ success: false, error: 'Unknown action' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+
+        } catch (error) {
+            console.error('Job notification error:', error);
+            return new Response(
+                JSON.stringify({ success: false, error: error.message }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    }
+
     // Handle GET requests (for testing/browser)
     if (req.method === 'GET') {
         return new Response(
@@ -231,35 +296,71 @@ serve(async (req) => {
                 }
             }
 
-            // Handle /link command (for existing companies)
             else if (text.startsWith('/link')) {
-                const code = text.split(' ')[1]
-                if (code) {
-                    // Verify and link company to Telegram
-                    const { data: verification } = await supabaseClient
-                        .from('telegram_verifications')
-                        .select('*')
-                        .eq('code', code)
+                const email = text.split(' ')[1]
+                if (email && email.includes('@')) {
+                    console.log('🔗 Linking attempt for email:', email)
+
+                    // Check if company exists
+                    const { data: company, error: companyError } = await supabaseClient
+                        .from('companies')
+                        .select('id, company_name, telegram_chat_id')
+                        .eq('email', email.trim())
                         .single()
 
-                    if (verification) {
-                        // Update company with Telegram chat ID
-                        await supabaseClient
-                            .from('companies')
-                            .update({ telegram_chat_id: chatId })
-                            .eq('email', verification.email)
+                    if (companyError || !company) {
+                        await sendTelegramMessage(chatId,
+                            `❌ No company found with email: ${email}\n\n` +
+                            `Please use the exact email you used to sign up.\n\n` +
+                            `Need help? Contact support.`
+                        )
+                        return new Response(JSON.stringify({ success: false }), { headers: corsHeaders })
+                    }
 
+                    // Check if already linked
+                    if (company.telegram_chat_id) {
+                        await sendTelegramMessage(chatId,
+                            `ℹ️ Already linked!\n\n` +
+                            `Company: ${company.company_name}\n` +
+                            `You'll receive job notifications here.`
+                        )
+                        return new Response(JSON.stringify({ success: false }), { headers: corsHeaders })
+                    }
+
+                    // LINK IMMEDIATELY - no code needed
+                    const { error: updateError } = await supabaseClient
+                        .from('companies')
+                        .update({
+                            telegram_chat_id: chatId,
+                            telegram_linked_at: new Date().toISOString()
+                        })
+                        .eq('id', company.id)
+
+                    if (updateError) {
+                        await sendTelegramMessage(chatId,
+                            `❌ Linking failed. Please try again or contact support.`
+                        )
+                        console.error('Update error:', updateError)
+                    } else {
                         await sendTelegramMessage(chatId,
                             `✅ Successfully linked!\n\n` +
-                            `You'll now receive job notifications here.`
+                            `Company: <b>${company.company_name}</b>\n` +
+                            `You'll now receive instant job notifications here.\n\n` +
+                            `When you get a new job, you can:\n` +
+                            `• Click "Accept" to take the job\n` +
+                            `• Click "View Details" to see more\n` +
+                            `• Click "Decline" to pass\n\n` +
+                            `Happy working! 🛠️`
                         )
 
-                        // Clean up verification
-                        await supabaseClient
-                            .from('telegram_verifications')
-                            .delete()
-                            .eq('id', verification.id)
+                        console.log(`✅ Company ${company.company_name} linked to Telegram chat ${chatId}`)
                     }
+                } else {
+                    await sendTelegramMessage(chatId,
+                        `📝 Usage: <code>/link your@email.com</code>\n\n` +
+                        `Use the exact email you used to sign up.\n\n` +
+                        `Example: <code>/link company@example.com</code>`
+                    )
                 }
             }
         }
