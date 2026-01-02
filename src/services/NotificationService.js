@@ -122,19 +122,28 @@ class NotificationService {
             });
 
             // Call your existing telegram-webhook function
+            // Update this fetch call in sendTelegramJobNotification function:
             const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook/job-notification', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                },
                 body: JSON.stringify({
                     action: 'send_job_notification',
                     chat_id: company.telegram_chat_id,
                     message: message,
                     job_id: jobData.id,
                     reply_markup: inlineKeyboard,
-                    company_name: company.company_name
+                    company_name: company.company_name,
+                    // Include job details as fallback
+                    category: jobData.category,
+                    sub_service: jobData.sub_service,
+                    location: jobData.location,
+                    budget: jobData.budget,
+                    description: jobData.description
                 })
             });
-
             const result = await response.json();
 
             console.log('📩 Telegram notification response:', result);

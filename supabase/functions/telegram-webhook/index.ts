@@ -89,6 +89,33 @@ serve(async (req) => {
         return new Response('ok', { headers: corsHeaders })
     }
 
+    // NEW: Skip auth check for Telegram webhook (from Telegram servers)
+    const userAgent = req.headers.get('user-agent') || '';
+    const isTelegramWebhook = userAgent.includes('TelegramBot') ||
+        req.headers.get('x-telegram-bot-api-secret-token');
+
+    // Create URL object once
+    const url = new URL(req.url); // <-- KEEP THIS ONE
+
+    // For job-notification endpoint (from your app), check auth
+    if (url.pathname.includes('/job-notification') && !isTelegramWebhook) {
+        // Simple auth check - verify the Authorization header matches anon key
+        const authHeader = req.headers.get('authorization');
+        const expectedToken = Deno.env.get('SUPABASE_ANON_KEY');
+
+        if (!authHeader || !authHeader.startsWith('Bearer ') ||
+            authHeader.split(' ')[1] !== expectedToken) {
+            console.log('❌ Unauthorized access to job-notification');
+            return new Response(
+                JSON.stringify({ code: 401, message: 'Unauthorized' }),
+                {
+                    status: 401,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                }
+            );
+        }
+    }
+
     // Environment check
     console.log('Environment check:', {
         hasURL: !!Deno.env.get('URL'),
@@ -106,8 +133,7 @@ serve(async (req) => {
     console.log('Request received:', req.method, req.url)
 
     // NEW: Handle job notifications from your app (via POST to /job-notification)
-    const url = new URL(req.url);
-    if (url.pathname.includes('/job-notification')) {
+    if (url.pathname.includes('/job-notification')) { // <-- USE SAME URL OBJECT HERE
         console.log('📤 Received job notification request from app');
 
         try {
