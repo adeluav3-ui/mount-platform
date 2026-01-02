@@ -82,19 +82,32 @@ async function notifyCustomer(supabaseClient: any, jobId: string, action: string
     }
 }
 
-// THE SERVE FUNCTION STARTS HERE - all webhook logic goes inside this
-// Replace the auth check section with this simpler version:
 serve(async (req) => {
+    console.log('=== TELEGRAM WEBHOOK CALLED ===');
+
     // Handle CORS preflight
     if (req.method === 'OPTIONS') {
+        console.log('Handling CORS preflight');
         return new Response('ok', { headers: corsHeaders })
     }
 
+    // Initialize Supabase client FIRST
+    const supabaseClient = createClient(
+        Deno.env.get('URL') ?? '',
+        Deno.env.get('ANON_KEY') ?? ''
+    )
+
+    console.log('Supabase client initialized');
+
     // Create URL object
     const url = new URL(req.url);
+    console.log('Pathname:', url.pathname);
 
-    // NEW: Handle job notifications from your app (via POST to /job-notification)
-    // NO AUTH CHECK - frontend already has anon key exposed
+    // Check if it's from Telegram
+    const userAgent = req.headers.get('user-agent') || '';
+    console.log('User-Agent:', userAgent);
+
+
     if (url.pathname.includes('/job-notification')) {
         console.log('📤 Received job notification request from app');
 

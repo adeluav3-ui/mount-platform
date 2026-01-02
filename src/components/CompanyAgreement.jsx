@@ -4,16 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
     const [accepted, setAccepted] = useState(false);
-    const [scrolledToBottom, setScrolledToBottom] = useState(false);
 
     const handleAccept = () => {
         if (!accepted) {
             alert('You must accept the Service Provider Agreement to continue.');
-            return;
-        }
-
-        if (!scrolledToBottom) {
-            alert('Please scroll through the entire agreement to ensure you have read all terms.');
             return;
         }
 
@@ -23,7 +17,6 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
     const handleScroll = (e) => {
         const { scrollTop, scrollHeight, clientHeight } = e.target;
         const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
-        setScrolledToBottom(isAtBottom);
     };
 
     return (
@@ -248,15 +241,6 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* SCROLL NOTICE */}
-                                    {!scrolledToBottom && (
-                                        <div className="sticky bottom-0 bg-yellow-100 border border-yellow-300 rounded-lg p-4 text-center">
-                                            <p className="text-yellow-800 font-medium">
-                                                ⚠️ Please scroll to the bottom to read all terms
-                                            </p>
-                                        </div>
-                                    )}
 
                                     {/* ACCEPTANCE SECTION */}
                                     <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">

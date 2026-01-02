@@ -109,7 +109,7 @@ class NotificationService {
                     [
                         {
                             text: "📋 View Details",
-                            url: `https://mountltd.com/company/jobs/${jobData.id}`
+                            url: `https://mountltd.com/dashboard`
                         }
                     ]
                 ]
