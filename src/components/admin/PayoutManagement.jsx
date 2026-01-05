@@ -188,6 +188,8 @@ const PayoutManagement = () => {
             if (!job) throw new Error('Job not found');
 
             let amount, platformFee, description;
+            let companyReceivedSoFar = 0; // DECLARE HERE - OUTSIDE THE ELSE BLOCK
+            let totalServiceFeeCollected = 0;
 
             // FIRST: Get all verified payments for this job to understand what was paid
             const { data: verifiedPayments } = await supabase
@@ -198,10 +200,19 @@ const PayoutManagement = () => {
                 .eq('verified_by_admin', true);
 
             // Calculate total service fee collected from customer
-            let totalServiceFeeCollected = 0;
             if (verifiedPayments) {
                 verifiedPayments.forEach(payment => {
                     totalServiceFeeCollected += payment.platform_fee || 0;
+
+                    // Also calculate what company has already received (for final payment calculation)
+                    if (payment.type === 'deposit') {
+                        // Deposit: company gets 50% of job
+                        companyReceivedSoFar += job.quoted_price * 0.5;
+                    } else if (payment.type === 'intermediate') {
+                        // Intermediate: company gets 30% of job
+                        companyReceivedSoFar += job.quoted_price * 0.3;
+                    }
+                    // Note: We don't count service fee (platform_fee) as company payment
                 });
             }
 
@@ -221,21 +232,6 @@ const PayoutManagement = () => {
 
             } else {
                 // FINAL PAYMENT - Calculate based on what's already been paid to company
-
-                // Calculate what company has already received
-                let companyReceivedSoFar = 0;
-                if (verifiedPayments) {
-                    verifiedPayments.forEach(payment => {
-                        if (payment.type === 'deposit') {
-                            // Deposit: company gets 50% of job
-                            companyReceivedSoFar += totalJobAmount * 0.5;
-                        } else if (payment.type === 'intermediate') {
-                            // Intermediate: company gets 30% of job
-                            companyReceivedSoFar += totalJobAmount * 0.3;
-                        }
-                        // Note: We don't count service fee (platform_fee) as company payment
-                    });
-                }
 
                 // Total company should receive: 95% of job (5% platform commission)
                 const totalCompanyShouldReceive = totalJobAmount * 0.95;
@@ -478,7 +474,7 @@ const PayoutManagement = () => {
                                                 {job.customer_service_fee > 0 && (
                                                     <div>Customer service fee: ₦{job.customer_service_fee.toLocaleString()}</div>
                                                 )}
-                                                <div>Platform commission: 5% of ₦{formatCurrency(job.quoted_price)}</div>
+                                                <div>Platform commission: 5% of {formatCurrency(job.quoted_price)}</div>
                                             </div>
                                         </div>
                                     </div>
