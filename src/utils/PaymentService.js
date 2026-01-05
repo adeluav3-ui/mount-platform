@@ -1,4 +1,4 @@
-// src/utils/PaymentService.js - TIERED FEE VERSION
+// src/utils/PaymentService.js - FIXED VERSION
 import { supabase } from '../context/SupabaseContext';
 
 export const PaymentService = {
@@ -9,46 +9,111 @@ export const PaymentService = {
         return serviceFee;
     },
 
-    // Check if customer is in promotion period
+    // FIXED: Check if customer is in promotion period
+    // FIXED: Check if customer is in promotion period
     checkCustomerPromotionStatus: async (customerId) => {
         try {
             const { data: customer, error } = await supabase
                 .from('customers')
-                .select('promotion_end_date, first_job_date')
+                .select('promotion_end_date, first_job_date, jobs_count, created_at')
                 .eq('id', customerId)
                 .single();
 
             if (error) throw error;
-            if (!customer) return null;
+            if (!customer) {
+                return {
+                    isInPromotion: false,
+                    message: 'Customer not found',
+                    promotionEndDate: null,
+                    isFirstJob: false
+                };
+            }
 
             const now = new Date();
-            const promotionEndDate = customer.promotion_end_date
-                ? new Date(customer.promotion_end_date)
-                : null;
 
-            // Check if promotion has ended
-            const isInPromotion = promotionEndDate
-                ? now < promotionEndDate
-                : false; // Default to no promotion if no date set
+            // CRITICAL FIX: If this is a NEW CUSTOMER with no first_job_date
+            // They should get promotion for their first job
+            if (!customer.first_job_date) {
+                return {
+                    isInPromotion: true,  // ← THIS WAS THE BUG! Should be TRUE for first job
+                    promotionEndDate: null,
+                    firstJobDate: null,
+                    isFirstJob: true,
+                    message: 'First job - 3-month promotion applies!'
+                };
+            }
 
+            // Existing logic for customers with first_job_date set
+            if (customer.promotion_end_date) {
+                const promotionEndDate = new Date(customer.promotion_end_date);
+                const isInPromotion = now < promotionEndDate;
+
+                return {
+                    isInPromotion,
+                    promotionEndDate: promotionEndDate.toISOString(),
+                    firstJobDate: customer.first_job_date,
+                    isFirstJob: false,
+                    message: isInPromotion
+                        ? `You're in promotion period until ${promotionEndDate.toLocaleDateString()}`
+                        : 'Promotion period has ended'
+                };
+            }
+
+            // No promotion date set (promotion ended)
             return {
-                isInPromotion,
-                promotionEndDate: promotionEndDate?.toISOString(),
-                message: isInPromotion
-                    ? `You're in promotion period until ${promotionEndDate.toLocaleDateString()}`
-                    : 'Promotion period has ended'
+                isInPromotion: false,
+                promotionEndDate: null,
+                firstJobDate: customer.first_job_date,
+                isFirstJob: false,
+                message: 'Promotion period has ended'
             };
+
         } catch (error) {
             console.error('Error checking promotion status:', error);
             return {
                 isInPromotion: false,
                 promotionEndDate: null,
-                message: 'Unable to verify promotion status'
+                message: 'Unable to verify promotion status',
+                isFirstJob: false
             };
         }
     },
 
-    // Get complete payment breakdown
+    // NEW FUNCTION: Set promotion period when first job is created
+    setPromotionForFirstJob: async (customerId, jobCreatedDate) => {
+        try {
+            // Calculate promotion end date (3 months from job creation)
+            const promotionEndDate = new Date(jobCreatedDate);
+            promotionEndDate.setMonth(promotionEndDate.getMonth() + 3);
+
+            // Update customer record
+            const { error } = await supabase
+                .from('customers')
+                .update({
+                    first_job_date: jobCreatedDate,
+                    promotion_end_date: promotionEndDate.toISOString(),
+                    jobs_count: 1
+                })
+                .eq('id', customerId);
+
+            if (error) throw error;
+
+            return {
+                success: true,
+                promotionEndDate: promotionEndDate.toISOString(),
+                message: '3-month promotion period set successfully'
+            };
+
+        } catch (error) {
+            console.error('Error setting promotion:', error);
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    },
+
+    // FIXED: Get payment breakdown with correct promotion logic
     getPaymentBreakdown: async (jobId, customerId) => {
         try {
             // 1. Fetch job details
@@ -61,7 +126,8 @@ export const PaymentService = {
                     total_amount,
                     status,
                     upfront_payment,
-                    final_payment
+                    final_payment,
+                    created_at
                 `)
                 .eq('id', jobId)
                 .single();
@@ -70,14 +136,30 @@ export const PaymentService = {
             if (!job) throw new Error('Job not found');
 
             const jobAmount = job.quoted_price || 0;
+            const jobCreatedDate = job.created_at;
 
             // 2. Check customer promotion status
-            let promotionStatus = { isInPromotion: false };
+
+            let promotionStatus = {
+                isInPromotion: false,
+                isFirstJob: false
+            };
+
             if (customerId) {
                 promotionStatus = await PaymentService.checkCustomerPromotionStatus(customerId);
+
+                // CRITICAL: If this is first job and we have job creation date
+                if (promotionStatus.isFirstJob && jobCreatedDate) {
+                    // Set promotion for first job
+                    const setPromotionResult = await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
+                    if (setPromotionResult.success) {
+                        // Re-check status after setting promotion
+                        promotionStatus = await PaymentService.checkCustomerPromotionStatus(customerId);
+                    }
+                }
             }
 
-            // 3. Calculate service fee (waived if in promotion)
+            // 3. Calculate service fee
             let serviceFee = 0;
             let isServiceFeeWaived = false;
 
@@ -147,7 +229,7 @@ export const PaymentService = {
                     amount: serviceFee,
                     isWaived: isServiceFeeWaived,
                     description: isServiceFeeWaived
-                        ? 'Service fee waived during promotion period'
+                        ? 'Service fee waived during 3-month promotion period'
                         : `Service fee (5% with min ₦500, max ₦10,000)`
                 },
                 platformCommission: {
@@ -162,6 +244,11 @@ export const PaymentService = {
                     totalDueNow,
                     finalPaymentDue,
                     totalJobAmount: jobAmount
+                },
+                promotionStatus: {
+                    isInPromotion: promotionStatus.isInPromotion,
+                    isFirstJob: promotionStatus.isFirstJob,
+                    message: promotionStatus.message
                 }
             };
 
@@ -205,7 +292,8 @@ export const PaymentService = {
                     payment_metadata: {
                         fee_calculation_time: new Date().toISOString(),
                         promotion_status: promotionStatus,
-                        tiered_fee_applied: !breakdown.serviceFee.isWaived
+                        tiered_fee_applied: !breakdown.serviceFee.isWaived,
+                        is_first_job_promotion: promotionStatus.isFirstJob
                     }
                 })
                 .eq('id', jobId)

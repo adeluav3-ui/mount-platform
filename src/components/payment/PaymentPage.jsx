@@ -5,7 +5,8 @@ import { supabase } from '../../context/SupabaseContext';
 import PaymentService from '../../utils/PaymentService';
 
 // Helper function to calculate payment with service fee
-const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType) => {
+// Update the calculatePaymentWithServiceFee function in PaymentPage.jsx
+const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType, jobCreatedDate) => {
     try {
         // Only apply service fee to deposit payments
         if (paymentType !== 'deposit') {
@@ -23,6 +24,25 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
 
         const depositAmount = jobAmount * 0.5;
 
+        // NEW LOGIC: If it's first job, they get promotion
+        if (promotionResult.isFirstJob && jobCreatedDate) {
+            // Set promotion for first job
+            await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
+            // Re-check status
+            const updatedPromotion = await PaymentService.checkCustomerPromotionStatus(customerId);
+
+            if (updatedPromotion.isInPromotion) {
+                return {
+                    baseAmount: depositAmount,
+                    serviceFee: 0,
+                    totalPayment: depositAmount,
+                    isFeeWaived: true,
+                    isDepositPayment: true,
+                    isFirstJob: true
+                };
+            }
+        }
+
         if (promotionResult.isInPromotion) {
             // In promotion: no service fee
             return {
@@ -30,7 +50,8 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
                 serviceFee: 0,
                 totalPayment: depositAmount,
                 isFeeWaived: true,
-                isDepositPayment: true
+                isDepositPayment: true,
+                isFirstJob: promotionResult.isFirstJob
             };
         } else {
             // Not in promotion: add tiered service fee
@@ -40,7 +61,8 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
                 serviceFee: serviceFee,
                 totalPayment: depositAmount + serviceFee,
                 isFeeWaived: false,
-                isDepositPayment: true
+                isDepositPayment: true,
+                isFirstJob: false
             };
         }
     } catch (error) {
@@ -52,7 +74,8 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
             serviceFee: 0,
             totalPayment: depositAmount,
             isFeeWaived: false,
-            isDepositPayment: true
+            isDepositPayment: true,
+            isFirstJob: false
         };
     }
 };
