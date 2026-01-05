@@ -69,7 +69,7 @@ export default function JobsSection({
                 .from('jobs')
                 .select('*')
                 .eq('company_id', user.id)
-                .neq('status', 'declined_by_company')  // EXCLUDE declined jobs
+                .neq('status', 'declined_by_company')
                 .order('created_at', { ascending: false })
 
             if (jobsError) throw jobsError
@@ -78,6 +78,49 @@ export default function JobsSection({
                 setJobs([])
                 setJobsLoading(false)
                 return
+            }
+
+            // Get ALL financial transactions for these jobs
+            const jobIds = jobsData.map(job => job.id);
+            const { data: allPayments, error: paymentsError } = await supabase
+                .from('financial_transactions')
+                .select('job_id, type, status, verified_by_admin, amount')
+                .in('job_id', jobIds)
+                .order('created_at', { ascending: false });
+
+            if (paymentsError) {
+                console.warn('Could not fetch payments:', paymentsError);
+            }
+
+            // Create a map to track payments per job
+            const paymentMap = {};
+            if (allPayments) {
+                allPayments.forEach(payment => {
+                    if (!paymentMap[payment.job_id]) {
+                        paymentMap[payment.job_id] = {
+                            hasDeposit: false,
+                            hasIntermediate: false,
+                            hasFinal: false,
+                            depositAmount: 0,
+                            intermediateAmount: 0,
+                            finalAmount: 0
+                        };
+                    }
+
+                    // Only count verified payments
+                    if (payment.verified_by_admin && payment.status === 'completed') {
+                        if (payment.type === 'deposit') {
+                            paymentMap[payment.job_id].hasDeposit = true;
+                            paymentMap[payment.job_id].depositAmount = payment.amount || 0;
+                        } else if (payment.type === 'intermediate') {
+                            paymentMap[payment.job_id].hasIntermediate = true;
+                            paymentMap[payment.job_id].intermediateAmount = payment.amount || 0;
+                        } else if (payment.type === 'final_payment') {
+                            paymentMap[payment.job_id].hasFinal = true;
+                            paymentMap[payment.job_id].finalAmount = payment.amount || 0;
+                        }
+                    }
+                });
             }
 
             const jobsWithDetails = await Promise.all(
@@ -116,6 +159,14 @@ export default function JobsSection({
                             customer_name: 'Unknown Customer',
                             phone: 'N/A',
                             email: 'N/A'
+                        },
+                        paymentData: paymentMap[job.id] || {
+                            hasDeposit: false,
+                            hasIntermediate: false,
+                            hasFinal: false,
+                            depositAmount: 0,
+                            intermediateAmount: 0,
+                            finalAmount: 0
                         }
                     }
                 })
@@ -762,7 +813,12 @@ export default function JobsSection({
                                         <p className="font-bold text-green-700 mb-2">Payment Structure:</p>
                                         <div className="text-sm text-green-600 space-y-1">
                                             <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Already Paid)</p>
-                                            <p>⏳ Remaining Balance: ₦{(job.quoted_price * 0.5).toLocaleString()}</p>
+                                            {/* Check if intermediate was already requested/pending */}
+                                            {job.paymentData?.hasIntermediate ? (
+                                                <p>⏳ 30% Intermediate: ₦{(job.quoted_price * 0.3).toLocaleString()} (Already requested)</p>
+                                            ) : (
+                                                <p>⏳ Remaining Balance: ₦{(job.quoted_price * 0.5).toLocaleString()} (50%)</p>
+                                            )}
                                             <p className="font-medium mt-2">Options for remaining balance:</p>
                                             <ul className="list-disc pl-5 mt-1">
                                                 <li>Request 30% now for materials (customer pays 30%, you get materials)</li>
@@ -773,14 +829,16 @@ export default function JobsSection({
 
                                     {/* Action Buttons */}
                                     <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {/* Request Intermediate Payment Button */}
-                                        <button
-                                            onClick={() => requestIntermediatePayment(job.id)}
-                                            className="bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
-                                        >
-                                            <span>💰</span>
-                                            <span>Request 30% for Materials</span>
-                                        </button>
+                                        {/* Request Intermediate Payment Button - Only show if not already requested */}
+                                        {!job.paymentData?.hasIntermediate && (
+                                            <button
+                                                onClick={() => requestIntermediatePayment(job.id)}
+                                                className="bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                            >
+                                                <span>💰</span>
+                                                <span>Request 30% for Materials</span>
+                                            </button>
+                                        )}
 
                                         {/* Mark as Completed Button */}
                                         <button
@@ -848,7 +906,11 @@ export default function JobsSection({
                                         <div className="ml-4 flex-1">
                                             <p className="font-bold text-xl text-purple-800">Intermediate Payment Received!</p>
                                             <p className="text-purple-700 mt-2">
-                                                Customer has paid 30% intermediate payment (₦{(job.quoted_price * 0.30).toLocaleString()}) for materials.
+                                                Customer has paid 30% intermediate payment {
+                                                    job.paymentData?.intermediateAmount > 0
+                                                        ? `(₦${Number(job.paymentData.intermediateAmount).toLocaleString()})`
+                                                        : `(₦${(job.quoted_price * 0.30).toLocaleString()})`
+                                                } for materials.
                                             </p>
                                             <p className="text-lg font-bold mt-3">
                                                 Customer Phone: <span className="text-purple-700">{job.customer?.phone || 'N/A'}</span>
@@ -857,8 +919,16 @@ export default function JobsSection({
                                             <div className="mt-4 p-3 bg-purple-50 border border-purple-300 rounded-lg">
                                                 <p className="font-medium text-purple-800 mb-2">Payment Status:</p>
                                                 <div className="text-purple-700 space-y-1">
-                                                    <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Paid)</p>
-                                                    <p>✅ 30% Intermediate: ₦{(job.quoted_price * 0.30).toLocaleString()} (Paid for materials)</p>
+                                                    <p>✅ 50% Deposit: {
+                                                        job.paymentData?.depositAmount > 0
+                                                            ? `₦${Number(job.paymentData.depositAmount).toLocaleString()}`
+                                                            : `₦${(job.quoted_price * 0.5).toLocaleString()}`
+                                                    } (Paid)</p>
+                                                    <p>✅ 30% Intermediate: {
+                                                        job.paymentData?.intermediateAmount > 0
+                                                            ? `₦${Number(job.paymentData.intermediateAmount).toLocaleString()}`
+                                                            : `₦${(job.quoted_price * 0.30).toLocaleString()}`
+                                                    } (Paid for materials)</p>
                                                     <p>⏳ 20% Final: ₦{(job.quoted_price * 0.20).toLocaleString()} (Due upon completion)</p>
                                                     <p className="font-bold mt-2">You can now purchase materials and continue work.</p>
                                                 </div>
@@ -887,9 +957,44 @@ export default function JobsSection({
                                     <p className="text-lg mt-2">
                                         Waiting for customer to review and approve final payment.
                                     </p>
+
+                                    {/* FIXED: Calculate balance based on actual payments */}
                                     <p className="text-lg font-bold mt-2">
-                                        Balance Due: <span className="text-orange-700">₦{(job.quoted_price * 0.5).toLocaleString()}</span>
+                                        Balance Due: <span className="text-orange-700">
+                                            {job.paymentData?.hasIntermediate
+                                                ? `₦${(job.quoted_price * 0.2).toLocaleString()} (20%)`
+                                                : `₦${(job.quoted_price * 0.5).toLocaleString()} (50%)`
+                                            }
+                                        </span>
                                     </p>
+
+                                    {/* Add payment summary */}
+                                    <div className="mt-4 p-3 bg-orange-50 border border-orange-300 rounded-lg">
+                                        <p className="font-medium text-orange-800 mb-2">Payment Summary:</p>
+                                        <div className="text-orange-700 space-y-1 text-sm">
+                                            <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Paid)</p>
+                                            {job.paymentData?.hasIntermediate && (
+                                                <p>✅ 30% Intermediate: ₦{(job.quoted_price * 0.3).toLocaleString()} (Paid)</p>
+                                            )}
+                                            <p>⏳ Final Balance: {
+                                                job.paymentData?.hasIntermediate
+                                                    ? `₦${(job.quoted_price * 0.2).toLocaleString()} (20%)`
+                                                    : `₦${(job.quoted_price * 0.5).toLocaleString()} (50%)`
+                                            }</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Show actual payment amounts if available */}
+                                    {job.paymentData?.depositAmount > 0 && (
+                                        <p className="text-xs text-gray-600 mt-2">
+                                            Actual deposit received: ₦{Number(job.paymentData.depositAmount).toLocaleString()}
+                                        </p>
+                                    )}
+                                    {job.paymentData?.intermediateAmount > 0 && (
+                                        <p className="text-xs text-gray-600 mt-1">
+                                            Actual intermediate received: ₦{Number(job.paymentData.intermediateAmount).toLocaleString()}
+                                        </p>
+                                    )}
                                 </div>
                             )}
 
