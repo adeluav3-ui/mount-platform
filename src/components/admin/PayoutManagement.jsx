@@ -188,7 +188,7 @@ const PayoutManagement = () => {
             if (!job) throw new Error('Job not found');
 
             let amount, platformFee, description;
-            let companyReceivedSoFar = 0; // DECLARE HERE - OUTSIDE THE ELSE BLOCK
+            let companyReceivedSoFar = 0;
             let totalServiceFeeCollected = 0;
 
             // FIRST: Get all verified payments for this job to understand what was paid
@@ -212,7 +212,6 @@ const PayoutManagement = () => {
                         // Intermediate: company gets 30% of job
                         companyReceivedSoFar += job.quoted_price * 0.3;
                     }
-                    // Note: We don't count service fee (platform_fee) as company payment
                 });
             }
 
@@ -245,7 +244,7 @@ const PayoutManagement = () => {
                 description = `Final payment (${((amount / totalJobAmount) * 100).toFixed(1)}% job amount - 5% platform commission)`;
             }
 
-            // Create payout
+            // Create payout (SIMPLIFIED - without metadata)
             const { error: payoutError } = await supabase
                 .from('payouts')
                 .insert({
@@ -257,17 +256,7 @@ const PayoutManagement = () => {
                     status: 'pending',
                     bank_name: job.companies.bank_name,
                     bank_account: job.companies.bank_account,
-                    description: description,
-                    metadata: {
-                        total_job_amount: totalJobAmount,
-                        service_fee_collected: totalServiceFeeCollected,
-                        platform_commission: payoutType === 'final' ? totalJobAmount * 0.05 : 0,
-                        calculation: {
-                            deposit_paid: verifiedPayments?.some(p => p.type === 'deposit'),
-                            intermediate_paid: verifiedPayments?.some(p => p.type === 'intermediate'),
-                            company_received_before: companyReceivedSoFar || 0
-                        }
-                    }
+                    description: description
                 });
 
             if (payoutError) throw payoutError;
@@ -373,7 +362,6 @@ const PayoutManagement = () => {
             {/* Header */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h1 className="text-2xl font-bold text-gray-800">Payout Management</h1>
-                <p className="text-gray-600 mt-1">Simple manual payout system for MVP</p>
             </div>
 
             {/* Tabs */}

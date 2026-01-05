@@ -1,135 +1,133 @@
-// src/components/Dashboard.jsx — COMPLETE FIXED VERSION
-import React from 'react';
-import { useSupabase } from '../context/SupabaseContext'
-import CustomerDashboard from './CustomerDashboard'
-import CompanyDashboard from './company/CompanyDashboard'
+// src/components/Dashboard.jsx — OPTIMIZED PERSISTENT VERSION
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSupabase } from '../context/SupabaseContext';
+import CustomerDashboard from './CustomerDashboard';
+import CompanyDashboard from './company/CompanyDashboard';
 import DeviceRegistration from './DeviceRegistration';
-import { useEffect, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom';
 
 export default function Dashboard() {
-    const { user, supabase } = useSupabase()
-    const [role, setRole] = useState('customer')
-    const [loading, setLoading] = useState(false)
-    const [showDeviceCheck, setShowDeviceCheck] = useState(false);
+    const { user, supabase } = useSupabase();
+    const location = useLocation();
+    const [role, setRole] = useState(() => {
+        // Try to get role from localStorage first
+        const savedRole = localStorage.getItem('user_role');
+        return savedRole || 'customer';
+    });
+    const [loading, setLoading] = useState(false);
+    const [showDeviceCheck, setShowDeviceCheck] = useState(() => {
+        // Check localStorage for device check status
+        if (!user) return false;
+        const deviceCheckKey = `deviceCheckShown_${user.id}`;
+        return localStorage.getItem(deviceCheckKey) !== 'true';
+    });
 
-    useEffect(() => {
+    // Memoize the role check function to prevent unnecessary re-runs
+    const checkUserRole = useCallback(async () => {
         if (!user) {
-            setRole('customer')
-            return
+            console.log('No user, defaulting to customer');
+            setRole('customer');
+            localStorage.setItem('user_role', 'customer');
+            return;
         }
 
-        console.log('=== DASHBOARD DEBUG START ===')
-        console.log('User ID:', user.id)
-        console.log('User email:', user.email)
+        console.log('=== DASHBOARD ROLE CHECK START ===');
+        console.log('User ID:', user.id);
 
-        setLoading(true)
+        setLoading(true);
 
-        // Check if we should show device check
-        const shouldShowDeviceCheck = () => {
-            // Check localStorage first
-            const deviceCheckKey = `deviceCheckShown_${user.id}`;
-            const hasBeenShown = localStorage.getItem(deviceCheckKey);
+        try {
+            // Check profiles for admin role
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .maybeSingle();
 
-            if (hasBeenShown === 'true') {
-                console.log('Device check already shown for user:', user.id);
-                return false;
+            if (profileError) {
+                console.error('Profile error:', profileError);
             }
 
-            // Check if it's a company
-            return true; // Will be refined after role check
-        };
+            if (profile?.role === 'admin') {
+                console.log('✅ User is ADMIN');
+                setRole('admin');
+                localStorage.setItem('user_role', 'admin');
+                setLoading(false);
+                return;
+            }
 
-        // SIMPLE check - first check profiles for admin
-        supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .maybeSingle()
-            .then(({ data: profile, error: profileError }) => {
-                console.log('Profile check result:', profile)
+            // Check if company
+            const { data: company } = await supabase
+                .from('companies')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle();
 
-                if (profileError) {
-                    console.error('Profile error:', profileError)
-                    // Continue with company check
-                    return supabase
-                        .from('companies')
-                        .select('id')
-                        .eq('id', user.id)
-                        .maybeSingle()
-                }
+            if (company) {
+                console.log('✅ User is COMPANY');
+                setRole('company');
+                localStorage.setItem('user_role', 'company');
 
-                if (profile?.role === 'admin') {
-                    console.log('✅ User is ADMIN!')
-                    setRole('admin')
-                    setLoading(false)
-                    return null // Stop here
-                }
+                // Check device registration status
+                const deviceCheckKey = `deviceCheckShown_${user.id}`;
+                const hasBeenShown = localStorage.getItem(deviceCheckKey);
 
-                console.log('User is not admin, checking company...')
-                // Not admin, check if company
-                return supabase
-                    .from('companies')
-                    .select('id')
-                    .eq('id', user.id)
-                    .maybeSingle()
-            })
-            .then((companyData) => {
-                if (companyData === null) {
-                    // This means we already set admin role
-                    console.log('Already set admin role, skipping company check')
-                    return
-                }
-
-                console.log('Company check result:', companyData)
-
-                if (companyData?.data) {
-                    console.log('✅ User is COMPANY')
-                    setRole('company')
-
-                    // Determine if we should show device check
-                    const deviceCheckKey = `deviceCheckShown_${user.id}`;
-                    const hasBeenShown = localStorage.getItem(deviceCheckKey);
-
-                    if (hasBeenShown === 'true') {
-                        console.log('Device check already shown for this company');
-                        setShowDeviceCheck(false);
-                    } else {
-                        console.log('Showing device check for company');
-                        setShowDeviceCheck(true);
-                    }
-                } else {
-                    console.log('✅ User is CUSTOMER')
-                    setRole('customer')
+                if (hasBeenShown === 'true') {
+                    console.log('Device check already shown');
                     setShowDeviceCheck(false);
+                } else {
+                    console.log('Device check needed');
+                    setShowDeviceCheck(true);
                 }
-            })
-            .catch((error) => {
-                console.error('Error checking role:', error)
-                setRole('customer') // Default fallback
-            })
-            .finally(() => {
-                setLoading(false)
-                console.log('=== DASHBOARD DEBUG END ===')
-            })
-    }, [user, supabase])
+            } else {
+                console.log('✅ User is CUSTOMER');
+                setRole('customer');
+                localStorage.setItem('user_role', 'customer');
+                setShowDeviceCheck(false);
+            }
+        } catch (error) {
+            console.error('Error checking role:', error);
+            setRole('customer');
+            localStorage.setItem('user_role', 'customer');
+        } finally {
+            setLoading(false);
+            console.log('=== DASHBOARD ROLE CHECK END ===');
+        }
+    }, [user, supabase]);
 
-    console.log('Current role:', role)
-    console.log('Loading:', loading)
-    console.log('Show device check:', showDeviceCheck)
+    // Only run role check when user changes, not on every mount
+    useEffect(() => {
+        if (user) {
+            const savedRole = localStorage.getItem('user_role');
+            const savedUserId = localStorage.getItem('user_id');
+
+            // Only check role if user changed or no saved role
+            if (!savedRole || savedUserId !== user.id) {
+                checkUserRole();
+                localStorage.setItem('user_id', user.id);
+            } else {
+                console.log('Using cached role:', savedRole);
+                setRole(savedRole);
+                setLoading(false);
+            }
+        }
+    }, [user, checkUserRole]);
 
     // Handle device check completion
-    const handleDeviceCheckComplete = () => {
+    const handleDeviceCheckComplete = useCallback(() => {
         console.log('Device check marked as complete for user:', user?.id);
         if (user?.id) {
             localStorage.setItem(`deviceCheckShown_${user.id}`, 'true');
-            console.log('Saved to localStorage: deviceCheckShown_' + user.id);
+            console.log('Saved device check status for user:', user.id);
         }
         setShowDeviceCheck(false);
-    };
+    }, [user]);
 
-    // Show loading only if we're actively loading
-    if (loading) {
+    // Memoize the loading state to prevent unnecessary re-renders
+    const isLoading = useMemo(() => loading && !role, [loading, role]);
+
+    // Show loading only if we're actively loading and don't have a role yet
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-naijaGreen flex items-center justify-center">
                 <div className="text-white text-center">
@@ -137,20 +135,20 @@ export default function Dashboard() {
                     <p className="mt-4 text-sm">Checking user permissions...</p>
                 </div>
             </div>
-        )
+        );
     }
 
-    // Redirect admins ONLY if they're trying to access the dashboard
-    if (role === 'admin' && window.location.pathname.startsWith('/dashboard')) {
-        console.log('🚀 Redirecting to /admin from dashboard')
-        return <Navigate to="/admin" replace />
+    // Redirect admins to admin dashboard
+    if (role === 'admin' && location.pathname.startsWith('/dashboard')) {
+        console.log('🚀 Redirecting admin to /admin');
+        return <Navigate to="/admin" replace />;
     }
 
-    console.log('Rendering dashboard for role:', role)
+    console.log('Rendering dashboard for role:', role, 'at path:', location.pathname);
 
-    // Render appropriate dashboard with DeviceRegistration for companies
+    // Render appropriate dashboard
     return (
-        <>
+        <div className="dashboard-container" key={user?.id || 'no-user'}>
             {/* Add DeviceRegistration for companies */}
             {role === 'company' && showDeviceCheck && (
                 <DeviceRegistration onComplete={handleDeviceCheckComplete} />
@@ -158,6 +156,6 @@ export default function Dashboard() {
 
             {/* Render the appropriate dashboard */}
             {role === 'company' ? <CompanyDashboard /> : <CustomerDashboard />}
-        </>
+        </div>
     );
 }
