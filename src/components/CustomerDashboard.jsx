@@ -453,6 +453,42 @@ export default function CustomerDashboard() {
                     I need a service!
                 </button>
             </div>
+            {/* Pending Reviews Section - FIXED */}
+            {jobs.filter(j => j.status === 'completed' && j.reviewed === false).length > 0 && (
+                <div className="mt-8 bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
+                    <h4 className="text-xl font-bold text-yellow-600 mb-3">📝 Pending Reviews</h4>
+                    <p className="text-gray-700 mb-4">
+                        You have {jobs.filter(j => j.status === 'completed' && j.reviewed === false).length} completed job{jobs.filter(j => j.status === 'completed' && j.reviewed === false).length !== 1 ? 's' : ''} waiting for your review.
+                    </p>
+                    <div className="space-y-3">
+                        {jobs.filter(j => j.status === 'completed' && j.reviewed === false).slice(0, 3).map(job => (
+                            <div key={job.id} className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
+                                <div>
+                                    <p className="font-medium">{job.category} - {job.sub_service}</p>
+                                    <p className="text-sm text-gray-600">Company: {job.company?.company_name || 'Unknown'}</p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        // Open the review page for this specific job
+                                        window.open(`/review/${job.id}`, '_blank');
+                                    }}
+                                    className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
+                                >
+                                    Leave Review
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                    {jobs.filter(j => j.status === 'completed' && j.reviewed === false).length > 3 && (
+                        <button
+                            onClick={() => setViewWithHistory('myJobs')}
+                            className="mt-3 text-sm text-yellow-600 hover:text-yellow-800 underline"
+                        >
+                            View all ({jobs.filter(j => j.status === 'completed' && j.reviewed === false).length}) jobs needing review
+                        </button>
+                    )}
+                </div>
+            )}
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
                     <h4 className="text-xl sm:text-2xl font-bold text-yellow-600 mb-3">
@@ -462,43 +498,6 @@ export default function CustomerDashboard() {
                         Mount connects you only with verified, experienced, and insured companies. We ensure peace of mind by simplifying the process of finding highly skilled artisans for every job.
                     </p>
                 </div>
-
-                {/* Pending Reviews Section - FIXED */}
-                {jobs.filter(j => j.status === 'completed' && j.reviewed === false).length > 0 && (
-                    <div className="mt-8 bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500">
-                        <h4 className="text-xl font-bold text-yellow-600 mb-3">📝 Pending Reviews</h4>
-                        <p className="text-gray-700 mb-4">
-                            You have {jobs.filter(j => j.status === 'completed' && j.reviewed === false).length} completed job{jobs.filter(j => j.status === 'completed' && j.reviewed === false).length !== 1 ? 's' : ''} waiting for your review.
-                        </p>
-                        <div className="space-y-3">
-                            {jobs.filter(j => j.status === 'completed' && j.reviewed === false).slice(0, 3).map(job => (
-                                <div key={job.id} className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                                    <div>
-                                        <p className="font-medium">{job.category} - {job.sub_service}</p>
-                                        <p className="text-sm text-gray-600">Company: {job.company?.company_name || 'Unknown'}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            // Open the review page for this specific job
-                                            window.open(`/review/${job.id}`, '_blank');
-                                        }}
-                                        className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm"
-                                    >
-                                        Leave Review
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                        {jobs.filter(j => j.status === 'completed' && j.reviewed === false).length > 3 && (
-                            <button
-                                onClick={() => setViewWithHistory('myJobs')}
-                                className="mt-3 text-sm text-yellow-600 hover:text-yellow-800 underline"
-                            >
-                                View all ({jobs.filter(j => j.status === 'completed' && j.reviewed === false).length}) jobs needing review
-                            </button>
-                        )}
-                    </div>
-                )}
             </div>
         </div>
     );

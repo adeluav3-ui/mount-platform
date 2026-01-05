@@ -30,7 +30,7 @@ const subCategoriesByMain = {
         "Circuit breaker fixes",
         "Ceiling fan installation",
         "Wiring faults and rewiring",
-        "Inverter installation and troubleshooting",
+        "Solar and Inverter Installation and troubleshooting",
         "Other"
     ],
     "Plumbing": [
