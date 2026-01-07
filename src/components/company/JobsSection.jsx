@@ -1,4 +1,4 @@
-// src/components/company/JobsSection.jsx — CORRECTED VERSION
+// src/components/company/JobsSection.jsx — MOBILE-OPTIMIZED VERSION
 import React from 'react'
 import { useState, useEffect } from 'react'
 import QuoteForm from './QuoteForm'
@@ -47,7 +47,6 @@ const CustomerVerificationBadge = ({ verificationLevel, idType }) => {
         </span>
     );
 };
-
 
 export default function JobsSection({
     showJobs,
@@ -197,7 +196,7 @@ export default function JobsSection({
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', jobId)
-                .select() // Add select to see what's returned
+                .select()
 
             console.log('📤 Update response:', { updateData, error });
 
@@ -291,10 +290,10 @@ export default function JobsSection({
             // 1. Create a financial transaction record for the intermediate payment
             const paymentData = {
                 job_id: jobId,
-                user_id: job.customer_id, // Customer's user ID
+                user_id: job.customer_id,
                 type: 'intermediate',
                 amount: intermediateAmount,
-                platform_fee: 0, // No fee on intermediate payments
+                platform_fee: 0,
                 description: '30% intermediate payment for materials',
                 reference: `INT-${jobId.substring(0, 8)}-${Date.now()}`,
                 status: 'pending',
@@ -305,7 +304,7 @@ export default function JobsSection({
                 admin_notes: null,
                 metadata: {
                     requested_by_company: user.id,
-                    company_name: 'Your Company', // You might want to fetch this
+                    company_name: 'Your Company',
                     for_materials: true,
                     requested_at: new Date().toISOString()
                 },
@@ -380,6 +379,7 @@ export default function JobsSection({
             alert(`❌ Failed to request intermediate payment. Error: ${error.message || 'Unknown error'}`);
         }
     };
+
     useEffect(() => {
         if (!showJobs || !user || !supabase) return
 
@@ -437,8 +437,6 @@ export default function JobsSection({
         }
     }
 
-
-
     const createCustomerNotification = async (jobId, notificationType, companyName = '') => {
         try {
             const { data: job, error: jobError } = await supabase
@@ -476,7 +474,6 @@ export default function JobsSection({
                 type: notificationType,
                 title: title,
                 message: message,
-                // REMOVE company_name - it doesn't exist in your table
                 read: false,
                 created_at: new Date().toISOString()
             }
@@ -495,11 +492,9 @@ export default function JobsSection({
         const jobToDelete = jobs.find(job => job.id === jobId)
         if (!jobToDelete) return
 
-        // Remove from UI immediately for better UX
         setJobs(prev => prev.filter(job => job.id !== jobId))
 
         try {
-            // Get your company name first
             const { data: companyData, error: companyError } = await supabase
                 .from('companies')
                 .select('company_name')
@@ -515,12 +510,10 @@ export default function JobsSection({
                 companyName
             });
 
-            // Update job status to declined_by_company but KEEP company_id
             const { error } = await supabase
                 .from('jobs')
                 .update({
                     status: 'declined_by_company',
-                    // DON'T set company_id to null - keep it so we know who declined
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', jobId)
@@ -533,14 +526,12 @@ export default function JobsSection({
 
             console.log('Job update successful');
 
-            // Create notification for customer
             await createCustomerNotification(jobId, 'job_declined', companyName)
 
             alert('Job declined. The customer has been notified.')
 
         } catch (err) {
             console.error('Failed to decline job:', err)
-            // Restore the job in the UI if the update failed
             setJobs(prev => [jobToDelete, ...prev.filter(job => job.id !== jobToDelete.id)])
             alert("Error: Failed to decline the job. Please try again. Message: " + err.message)
         }
@@ -551,12 +542,12 @@ export default function JobsSection({
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4">
                     <h3 className="text-xl font-bold text-naijaGreen mb-4">Request Onsite Check</h3>
 
                     <p className="text-gray-700 mb-6">
                         You're about to request an onsite check for:
-                        <strong className="block mt-2">{selectedJobForOnsite.sub_service || selectedJobForOnsite.category}</strong>
+                        <strong className="block mt-2 text-lg">{selectedJobForOnsite.sub_service || selectedJobForOnsite.category}</strong>
                     </p>
 
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
@@ -566,13 +557,13 @@ export default function JobsSection({
                         </p>
                     </div>
 
-                    <div className="flex gap-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={() => {
                                 setShowOnsiteModal(false)
                                 setSelectedJobForOnsite(null)
                             }}
-                            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50"
+                            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition-colors"
                         >
                             Cancel
                         </button>
@@ -582,7 +573,7 @@ export default function JobsSection({
                                 setShowOnsiteModal(false)
                                 setSelectedJobForOnsite(null)
                             }}
-                            className="flex-1 bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen"
+                            className="flex-1 bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors"
                         >
                             Confirm Request
                         </button>
@@ -595,10 +586,10 @@ export default function JobsSection({
     if (!showJobs) return null
 
     return (
-        <div className="mt-12 bg-white rounded-3xl shadow-2xl p-8">
+        <div className="mt-12 bg-white rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8">
             <button
                 onClick={() => setShowJobs(false)}
-                className="mb-6 text-naijaGreen font-bold hover:underline flex items-center gap-2"
+                className="mb-6 text-naijaGreen font-bold hover:underline flex items-center gap-2 text-sm sm:text-base"
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -611,53 +602,56 @@ export default function JobsSection({
             {jobsLoading ? (
                 <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-naijaGreen"></div>
-                    <p className="mt-4 text-gray-500">Loading jobs...</p>
+                    <p className="mt-4 text-gray-500 text-sm sm:text-base">Loading jobs...</p>
                 </div>
             ) : jobs.length === 0 ? (
-                <div className="text-center py-16">
-                    <div className="text-6xl mb-4 text-gray-300">🛠️</div>
-                    <p className="text-2xl text-gray-500 font-bold">No jobs yet</p>
-                    <p className="text-gray-400 mt-2">Jobs will appear here when customers send them.</p>
+                <div className="text-center py-12 sm:py-16">
+                    <div className="text-5xl sm:text-6xl mb-4 text-gray-300">🛠️</div>
+                    <p className="text-xl sm:text-2xl text-gray-500 font-bold">No jobs yet</p>
+                    <p className="text-gray-400 mt-2 text-sm sm:text-base">Jobs will appear here when customers send them.</p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     {jobs.map(job => (
-                        <div key={job.id} className="relative border-2 border-naijaGreen/20 rounded-2xl p-6 hover:shadow-lg transition">
+                        <div key={job.id} className="relative border-2 border-naijaGreen/20 rounded-2xl p-4 sm:p-6 hover:shadow-lg transition-shadow">
                             <button
                                 onClick={(e) => handleDeleteJob(job.id, e)}
-                                className="absolute top-4 right-4 bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-full transition"
-                                title="Delete Job"
+                                className="absolute top-3 right-3 sm:top-4 sm:right-4 bg-red-100 hover:bg-red-200 text-red-600 p-2 rounded-full transition-colors"
+                                title="Decline Job"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </button>
 
-                            <h3 className="text-xl font-bold text-naijaGreen pr-10">
-                                {job.sub_service || job.category}
+                            <div className="pr-10">
+                                <h3 className="text-lg sm:text-xl font-bold text-naijaGreen break-words">
+                                    {job.sub_service || job.category}
+                                </h3>
                                 {job.custom_sub_description && (
-                                    <span className="block text-lg italic text-gray-600">Custom: {job.custom_sub_description}</span>
+                                    <p className="text-sm sm:text-base text-gray-600 italic mt-1 break-words">
+                                        Custom: {job.custom_sub_description}
+                                    </p>
                                 )}
-                            </h3>
+                            </div>
 
-                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-gray-700">
+                            <div className="mt-4 grid grid-cols-1 gap-4">
+                                <div className="space-y-2">
+                                    <p className="text-gray-700 text-sm sm:text-base">
                                         <span className="font-bold">Location:</span> {job.location || 'Not specified'}
                                     </p>
-                                    <p className="text-gray-700 mt-2">
+                                    <p className="text-gray-700 text-sm sm:text-base">
                                         <span className="font-bold">Customer Budget:</span>
                                         <span className="text-naijaGreen font-bold ml-2">₦{Number(job.budget || 0).toLocaleString()}</span>
                                     </p>
-                                    <p className="text-gray-700 mt-2">
+                                    <p className="text-gray-700 text-sm sm:text-base break-words">
                                         <span className="font-bold">Description:</span> {job.description || 'No description provided'}
                                     </p>
                                 </div>
 
-                                <div className="mt-4 p-4 bg-gray-100 rounded-xl">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <p className="font-bold text-gray-800">Customer Contact:</p>
-                                        {/* Add verification badge here */}
+                                <div className="p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+                                        <p className="font-bold text-gray-800 text-sm sm:text-base">Customer Contact:</p>
                                         {job.customer?.verification_level && (
                                             <CustomerVerificationBadge
                                                 verificationLevel={job.customer.verification_level}
@@ -665,18 +659,18 @@ export default function JobsSection({
                                             />
                                         )}
                                     </div>
-                                    <p className="text-gray-700">
-                                        <span className="font-medium">Name:</span> {job.customer?.customer_name || 'N/A'}
-                                    </p>
-                                    <p className="text-gray-700 mt-1">
-                                        <span className="font-medium">Phone:</span>
-                                        <strong className="ml-2">{job.customer?.phone || 'Not provided'}</strong>
-                                    </p>
-                                    <p className="text-gray-700 mt-1">
-                                        <span className="font-medium">Email:</span> {job.customer?.email || 'N/A'}
-                                    </p>
-
-                                    {/* Optional: Show verification details */}
+                                    <div className="space-y-1.5 text-sm sm:text-base">
+                                        <p className="text-gray-700">
+                                            <span className="font-medium">Name:</span> {job.customer?.customer_name || 'N/A'}
+                                        </p>
+                                        <p className="text-gray-700">
+                                            <span className="font-medium">Phone:</span>
+                                            <strong className="ml-2 text-gray-900">{job.customer?.phone || 'Not provided'}</strong>
+                                        </p>
+                                        <p className="text-gray-700">
+                                            <span className="font-medium">Email:</span> {job.customer?.email || 'N/A'}
+                                        </p>
+                                    </div>
                                     {job.customer?.verification_level === 'verified' && job.customer?.id_verified_at && (
                                         <p className="text-xs text-gray-500 mt-2">
                                             Verified on: {new Date(job.customer.id_verified_at).toLocaleDateString('en-NG')}
@@ -686,9 +680,11 @@ export default function JobsSection({
                             </div>
 
                             {job.photos && Array.isArray(job.photos) && job.photos.length > 0 && (
-                                <div className="mt-6">
-                                    <p className="font-bold text-gray-700 mb-3">Job Photos ({job.photos.length}):</p>
-                                    <div className="grid grid-cols-3 gap-4">
+                                <div className="mt-4">
+                                    <p className="font-bold text-gray-700 text-sm sm:text-base mb-2">
+                                        Job Photos ({job.photos.length}):
+                                    </p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
                                         {job.photos.map((url, i) => (
                                             <a
                                                 key={i}
@@ -700,7 +696,7 @@ export default function JobsSection({
                                                 <img
                                                     src={url}
                                                     alt={`Job photo ${i + 1}`}
-                                                    className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
+                                                    className="w-full h-24 sm:h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
                                                     onError={(e) => {
                                                         e.target.src = '/default-job-photo.jpg'
                                                         e.target.alt = 'Image failed to load'
@@ -712,13 +708,13 @@ export default function JobsSection({
                                 </div>
                             )}
 
-                            <div className="mt-6">
-                                <span className={`px-4 py-2 rounded-full text-sm font-bold ${job.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            <div className="mt-4">
+                                <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${job.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                     job.status === 'onsite_pending' ? 'bg-orange-100 text-orange-800' :
                                         job.status === 'price_set' ? 'bg-blue-100 text-blue-800' :
                                             job.status === 'deposit_paid' ? 'bg-green-100 text-green-800' :
-                                                job.status === 'work_ongoing' ? 'bg-blue-100 text-blue-800' :      // NEW
-                                                    job.status === 'intermediate_paid' ? 'bg-purple-100 text-purple-800' : // NEW
+                                                job.status === 'work_ongoing' ? 'bg-blue-100 text-blue-800' :
+                                                    job.status === 'intermediate_paid' ? 'bg-purple-100 text-purple-800' :
                                                         job.status === 'work_completed' ? 'bg-orange-100 text-orange-800' :
                                                             job.status === 'completed_paid' ? 'bg-purple-100 text-purple-800' :
                                                                 job.status === 'declined_by_customer' ? 'bg-red-100 text-red-800' :
@@ -729,19 +725,19 @@ export default function JobsSection({
                             </div>
 
                             {job.status === 'pending' && (
-                                <div className="mt-6 flex gap-4 flex-wrap">
+                                <div className="mt-4 flex flex-col sm:flex-row gap-3">
                                     <button
                                         onClick={() => {
                                             setSelectedJobForOnsite(job)
                                             setShowOnsiteModal(true)
                                         }}
-                                        className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-orange-700 transition"
+                                        className="bg-orange-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-orange-700 transition-colors text-sm sm:text-base"
                                     >
                                         Request Onsite Check
                                     </button>
                                     <button
                                         onClick={() => setJobToQuote(job)}
-                                        className="bg-naijaGreen text-white px-6 py-3 rounded-lg font-bold hover:bg-darkGreen transition"
+                                        className="bg-naijaGreen text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors text-sm sm:text-base"
                                     >
                                         Send Quote Now
                                     </button>
@@ -749,17 +745,17 @@ export default function JobsSection({
                             )}
 
                             {job.status === 'onsite_pending' && (
-                                <div className="mt-6 p-4 bg-orange-100 border border-orange-500 rounded-xl">
-                                    <div className="flex items-center justify-between">
+                                <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         <div>
-                                            <p className="font-bold text-orange-800">Onsite Check Requested</p>
-                                            <p className="text-orange-600 text-sm mt-1">
+                                            <p className="font-bold text-orange-800 text-sm sm:text-base">Onsite Check Requested</p>
+                                            <p className="text-orange-600 text-xs sm:text-sm mt-1">
                                                 Waiting for customer confirmation. Once onsite check is done, send your quote.
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => setJobToQuote(job)}
-                                            className="bg-naijaGreen text-white px-6 py-3 rounded-lg font-bold hover:bg-darkGreen transition"
+                                            className="bg-naijaGreen text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors text-sm sm:text-base"
                                         >
                                             Onsite Done - Send Quote
                                         </button>
@@ -768,128 +764,122 @@ export default function JobsSection({
                             )}
 
                             {job.status === 'price_set' && (
-                                <div className="mt-6 p-4 bg-blue-100 border border-blue-500 rounded-xl">
-                                    <p className="font-bold text-blue-800 text-lg">
+                                <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <p className="font-bold text-blue-800 text-base sm:text-lg">
                                         Quote Sent: ₦{Number(job.quoted_price).toLocaleString()}
                                     </p>
-                                    <p className="text-blue-600">Waiting for customer to accept and pay 50% deposit...</p>
+                                    <p className="text-blue-600 text-sm sm:text-base mt-1">
+                                        Waiting for customer to accept and pay 50% deposit...
+                                    </p>
                                     {job.company_notes && (
-                                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                                            <p className="text-sm font-medium text-blue-700">Your Notes:</p>
-                                            <p className="text-blue-600">{job.company_notes}</p>
+                                        <div className="mt-3 p-3 bg-blue-100 rounded-lg">
+                                            <p className="text-xs sm:text-sm font-medium text-blue-700">Your Notes:</p>
+                                            <p className="text-blue-600 text-sm break-words">{job.company_notes}</p>
                                         </div>
                                     )}
                                 </div>
                             )}
 
-                            {/* FIXED: Proper QuoteForm props */}
                             {jobToQuote?.id === job.id && (
-                                <div className="mt-6">
+                                <div className="mt-4">
                                     <QuoteForm
                                         jobId={jobToQuote.id}
                                         companyId={user?.id}
                                         onQuoteSubmitted={() => {
                                             setJobToQuote(null);
-                                            loadJobs(); // Refresh jobs after quote submission
+                                            loadJobs();
                                         }}
                                         onCancel={() => setJobToQuote(null)}
                                     />
                                 </div>
                             )}
 
-                            {/* FIXED: Replace the old deposit_paid section with new work completion button */}
                             {job.status === 'deposit_paid' && (
-                                <div className="mt-6 p-4 bg-green-100 border border-green-500 rounded-xl">
-                                    <p className="font-bold text-xl text-green-800">Deposit Paid — Work Ongoing!</p>
-                                    <p className="text-lg mt-2">
+                                <div className="mt-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-xl">
+                                    <p className="font-bold text-green-800 text-base sm:text-xl">Deposit Paid — Work Ongoing!</p>
+                                    <p className="text-sm sm:text-lg mt-2">
                                         Agreed Price: ₦{Number(job.quoted_price).toLocaleString()}
                                     </p>
-                                    <p className="text-lg font-bold mt-2">
+                                    <p className="text-sm sm:text-lg font-bold mt-2">
                                         Customer Phone: <span className="text-green-700">{job.customer?.phone || 'N/A'}</span>
                                     </p>
 
-                                    {/* Payment breakdown information */}
-                                    <div className="mt-4 p-3 bg-green-50 border border-green-300 rounded-lg">
-                                        <p className="font-bold text-green-700 mb-2">Payment Structure:</p>
-                                        <div className="text-sm text-green-600 space-y-1">
+                                    <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+                                        <p className="font-bold text-green-700 text-sm sm:text-base mb-2">Payment Structure:</p>
+                                        <div className="text-xs sm:text-sm text-green-600 space-y-1">
                                             <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Already Paid)</p>
-                                            {/* Check if intermediate was already requested/pending */}
                                             {job.paymentData?.hasIntermediate ? (
                                                 <p>⏳ 30% Intermediate: ₦{(job.quoted_price * 0.3).toLocaleString()} (Already requested)</p>
                                             ) : (
                                                 <p>⏳ Remaining Balance: ₦{(job.quoted_price * 0.5).toLocaleString()} (50%)</p>
                                             )}
                                             <p className="font-medium mt-2">Options for remaining balance:</p>
-                                            <ul className="list-disc pl-5 mt-1">
+                                            <ul className="list-disc pl-4 sm:pl-5 mt-1 space-y-1">
                                                 <li>Request 30% now for materials (customer pays 30%, you get materials)</li>
                                                 <li>Complete work and get 50% final payment</li>
                                             </ul>
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons */}
-                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {/* Request Intermediate Payment Button - Only show if not already requested */}
+                                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {!job.paymentData?.hasIntermediate && (
                                             <button
                                                 onClick={() => requestIntermediatePayment(job.id)}
-                                                className="bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                                className="bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                                             >
                                                 <span>💰</span>
                                                 <span>Request 30% for Materials</span>
                                             </button>
                                         )}
-
-                                        {/* Mark as Completed Button */}
                                         <button
                                             onClick={() => markWorkAsCompleted(job.id)}
-                                            className="bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2"
+                                            className="bg-orange-500 text-white py-2.5 sm:py-3 rounded-lg font-bold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                                         >
                                             <span>✅</span>
                                             <span>Mark Work as Completed</span>
                                         </button>
                                     </div>
 
-                                    <p className="text-xs text-gray-600 mt-3 text-center">
+                                    <p className="text-xs text-gray-600 mt-2 text-center">
                                         Need materials? Request 30% advance. Otherwise, mark as completed when done.
                                     </p>
                                 </div>
                             )}
 
                             {job.status === 'work_ongoing' && (
-                                <div className="mt-6 p-4 bg-blue-100 border border-blue-500 rounded-xl">
+                                <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-xl">
                                     <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <span className="text-2xl">⏳</span>
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">⏳</span>
                                         </div>
-                                        <div className="ml-4 flex-1">
-                                            <p className="font-bold text-xl text-blue-800">Intermediate Payment Requested</p>
-                                            <p className="text-blue-700 mt-2">
+                                        <div className="ml-3 flex-1">
+                                            <p className="font-bold text-blue-800 text-base sm:text-xl">Intermediate Payment Requested</p>
+                                            <p className="text-blue-700 text-sm sm:text-base mt-1">
                                                 You have requested a 30% intermediate payment (₦{(job.quoted_price * 0.30).toLocaleString()}) for materials.
                                             </p>
-                                            <p className="text-lg font-bold mt-3">
+                                            <p className="text-sm sm:text-lg font-bold mt-2">
                                                 Customer Phone: <span className="text-blue-700">{job.customer?.phone || 'N/A'}</span>
                                             </p>
 
-                                            <div className="mt-4 p-3 bg-blue-50 border border-blue-300 rounded-lg">
-                                                <p className="font-medium text-blue-800 mb-2">Waiting for customer to pay:</p>
-                                                <div className="text-blue-700 space-y-1">
+                                            <div className="mt-3 p-3 bg-blue-100 border border-blue-300 rounded-lg">
+                                                <p className="font-medium text-blue-800 text-sm sm:text-base mb-1">Waiting for customer to pay:</p>
+                                                <div className="text-blue-700 text-xs sm:text-sm space-y-1">
                                                     <p>• 30% Intermediate: ₦{(job.quoted_price * 0.30).toLocaleString()} (for materials)</p>
                                                     <p>• Remaining after payment: 20% final payment</p>
-                                                    <p className="text-sm mt-2">Once customer pays, you'll receive notification to purchase materials.</p>
+                                                    <p className="mt-2">Once customer pays, you'll receive notification to purchase materials.</p>
                                                 </div>
                                             </div>
 
                                             <button
                                                 onClick={() => markWorkAsCompleted(job.id)}
-                                                className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                                                className="mt-3 w-full bg-blue-600 text-white py-2.5 sm:py-3 rounded-lg font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                                                 disabled={true}
                                             >
                                                 <span>⏳</span>
                                                 <span>Waiting for Intermediate Payment</span>
                                             </button>
 
-                                            <p className="text-xs text-blue-600 mt-2 text-center">
+                                            <p className="text-xs text-blue-600 mt-1 text-center">
                                                 You can mark work as completed after customer pays the intermediate payment.
                                             </p>
                                         </div>
@@ -898,27 +888,27 @@ export default function JobsSection({
                             )}
 
                             {job.status === 'intermediate_paid' && (
-                                <div className="mt-6 p-4 bg-purple-100 border border-purple-500 rounded-xl">
+                                <div className="mt-4 p-3 sm:p-4 bg-purple-50 border border-purple-200 rounded-xl">
                                     <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <span className="text-2xl">💰</span>
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">💰</span>
                                         </div>
-                                        <div className="ml-4 flex-1">
-                                            <p className="font-bold text-xl text-purple-800">Intermediate Payment Received!</p>
-                                            <p className="text-purple-700 mt-2">
+                                        <div className="ml-3 flex-1">
+                                            <p className="font-bold text-purple-800 text-base sm:text-xl">Intermediate Payment Received!</p>
+                                            <p className="text-purple-700 text-sm sm:text-base mt-1">
                                                 Customer has paid 30% intermediate payment {
                                                     job.paymentData?.intermediateAmount > 0
                                                         ? `(₦${Number(job.paymentData.intermediateAmount).toLocaleString()})`
                                                         : `(₦${(job.quoted_price * 0.30).toLocaleString()})`
                                                 } for materials.
                                             </p>
-                                            <p className="text-lg font-bold mt-3">
+                                            <p className="text-sm sm:text-lg font-bold mt-2">
                                                 Customer Phone: <span className="text-purple-700">{job.customer?.phone || 'N/A'}</span>
                                             </p>
 
-                                            <div className="mt-4 p-3 bg-purple-50 border border-purple-300 rounded-lg">
-                                                <p className="font-medium text-purple-800 mb-2">Payment Status:</p>
-                                                <div className="text-purple-700 space-y-1">
+                                            <div className="mt-3 p-3 bg-purple-100 border border-purple-300 rounded-lg">
+                                                <p className="font-medium text-purple-800 text-sm sm:text-base mb-1">Payment Status:</p>
+                                                <div className="text-purple-700 text-xs sm:text-sm space-y-1">
                                                     <p>✅ 50% Deposit: {
                                                         job.paymentData?.depositAmount > 0
                                                             ? `₦${Number(job.paymentData.depositAmount).toLocaleString()}`
@@ -936,13 +926,13 @@ export default function JobsSection({
 
                                             <button
                                                 onClick={() => markWorkAsCompleted(job.id)}
-                                                className="mt-4 w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2"
+                                                className="mt-3 w-full bg-orange-500 text-white py-2.5 sm:py-3 rounded-lg font-bold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
                                             >
                                                 <span>✅</span>
                                                 <span>Mark Work as Completed</span>
                                             </button>
 
-                                            <p className="text-xs text-purple-600 mt-2 text-center">
+                                            <p className="text-xs text-purple-600 mt-1 text-center">
                                                 After completion, customer will pay final 20% balance.
                                             </p>
                                         </div>
@@ -950,16 +940,14 @@ export default function JobsSection({
                                 </div>
                             )}
 
-                            {/* FIXED: Added work_completed status display */}
                             {job.status === 'work_completed' && (
-                                <div className="mt-6 p-4 bg-orange-100 border border-orange-500 rounded-xl">
-                                    <p className="font-bold text-xl text-orange-800">Work Marked as Completed!</p>
-                                    <p className="text-lg mt-2">
+                                <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                                    <p className="font-bold text-orange-800 text-base sm:text-xl">Work Marked as Completed!</p>
+                                    <p className="text-sm sm:text-lg mt-1">
                                         Waiting for customer to review and approve final payment.
                                     </p>
 
-                                    {/* FIXED: Calculate balance based on actual payments */}
-                                    <p className="text-lg font-bold mt-2">
+                                    <p className="text-sm sm:text-lg font-bold mt-2">
                                         Balance Due: <span className="text-orange-700">
                                             {job.paymentData?.hasIntermediate
                                                 ? `₦${(job.quoted_price * 0.2).toLocaleString()} (20%)`
@@ -968,10 +956,9 @@ export default function JobsSection({
                                         </span>
                                     </p>
 
-                                    {/* Add payment summary */}
-                                    <div className="mt-4 p-3 bg-orange-50 border border-orange-300 rounded-lg">
-                                        <p className="font-medium text-orange-800 mb-2">Payment Summary:</p>
-                                        <div className="text-orange-700 space-y-1 text-sm">
+                                    <div className="mt-3 p-3 bg-orange-100 border border-orange-300 rounded-lg">
+                                        <p className="font-medium text-orange-800 text-sm sm:text-base mb-1">Payment Summary:</p>
+                                        <div className="text-orange-700 text-xs sm:text-sm space-y-1">
                                             <p>✅ 50% Deposit: ₦{(job.quoted_price * 0.5).toLocaleString()} (Paid)</p>
                                             {job.paymentData?.hasIntermediate && (
                                                 <p>✅ 30% Intermediate: ₦{(job.quoted_price * 0.3).toLocaleString()} (Paid)</p>
@@ -984,7 +971,6 @@ export default function JobsSection({
                                         </div>
                                     </div>
 
-                                    {/* Show actual payment amounts if available */}
                                     {job.paymentData?.depositAmount > 0 && (
                                         <p className="text-xs text-gray-600 mt-2">
                                             Actual deposit received: ₦{Number(job.paymentData.depositAmount).toLocaleString()}
@@ -999,61 +985,57 @@ export default function JobsSection({
                             )}
 
                             {job.status === 'declined_by_customer' && (
-                                <div className="mt-6 p-4 bg-red-100 border border-red-500 rounded-xl">
-                                    <p className="font-bold text-xl text-red-700">Job Cancelled by Customer</p>
+                                <div className="mt-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl">
+                                    <p className="font-bold text-red-700 text-base sm:text-xl">Job Cancelled by Customer</p>
                                 </div>
                             )}
 
                             {job.status === 'completed_paid' && (
-                                <div className="mt-6 p-4 bg-green-100 border border-green-500 rounded-xl">
-                                    <p className="font-bold text-xl text-green-700">Payment Finalized!</p>
-                                    <p className="mt-2 text-lg">
+                                <div className="mt-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-xl">
+                                    <p className="font-bold text-green-700 text-base sm:text-xl">Payment Finalized!</p>
+                                    <p className="text-sm sm:text-lg mt-1">
                                         Total Earned: ₦{Number(job.quoted_price || 0).toLocaleString()}
                                     </p>
                                 </div>
-
                             )}
 
                             {job.status === 'work_disputed' && (
-                                <div className="mt-6 p-4 bg-red-100 border border-red-500 rounded-xl">
+                                <div className="mt-4 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl">
                                     <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <span className="text-2xl">⚠️</span>
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">⚠️</span>
                                         </div>
-                                        <div className="ml-4 flex-1">
-                                            <p className="font-bold text-xl text-red-800">Customer Reported Issue</p>
-                                            <p className="text-red-700 mt-2">
+                                        <div className="ml-3 flex-1">
+                                            <p className="font-bold text-red-800 text-base sm:text-xl">Customer Reported Issue</p>
+                                            <p className="text-red-700 text-sm sm:text-base mt-1">
                                                 Customer is not satisfied with the work and has requested a review.
                                             </p>
 
                                             {job.dispute_reason && (
-                                                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                                    <p className="font-medium text-red-800 mb-1">Customer's Issue:</p>
-                                                    <p className="text-red-700">{job.dispute_reason}</p>
+                                                <div className="mt-2 p-2 sm:p-3 bg-red-100 border border-red-300 rounded-lg">
+                                                    <p className="font-medium text-red-800 text-xs sm:text-sm mb-1">Customer's Issue:</p>
+                                                    <p className="text-red-700 text-sm break-words">{job.dispute_reason}</p>
                                                 </div>
                                             )}
 
-                                            <div className="mt-4 bg-white p-4 rounded-lg border border-red-300">
-                                                <p className="font-medium text-gray-800 mb-2">Customer Contact:</p>
-                                                <p className="text-gray-700">
+                                            <div className="mt-3 bg-white p-3 sm:p-4 rounded-lg border border-red-300">
+                                                <p className="font-medium text-gray-800 text-sm sm:text-base mb-1">Customer Contact:</p>
+                                                <p className="text-gray-700 text-sm">
                                                     <span className="font-medium">Name:</span> {job.customer?.customer_name || 'Customer'}
                                                 </p>
-                                                <p className="text-gray-700 mt-1">
+                                                <p className="text-gray-700 text-sm mt-1">
                                                     <span className="font-medium">Phone:</span>
                                                     <strong className="ml-2 text-red-700">{job.customer?.phone || 'Check job details'}</strong>
                                                 </p>
                                             </div>
 
-                                            <div className="mt-4 flex gap-4">
+                                            <div className="mt-3 flex flex-col sm:flex-row gap-2">
                                                 <button
                                                     onClick={async () => {
-                                                        // Get company name from job data or fetch it
                                                         const companyNameToUse = job.company_name || job.companies?.company_name || 'Your company';
-
                                                         if (!confirm(`Have you contacted the customer and fixed the issue?\n\nThis will mark the work as rectified and notify the customer to review.`)) return;
 
                                                         try {
-                                                            // Update status to work_rectified
                                                             const { error } = await supabase
                                                                 .from('jobs')
                                                                 .update({
@@ -1065,7 +1047,6 @@ export default function JobsSection({
 
                                                             if (error) throw error;
 
-                                                            // Notify customer
                                                             await supabase.from('notifications').insert({
                                                                 user_id: job.customer_id,
                                                                 job_id: job.id,
@@ -1083,20 +1064,18 @@ export default function JobsSection({
                                                             alert('Failed to update status. Please try again.');
                                                         }
                                                     }}
-                                                    className="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700"
+                                                    className="flex-1 bg-green-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-green-700 transition-colors text-sm sm:text-base"
                                                 >
                                                     ✅ Issue Fixed - Notify Customer
                                                 </button>
                                                 <button
                                                     onClick={() => {
-                                                        // Option to add notes or escalate
                                                         const notes = prompt('Add internal notes about this dispute:');
                                                         if (notes) {
-                                                            // Save notes to job or separate table
                                                             alert('Notes saved. Continue working with customer.');
                                                         }
                                                     }}
-                                                    className="flex-1 border-2 border-gray-400 text-gray-700 px-4 py-3 rounded-lg font-bold hover:bg-gray-50"
+                                                    className="flex-1 border-2 border-gray-400 text-gray-700 px-4 py-2.5 sm:px-4 sm:py-3 rounded-lg font-bold hover:bg-gray-50 transition-colors text-sm sm:text-base"
                                                 >
                                                     📝 Add Notes
                                                 </button>
@@ -1105,19 +1084,20 @@ export default function JobsSection({
                                     </div>
                                 </div>
                             )}
+
                             {job.status === 'work_rectified' && (
-                                <div className="mt-6 p-4 bg-yellow-100 border border-yellow-500 rounded-xl">
+                                <div className="mt-4 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
                                     <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <span className="text-2xl">🔄</span>
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">🔄</span>
                                         </div>
-                                        <div className="ml-4">
-                                            <p className="font-bold text-xl text-yellow-800">Waiting for Customer Review</p>
-                                            <p className="text-yellow-700 mt-2">
+                                        <div className="ml-3">
+                                            <p className="font-bold text-yellow-800 text-base sm:text-xl">Waiting for Customer Review</p>
+                                            <p className="text-yellow-700 text-sm sm:text-base mt-1">
                                                 You've fixed the reported issue. Waiting for customer to review and approve final payment.
                                             </p>
-                                            <p className="text-sm text-yellow-600 mt-3">
-                                                Customer will be prompted to pay the remaining 50% balance.
+                                            <p className="text-xs sm:text-sm text-yellow-600 mt-2">
+                                                Customer will be prompted to pay the remaining balance.
                                             </p>
                                         </div>
                                     </div>
