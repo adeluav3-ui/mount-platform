@@ -112,6 +112,7 @@ export default function MyJobs({ onHasNewQuotes }) {
                                     pendingIntermediate = true;
                                     // Still show the amount that was requested
                                     intermediatePaid += payment.amount || 0;
+                                    hasIntermediate = true;  // ← ADD THIS LINE!
                                     console.log('⏳ Pending intermediate found:', payment.amount);
                                 }
                             } else if (payment.type === 'final_payment') {
@@ -814,7 +815,17 @@ Click OK to proceed to payment.`;
                                                         {/* Final balance - use payment data to determine percentage */}
                                                         <div className="flex justify-between items-center">
                                                             <p className="text-gray-600 font-bold">
-                                                                Final Balance ({job.paymentData?.hasIntermediate ? '20%' : '50%'})
+                                                                Final Balance (
+                                                                {(() => {
+                                                                    // More accurate calculation
+                                                                    const totalPaid = (job.paymentData?.depositPaid || 0) + (job.paymentData?.intermediatePaid || 0);
+                                                                    const paidPercentage = job.quoted_price > 0 ? (totalPaid / job.quoted_price) * 100 : 0;
+
+                                                                    if (paidPercentage >= 80) return '20%';
+                                                                    if (paidPercentage >= 50) return '50%';
+                                                                    return '50%'; // Default
+                                                                })()}
+                                                                )
                                                             </p>
                                                             <p className="text-xl font-bold text-naijaGreen">
                                                                 ₦{Number(job.paymentData?.balanceDue ||
