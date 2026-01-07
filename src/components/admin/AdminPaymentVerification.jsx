@@ -73,13 +73,12 @@ export default function AdminPaymentVerification() {
                 job_id: payment.job_id
             });
 
-            // 1. Update the financial transaction with CORRECT columns
+            // 1. Update the financial transaction
             const updates = {
                 verified_by_admin: true,
                 admin_verified_at: new Date().toISOString(),
                 status: approved ? 'completed' : 'failed',
                 admin_notes: approved ? 'Payment verified by admin' : 'Payment rejected by admin'
-                // NO updated_at column exists
             };
 
             console.log('📤 Updating transaction with:', updates);
@@ -100,33 +99,58 @@ export default function AdminPaymentVerification() {
                 // 2. Determine correct job status based on payment type
                 let newJobStatus = '';
                 let notificationMessage = '';
+                let jobUpdates = {
+                    status: ''
+                };
 
                 if (payment.type === 'deposit') {
                     newJobStatus = 'deposit_paid';
                     notificationMessage = `Your 50% deposit of ₦${payment.amount} has been verified. The service provider will start your job.`;
-                }
-                else if (payment.type === 'intermediate') {
+
+                    jobUpdates = {
+                        status: newJobStatus
+                    };
+
+                    // Store the service fee amount if present
+                    if (payment.platform_fee > 0) {
+                        jobUpdates.customer_service_fee = payment.platform_fee;
+                        jobUpdates.service_fee_waived = false;
+                    }
+
+                } else if (payment.type === 'intermediate') {
                     newJobStatus = 'intermediate_paid';
                     notificationMessage = `Your 30% intermediate payment of ₦${payment.amount} has been verified for materials.`;
-                }
-                else if (payment.type === 'final_payment') {
+
+                    jobUpdates = {
+                        status: newJobStatus,
+                        intermediate_payment: payment.amount,
+                        intermediate_payment_requested: true,
+                        intermediate_payment_paid: true,
+                        intermediate_paid_at: new Date().toISOString(),
+                        split_payment: true
+                    };
+
+                } else if (payment.type === 'final_payment') {
                     newJobStatus = 'completed';
                     notificationMessage = `Your final payment of ₦${payment.amount} has been verified. Job is now complete!`;
-                }
-                else {
+
+                    jobUpdates = {
+                        status: newJobStatus
+                    };
+
+                } else {
                     newJobStatus = 'deposit_paid';
                     notificationMessage = `Your payment of ₦${payment.amount} has been verified.`;
+
+                    jobUpdates = {
+                        status: newJobStatus
+                    };
                 }
 
                 console.log('🎯 Setting job status to:', newJobStatus, 'for payment type:', payment.type);
 
-                // 3. Update job status ONLY
+                // 3. Update job with appropriate updates
                 if (payment.job_id) {
-                    const jobUpdates = {
-                        status: newJobStatus
-                        // Only update status, no extra columns
-                    };
-
                     const { error: jobError } = await supabase
                         .from('jobs')
                         .update(jobUpdates)
@@ -139,21 +163,7 @@ export default function AdminPaymentVerification() {
                         console.log('✅ Job status updated to:', newJobStatus);
                     }
                 }
-                if (payment.type === 'deposit') {
-                    newJobStatus = 'deposit_paid';
-                    notificationMessage = `Your 50% deposit of ₦${payment.amount} has been verified. The service provider will start your job.`;
 
-                    // Store the service fee amount if present
-                    if (payment.platform_fee > 0) {
-                        await supabase
-                            .from('jobs')
-                            .update({
-                                customer_service_fee: payment.platform_fee,
-                                service_fee_waived: false
-                            })
-                            .eq('id', payment.job_id);
-                    }
-                }
                 // 4. Send notification to customer
                 if (payment.user_id) {
                     const notificationData = {
