@@ -24,14 +24,24 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
 
         const depositAmount = jobAmount * 0.5;
 
-        // NEW LOGIC: If it's first job, they get promotion
+        // LOGIC FIX: Handle first job promotion properly
         if (promotionResult.isFirstJob && jobCreatedDate) {
             // Set promotion for first job
-            await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
-            // Re-check status
-            const updatedPromotion = await PaymentService.checkCustomerPromotionStatus(customerId);
+            const setPromotionResult = await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
 
-            if (updatedPromotion.isInPromotion) {
+            if (setPromotionResult.success) {
+                // Promotion set successfully - fee waived
+                return {
+                    baseAmount: depositAmount,
+                    serviceFee: 0,
+                    totalPayment: depositAmount,
+                    isFeeWaived: true,
+                    isDepositPayment: true,
+                    isFirstJob: true
+                };
+            } else {
+                // Failed to set promotion - still give benefit of doubt (first job)
+                console.warn('Failed to set promotion, but treating as first job:', setPromotionResult.message);
                 return {
                     baseAmount: depositAmount,
                     serviceFee: 0,
@@ -43,6 +53,7 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
             }
         }
 
+        // Check if in promotion (after handling first job case)
         if (promotionResult.isInPromotion) {
             // In promotion: no service fee
             return {
@@ -51,7 +62,7 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
                 totalPayment: depositAmount,
                 isFeeWaived: true,
                 isDepositPayment: true,
-                isFirstJob: promotionResult.isFirstJob
+                isFirstJob: promotionResult.isFirstJob || false
             };
         } else {
             // Not in promotion: add tiered service fee
@@ -67,13 +78,13 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
         }
     } catch (error) {
         console.error('Error calculating payment with fee:', error);
-        // Fallback: just deposit without fee
+        // Fallback: just deposit without fee (give benefit of doubt for first job)
         const depositAmount = jobAmount * 0.5;
         return {
             baseAmount: depositAmount,
             serviceFee: 0,
             totalPayment: depositAmount,
-            isFeeWaived: false,
+            isFeeWaived: true, // Changed from false to true - benefit of doubt
             isDepositPayment: true,
             isFirstJob: false
         };
