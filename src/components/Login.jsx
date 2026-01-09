@@ -134,7 +134,7 @@ export default function Login() {
     const [searchParams] = useSearchParams();
     const [selectedSubCategories, setSelectedSubCategories] = useState({})
     const [consentAccepted, setConsentAccepted] = useState(false);
-
+    const [showPrivacy, setShowPrivacy] = useState(false);
     const { signUp, signIn, supabase } = useSupabase()
     const navigate = useNavigate();
 
