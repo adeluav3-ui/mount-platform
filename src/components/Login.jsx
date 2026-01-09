@@ -8,6 +8,8 @@ import CompanyAgreement from './CompanyAgreement';
 import logo from '../assets/logo.png';
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import ConsentCheckbox from './ConsentCheckbox';
+import PrivacyPolicy from './PrivacyPolicy';
 
 const mainCategories = [
     "Electrical",
@@ -131,6 +133,7 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false); // NEW: Password visibility state
     const [searchParams] = useSearchParams();
     const [selectedSubCategories, setSelectedSubCategories] = useState({})
+    const [consentAccepted, setConsentAccepted] = useState(false);
 
     const { signUp, signIn, supabase } = useSupabase()
     const navigate = useNavigate();
@@ -184,6 +187,10 @@ export default function Login() {
         handleEmailConfirmation();
     }, [searchParams]);
     const handleTermsAccept = async () => {
+        if (!consentAccepted) {
+            alert('You must accept the Terms & Conditions and Privacy Policy');
+            return;
+        }
         setShowTerms(false);
         setLoading(true);
 
@@ -257,6 +264,10 @@ export default function Login() {
     };
 
     const handleCompanyAgreementAccept = async () => {
+        if (!consentAccepted) {
+            alert('You must accept the Terms & Conditions and Privacy Policy');
+            return;
+        }
         setShowCompanyAgreement(false);
         setLoading(true);
 
@@ -389,10 +400,9 @@ export default function Login() {
 
         try {
             if (!isSignUp) {
-                // LOGIN
+                // LOGIN - no consent needed
                 const { error: loginError } = await signIn(email, password)
                 if (loginError) throw loginError
-                // Redirect to dashboard after successful login
                 navigate('/dashboard')
                 return
             }
@@ -401,6 +411,11 @@ export default function Login() {
             // CUSTOMER SIGNUP
             // ================================
             if (!isCompany) {
+                // Check consent before showing terms
+                if (!consentAccepted) {
+                    throw new Error('You must accept the Terms & Conditions and Privacy Policy');
+                }
+
                 // Show terms and conditions for customer signup
                 setFormData({
                     email,
@@ -417,6 +432,10 @@ export default function Login() {
             // ================================
             // COMPANY SIGNUP
             // ================================
+            // Check consent for company too
+            if (!consentAccepted) {
+                throw new Error('You must accept the Terms & Conditions and Privacy Policy');
+            }
             console.log("=== COMPANY SIGNUP DEBUG ===");
             console.log("1. Email:", email);
             console.log("2. Company Name:", companyName);
@@ -581,6 +600,14 @@ export default function Login() {
                                         />
                                     </div>
                                 </div>
+
+                                {/* Consent Checkbox - REQUIRED FOR CUSTOMERS */}
+                                <div className="mt-4">
+                                    <ConsentCheckbox
+                                        onAccept={() => setConsentAccepted(true)}
+                                        initialAccepted={consentAccepted}
+                                    />
+                                </div>
                             </>
                         )}
 
@@ -723,7 +750,12 @@ export default function Login() {
                                         )
                                     })}
                                 </div>
-
+                                <div className="mt-4">
+                                    <ConsentCheckbox
+                                        onAccept={() => setConsentAccepted(true)}
+                                        initialAccepted={consentAccepted}
+                                    />
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -862,8 +894,9 @@ export default function Login() {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white font-semibold py-4 rounded-lg hover:shadow-lg transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            disabled={loading || (isSignUp && !consentAccepted)}
+                            className={`w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white font-semibold py-4 rounded-lg hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-2 ${(isSignUp && !consentAccepted) ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                         >
                             {loading ? (
                                 <>
@@ -914,6 +947,11 @@ export default function Login() {
                     setShowCompanyAgreement(false);
                     setLoading(false);
                 }}
+            />
+            {/* Privacy Policy Modal */}
+            <PrivacyPolicy
+                isOpen={showPrivacy}
+                onClose={() => setShowPrivacy(false)}
             />
         </div>
     )
