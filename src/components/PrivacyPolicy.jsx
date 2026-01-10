@@ -70,10 +70,9 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                         </h3>
                                         <p className="mb-2">
                                             <strong>Data Controller:</strong> Mount Platform<br />
-                                            <strong>Registration:</strong> [Your Company Registration Number]<br />
-                                            <strong>Data Protection Officer:</strong> [Name of DPO or Contact Person]<br />
-                                            <strong>Email:</strong> privacy@mountplatform.ng<br />
-                                            <strong>Address:</strong> [Your Physical Address]
+                                            <strong>Registration:</strong> 9118997<br />
+                                            <strong>Data Protection Officer:</strong> Adelua Victor<br />
+                                            <strong>Email:</strong> mountservicesltd@gmail.com<br />
                                         </p>
                                     </div>
 
@@ -162,7 +161,7 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                             </div>
                                         </div>
                                         <p className="text-xs sm:text-sm text-gray-600">
-                                            To exercise these rights, contact: privacy@mountplatform.ng
+                                            To exercise these rights, contact: mountservicesltd@gmail.com
                                         </p>
                                     </div>
 
@@ -250,7 +249,7 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                     Close Privacy Policy
                                 </button>
                                 <p className="text-center text-gray-500 text-xs sm:text-sm mt-3">
-                                    Need help? Contact our Data Protection Officer at privacy@mountplatform.ng
+                                    Need help? Contact our Data Protection Officer at mountservicesltd@gmail.com
                                 </p>
                             </div>
                         </motion.div>
