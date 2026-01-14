@@ -189,8 +189,8 @@ const BankTransferPayment = () => {
     // Your actual bank details (replace with yours)
     const bankDetails = {
         bankName: 'MONIEPOINT',
-        accountName: 'VICTOR ADELUA',
-        accountNumber: '7019609312',
+        accountName: 'MOUNT LTD',
+        accountNumber: '6753109879',
     };
 
     return (
