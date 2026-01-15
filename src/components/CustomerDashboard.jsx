@@ -526,9 +526,6 @@ export default function CustomerDashboard() {
                     </p>
                 </div>
             </div>
-            <div className="mt-8">
-                <VideoTutorial />
-            </div>
         </div>
     );
 
