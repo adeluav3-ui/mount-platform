@@ -549,7 +549,6 @@ export default function CustomerDashboard() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             {/* Top Navigation Bar */}
-            {/* Top Navigation Bar */}
             <div className="bg-naijaGreen text-white shadow-2xl sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
                     <button onClick={() => setViewWithHistory('dashboard')} className="flex items-center gap-2">

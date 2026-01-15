@@ -253,7 +253,7 @@ export default function Login() {
                 throw customerError
             }
 
-            alert('Signup complete! Please check your email to confirm signup.');
+            alert('Signup complete! Please check your email(spam folder) to confirm signup.');
 
         } catch (err) {
             setError(err.message);
