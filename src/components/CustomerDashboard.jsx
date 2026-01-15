@@ -9,6 +9,8 @@ import MyJobs from "./MyJobs";
 import VerificationBadge from '../components/VerificationBadge';
 import logo from '../assets/logo.png';
 import VerificationModal from './VerificationModal';
+import OnboardingGuide from './onboarding/OnboardingGuide';
+import VideoTutorial from './onboarding/VideoTutorial';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
 const BellIcon = (props) => (
@@ -76,6 +78,8 @@ export default function CustomerDashboard() {
     const [verificationLevel, setVerificationLevel] = useState('basic');
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [customerData, setCustomerData] = useState(null);
+    const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showVideoTutorial, setShowVideoTutorial] = useState(false);
 
     const [currentView, setCurrentView] = useState('dashboard');
 
@@ -94,6 +98,27 @@ export default function CustomerDashboard() {
             console.log('Notification sound error:', error);
         }
     };
+
+    // Check if onboarding should be shown
+    useEffect(() => {
+        if (!user) return;
+
+        const hasCompletedOnboarding = localStorage.getItem('mount_onboarding_completed');
+        const skipTutorial = localStorage.getItem('mount_skip_tutorial');
+
+        // Show onboarding if:
+        // 1. First time user AND hasn't skipped tutorial
+        // 2. OR job count is 0 (new user)
+        if (!hasCompletedOnboarding && !skipTutorial) {
+            // Also check if they have any jobs
+            if (jobs.length === 0) {
+                setTimeout(() => {
+                    setShowOnboarding(true);
+                }, 1000); // Show after 1 second delay
+            }
+        }
+    }, [user, jobs.length]);
+
 
     // REAL-TIME NOTIFICATIONS (Keep this for notifications)
     useEffect(() => {
@@ -499,6 +524,9 @@ export default function CustomerDashboard() {
                     </p>
                 </div>
             </div>
+            <div className="mt-8">
+                <VideoTutorial />
+            </div>
         </div>
     );
 
@@ -565,8 +593,20 @@ export default function CustomerDashboard() {
                         >
                             Log Out
                         </button>
+
+
                     </div>
                 </div>
+                {/* Add this button to the navigation buttons section */}
+                <button
+                    onClick={() => setShowOnboarding(true)}
+                    className="p-2 text-white hover:text-yellow-300 transition hidden sm:block"
+                    title="Show tutorial"
+                >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
             </div>
 
             {/* BANNER */}
@@ -677,6 +717,11 @@ export default function CustomerDashboard() {
                 isOpen={showVerificationModal}
                 onClose={() => setShowVerificationModal(false)}
                 onVerificationSubmitted={handleVerificationSubmitted}
+            />
+            {/* Add this at the bottom, before the closing </div> */}
+            <OnboardingGuide
+                isOpen={showOnboarding}
+                onComplete={() => setShowOnboarding(false)}
             />
         </div>
     );
