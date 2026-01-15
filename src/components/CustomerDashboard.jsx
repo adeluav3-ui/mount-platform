@@ -550,6 +550,7 @@ export default function CustomerDashboard() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
             {/* Top Navigation Bar */}
+            {/* Top Navigation Bar */}
             <div className="bg-naijaGreen text-white shadow-2xl sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
                     <button onClick={() => setViewWithHistory('dashboard')} className="flex items-center gap-2">
@@ -564,6 +565,17 @@ export default function CustomerDashboard() {
                     </button>
 
                     <div className="flex items-center gap-3 sm:gap-6">
+                        {/* Help/Tutorial Button - Add this HERE */}
+                        <button
+                            onClick={() => setShowOnboarding(true)}
+                            className="p-2 text-white hover:text-yellow-300 transition hidden sm:block"
+                            title="Show tutorial"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
+
                         <button
                             onClick={() => {
                                 setViewWithHistory('myJobs');
@@ -593,20 +605,8 @@ export default function CustomerDashboard() {
                         >
                             Log Out
                         </button>
-
-
                     </div>
                 </div>
-                {/* Add this button to the navigation buttons section */}
-                <button
-                    onClick={() => setShowOnboarding(true)}
-                    className="p-2 text-white hover:text-yellow-300 transition hidden sm:block"
-                    title="Show tutorial"
-                >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </button>
             </div>
 
             {/* BANNER */}

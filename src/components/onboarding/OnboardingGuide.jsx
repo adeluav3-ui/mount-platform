@@ -23,7 +23,7 @@ const OnboardingGuide = ({ isOpen, onComplete, userType = 'customer' }) => {
             title: "Review Quotes & Pay Securely",
             description: "Companies will send quotes. Review and accept the best one. Pay 50% deposit to start work.",
             image: "💰",
-            tip: "Your payment is held in escrow until job completion."
+            tip: "Make sure to negotiate with the service providers on the best price for the job."
         },
         {
             title: "Track Job Progress",
@@ -126,8 +126,8 @@ const OnboardingGuide = ({ isOpen, onComplete, userType = 'customer' }) => {
                                 }
                             }}
                             className={`flex-1 py-3 rounded-lg font-medium ${step === steps.length
-                                    ? 'bg-green-600 text-white hover:bg-green-700'
-                                    : 'bg-naijaGreen text-white hover:bg-darkGreen'
+                                ? 'bg-green-600 text-white hover:bg-green-700'
+                                : 'bg-naijaGreen text-white hover:bg-darkGreen'
                                 }`}
                         >
                             {step === steps.length ? "Get Started!" : "Next"}
