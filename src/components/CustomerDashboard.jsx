@@ -11,6 +11,7 @@ import logo from '../assets/logo.png';
 import VerificationModal from './VerificationModal';
 import OnboardingGuide from './onboarding/OnboardingGuide';
 import VideoTutorial from './onboarding/VideoTutorial';
+import HelpCenter from './onboarding/HelpCenter';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
 const BellIcon = (props) => (
@@ -80,6 +81,7 @@ export default function CustomerDashboard() {
     const [customerData, setCustomerData] = useState(null);
     const [showOnboarding, setShowOnboarding] = useState(false);
     const [showVideoTutorial, setShowVideoTutorial] = useState(false);
+    const [showHelpCenter, setShowHelpCenter] = useState(false);
 
     const [currentView, setCurrentView] = useState('dashboard');
 
@@ -566,16 +568,16 @@ export default function CustomerDashboard() {
 
                     <div className="flex items-center gap-3 sm:gap-6">
                         {/* Help/Tutorial Button - Add this HERE */}
+                        {/* Help Button in top navigation */}
                         <button
-                            onClick={() => setShowOnboarding(true)}
+                            onClick={() => setShowHelpCenter(true)}
                             className="p-2 text-white hover:text-yellow-300 transition hidden sm:block"
-                            title="Show tutorial"
+                            title="Help Center"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </button>
-
                         <button
                             onClick={() => {
                                 setViewWithHistory('myJobs');
@@ -709,8 +711,9 @@ export default function CustomerDashboard() {
                             </svg>
                             <span className="text-xs">Post Job</span>
                         </button>
+                        {/* Add to mobile navigation (after Post Job button) */}
                         <button
-                            onClick={() => setShowOnboarding(true)}
+                            onClick={() => setShowHelpCenter(true)}
                             className={`flex flex-col items-center gap-1 ${currentView === 'help' ? 'text-naijaGreen' : 'text-gray-600'}`}
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -731,6 +734,14 @@ export default function CustomerDashboard() {
             <OnboardingGuide
                 isOpen={showOnboarding}
                 onComplete={() => setShowOnboarding(false)}
+            />
+            <HelpCenter
+                isOpen={showHelpCenter}
+                onClose={() => setShowHelpCenter(false)}
+                onStartTour={() => {
+                    setShowHelpCenter(false);
+                    setShowOnboarding(true);
+                }}
             />
         </div>
     );
