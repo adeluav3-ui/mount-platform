@@ -104,10 +104,10 @@ const subCategoriesByMain = {
         "Other"
     ],
     "Cleaning Services": [
-        "Cleaning Services"
+        "Other"
     ],
     "Pest Control & Fumigation": [
-        "Pest Control & Fumigation"
+        "Other"
     ],
     "Logistics Services": [
         "Logistics Services"

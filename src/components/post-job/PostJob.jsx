@@ -89,12 +89,12 @@ const services = {
 
     "Cleaning Services": [
         // No subcategories - just "Other"
-        "Cleaning Services"
+        "Other"
     ],
 
     "Pest Control & Fumigation": [
         // No subcategories - just "Other"
-        "Pest Control & Fumigation"
+        "Other"
     ],
     "Logistics Services": [
         // No subcategories - just "Other"

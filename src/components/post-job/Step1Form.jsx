@@ -45,9 +45,6 @@ export default function Step1Form({
         if (!job.price || Number(job.price) <= 0) {
             errors.push('Please enter a valid budget amount')
         }
-        if (Number(job.price) > 10000000) {
-            errors.push('Budget seems too high. Please verify the amount')
-        }
 
         return errors
     }
