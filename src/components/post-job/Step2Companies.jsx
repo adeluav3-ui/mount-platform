@@ -14,7 +14,8 @@ export default function Step2Companies({
     photoFilesRef,
     setShowLoader,
     setLoaderCompanyName,
-    setTempSelectedCompany
+    setTempSelectedCompany,
+    services = {}
 }) {
     // Add state for loading and reviews
     const [isSending, setIsSending] = useState(false)
@@ -75,12 +76,22 @@ export default function Step2Companies({
         }
     }
     const filteredCompanies = companies.filter(company => {
-        // Check if company offers this main category
+        // 1. Check if company offers this main category
         if (!company.services?.includes(job.category)) {
             return false
         }
 
-        // Check if company offers this specific sub-service
+        // 2. Get the category's subservices from the services object
+        const categorySubservices = services[job.category] || []
+        const hasSubservices = categorySubservices.length > 0 &&
+            !(categorySubservices.length === 1 && categorySubservices[0] === "Other")
+
+        // 3. If category has NO subservices (like Cleaning Services), include the company
+        if (!hasSubservices) {
+            return true
+        }
+
+        // 4. Only check sub-service filtering for categories WITH subservices
         const prices = company.subcategory_prices || {}
 
         // If sub_service is "Other", check if company has any "Other" subcategory

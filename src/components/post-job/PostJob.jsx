@@ -181,6 +181,7 @@ export default function PostJob() {
                     setShowLoader={setShowLoader}
                     setLoaderCompanyName={setLoaderCompanyName}
                     setTempSelectedCompany={setTempSelectedCompany}
+                    services={services}
                 />
             )}
 
