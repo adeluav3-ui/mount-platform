@@ -87,19 +87,9 @@ const services = {
         "Other"
     ],
 
-    "Cleaning Services": [
-        // No subcategories - just "Other"
-        "Other"
-    ],
-
-    "Pest Control & Fumigation": [
-        // No subcategories - just "Other"
-        "Other"
-    ],
-    "Logistics Services": [
-        // No subcategories - just "Other"
-        "Logistics Services"
-    ]
+    "Cleaning Services": [], // Empty array = no subservices
+    "Pest Control & Fumigation": [], // Empty array = no subservices
+    "Logistics Services": [] // Empty array = no subservices
 }
 
 export default function PostJob() {

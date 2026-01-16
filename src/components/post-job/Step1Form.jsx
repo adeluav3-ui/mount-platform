@@ -1,7 +1,7 @@
-// src/components/post-job/Step1Form.jsx — FINAL & FIXED
+// src/components/post-job/Step1Form.jsx — UPDATED (No subservice required for certain categories)
 import React from 'react';
 import { useSupabase } from '../../context/SupabaseContext'
-import { useState, useEffect } from 'react' // Added useEffect
+import { useState, useEffect } from 'react'
 
 const ogunLocations = [
     'Abeokuta', 'Sango-Ota', 'Ijebu-Ode', 'Sagamu',
@@ -20,7 +20,7 @@ export default function Step1Form({
     handleDeletePhoto,
     openCropper,
     supabase,
-    services = {} // DEFAULT EMPTY OBJECT — FIXES THE ERROR
+    services = {}
 }) {
     // Clean up object URLs to prevent memory leaks
     useEffect(() => {
@@ -29,14 +29,28 @@ export default function Step1Form({
         }
     }, [])
 
+    // Check if category has subservices
+    const categoryHasSubservices = (category) => {
+        const subservices = services[category] || []
+        // Categories with empty array or only "Other" have no real subservices
+        return subservices.length > 0 && !(subservices.length === 1 && subservices[0] === "Other")
+    }
+
     const validateForm = () => {
         const errors = []
 
         if (!job.category) errors.push('Please select a service category')
-        if (!job.sub_service) errors.push('Please select a specific service')
+
+        // ONLY require sub_service for categories that HAVE subservices
+        if (categoryHasSubservices(job.category) && !job.sub_service) {
+            errors.push('Please select a specific service')
+        }
+
+        // For "Other" subservice, require custom description
         if (job.sub_service === 'Other' && !job.custom_sub?.trim()) {
             errors.push('Please specify the custom service')
         }
+
         if (!job.location) errors.push('Please select your location')
         if (!job.description?.trim()) errors.push('Please describe the job')
         if (job.description?.trim().length < 10) {
@@ -60,6 +74,7 @@ export default function Step1Form({
         console.log('=== DEBUG: Searching for companies ===')
         console.log('Selected category:', job.category)
         console.log('Selected sub-service:', job.sub_service)
+        console.log('Category has subservices?', categoryHasSubservices(job.category))
 
         const { data, error } = await supabase
             .from('companies')
@@ -71,7 +86,6 @@ export default function Step1Form({
             phone  
         `)
             .eq('approved', true)
-
 
         if (error) {
             alert('Failed to load companies: ' + error.message)
@@ -123,7 +137,12 @@ export default function Step1Form({
                     <label className="block text-sm font-medium mb-1">Service Category</label>
                     <select
                         value={job.category}
-                        onChange={e => setJob({ ...job, category: e.target.value, sub_service: '', custom_sub: '' })}
+                        onChange={e => setJob({
+                            ...job,
+                            category: e.target.value,
+                            sub_service: '',
+                            custom_sub: ''
+                        })}
                         className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-naijaGreen outline-none"
                     >
                         <option value="">Choose category</option>
@@ -133,8 +152,8 @@ export default function Step1Form({
                     </select>
                 </div>
 
-                {/* SUB-SERVICE */}
-                {job.category && services[job.category] && (
+                {/* SUB-SERVICE (ONLY SHOW FOR CATEGORIES WITH SUBSERVICES) */}
+                {job.category && categoryHasSubservices(job.category) && (
                     <div>
                         <label className="block text-sm font-medium mb-1">
                             {job.category} Type

@@ -103,15 +103,9 @@ const subCategoriesByMain = {
         "Facial Treatment",
         "Other"
     ],
-    "Cleaning Services": [
-        "Other"
-    ],
-    "Pest Control & Fumigation": [
-        "Other"
-    ],
-    "Logistics Services": [
-        "Logistics Services"
-    ]
+    "Cleaning Services": [], // Empty array = no subcategories
+    "Pest Control & Fumigation": [], // Empty array = no subcategories
+    "Logistics Services": [] // Empty array = no subcategories
 }
 
 export default function Login() {
