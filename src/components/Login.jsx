@@ -22,7 +22,8 @@ const mainCategories = [
     "Roofing & Masonry",
     "Beauty & Personal Care",
     "Cleaning Services",
-    "Pest Control & Fumigation"
+    "Pest Control & Fumigation",
+    "Logistics Services"
 ]
 
 const subCategoriesByMain = {
@@ -103,10 +104,13 @@ const subCategoriesByMain = {
         "Other"
     ],
     "Cleaning Services": [
-        "Other"
+        "Cleaning Services"
     ],
     "Pest Control & Fumigation": [
-        "Other"
+        "Pest Control & Fumigation"
+    ],
+    "Logistics Services": [
+        "Logistics Services"
     ]
 }
 

@@ -82,7 +82,8 @@ const servicesData = {
         "Other"
     ],
     "Cleaning Services": ["Other"],
-    "Pest Control & Fumigation": ["Other"]
+    "Pest Control & Fumigation": ["Other"],
+    "Logistics Services": ["Other"]
 }
 
 export default function ProfileSection({ company, editing, setEditing }) {
