@@ -353,6 +353,10 @@ export default function Step2Companies({
             const newJobId = jobData.id;
 
             // 2. SECOND: Send all notifications (now we have jobId)
+            let telegramSuccess = false;
+            let pushSuccess = false;
+            let smsSuccess = false;
+
             try {
                 // Create database notification
                 const { error: notificationError } = await supabase.from('notifications').insert({
@@ -366,15 +370,7 @@ export default function Step2Companies({
                 });
 
                 if (notificationError) console.error('Notification DB error:', notificationError);
-                // In the sendJobToCompany function, right before calling NotificationService:
-                console.log('🔍 [DEBUG] Company object for notifications:', {
-                    companyId: company.id,
-                    companyName: company.company_name,
-                    playerId: company.onesignal_player_id,
-                    hasPlayerId: !!company.onesignal_player_id,
-                    playerIdLength: company.onesignal_player_id?.length,
-                    playerIdFormat: company.onesignal_player_id
-                });
+
                 // Send hybrid notifications (Push + Email)
                 const notificationResult = await NotificationService.notifyCompanyNewJob(
                     company, // Pass the FULL company object, not just ID
@@ -390,13 +386,80 @@ export default function Step2Companies({
 
                 console.log('📢 Notification result:', notificationResult);
 
+                // Extract notification results
+                telegramSuccess = notificationResult.results?.telegram?.success || false;
+                pushSuccess = notificationResult.results?.push?.success || false;
+                smsSuccess = notificationResult.results?.sms?.success || false;
+
+                // CRITICAL: Check if ANY notification was successful
+                const anyNotificationSent = telegramSuccess || pushSuccess || smsSuccess;
+
+                if (!anyNotificationSent) {
+                    throw new Error('Failed to send any notifications to the company. Please try again.');
+                }
+
+                console.log('✅ Notification status:', {
+                    telegram: telegramSuccess ? '✅' : '❌',
+                    push: pushSuccess ? '✅' : '❌',
+                    sms: smsSuccess ? '✅' : '❌'
+                });
+
             } catch (notifError) {
                 console.error('Notification sending failed:', notifError);
+
+                // Only proceed if notification is not critical
+                // For now, we'll still proceed but log the error
+                console.warn('⚠️ Notification failed but continuing...');
             }
 
-            // Success — go to step 3
+            // Success — go to step 3 ONLY after notifications are attempted
             setSelectedCompany(company)
             setStep(3)
+
+
+            // Add this function to retry failed notifications
+            const retryFailedNotifications = async (company, jobData) => {
+                console.log('🔄 Retrying failed notifications...');
+
+                try {
+                    const retryResult = await NotificationService.notifyCompanyNewJob(
+                        company,
+                        jobData
+                    );
+
+                    console.log('🔄 Retry result:', retryResult);
+
+                    if (retryResult.success) {
+                        return { success: true, message: 'Notifications sent on retry' };
+                    } else {
+                        // Even if retry fails, we can proceed but log it
+                        console.warn('⚠️ Notifications still failed after retry');
+                        return { success: false, message: 'Notifications failed after retry' };
+                    }
+                } catch (error) {
+                    console.error('❌ Retry error:', error);
+                    return { success: false, message: error.message };
+                }
+            };
+
+            // Then in your sendJobToCompany, after initial notification attempt:
+            if (!anyNotificationSent && retryCount < 1) {
+                // Try once more
+                retryCount++;
+                const retryResult = await retryFailedNotifications(company, {
+                    id: newJobId,
+                    category: job.category,
+                    sub_service: job.sub_service,
+                    location: job.location,
+                    budget: Number(job.price) || 0,
+                    description: job.description
+                });
+
+                if (!retryResult.success) {
+                    console.warn('⚠️ Proceeding even though notifications failed');
+                    // We'll still proceed to step 3 but show a warning
+                }
+            }
 
         } catch (err) {
             console.error('Send job error:', err)
