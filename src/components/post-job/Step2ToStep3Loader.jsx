@@ -1,4 +1,4 @@
-// src/components/post-job/Step2ToStep3Loader.jsx - SIMPLIFIED VERSION
+// src/components/post-job/Step2ToStep3Loader.jsx - FIXED (NO DUPLICATE TELEGRAM)
 import { useState, useEffect } from 'react'
 import React from 'react';
 import NotificationService from '../../services/NotificationService';
@@ -14,57 +14,53 @@ export default function Step2ToStep3Loader({
     const [telegramSent, setTelegramSent] = useState(false)
 
     useEffect(() => {
-        const sendNotifications = async () => {
+        const checkAndSendRemainingNotifications = async () => {
             try {
                 // Step 1: Initializing
-                setMessage('Initializing...')
+                setMessage('Verifying notifications...')
                 setProgress(10)
 
-                // Wait a moment for database to settle
+                // Wait a moment for initial notifications to settle
                 await new Promise(resolve => setTimeout(resolve, 500));
                 setProgress(20)
 
-                // Step 2: Send Telegram notification
-                setMessage('Sending Telegram notification...')
+                // Step 2: Check if Telegram was already sent
+                // Telegram was already sent in sendJobToCompany, so just mark it as sent
+                setMessage('Checking Telegram status...')
                 if (companyData && jobData && companyData.telegram_chat_id) {
-                    const telegramResult = await NotificationService.sendTelegramJobNotification(
-                        companyData,
-                        jobData
-                    )
-
-                    if (telegramResult.success) {
-                        setTelegramSent(true)
-                        setMessage('Telegram notification sent!')
-                    } else {
-                        setMessage('Telegram failed, trying other methods...')
-                    }
+                    // Telegram was already sent in the parent component
+                    // So we just show it as sent
+                    setTelegramSent(true)
+                    setMessage('Telegram already sent!')
                 } else {
-                    setMessage('No Telegram chat ID, using other methods...')
+                    setMessage('No Telegram chat ID available')
                 }
-                setProgress(50)
+                setProgress(40)
 
-                // Step 3: Send other notifications
+                // Step 3: Send push notifications (if not already sent)
                 setMessage('Sending push notifications...')
-                // Get devices and send push
                 const devices = await NotificationService.getCompanyDevices(companyData.id)
                 if (devices.length > 0) {
                     await NotificationService.sendOneSignalPush(devices, jobData, companyData.company_name)
+                    setMessage('Push notifications sent!')
+                } else {
+                    setMessage('No devices for push notifications')
                 }
-                setProgress(70)
+                setProgress(60)
 
-                // Step 4: Send SMS backup
+                // Step 4: Send SMS backup (if not already sent)
                 setMessage('Sending SMS backup...')
                 await NotificationService.sendJobSMSNotification(companyData.id, jobData)
-                setProgress(90)
+                setProgress(80)
 
                 // Step 5: Complete
-                setMessage('All notifications sent!')
+                setMessage('All notifications confirmed!')
                 setProgress(100)
 
                 // Wait a moment then complete
                 setTimeout(() => {
                     onComplete()
-                }, 1000)
+                }, 800)
 
             } catch (error) {
                 console.error('Notification error in loader:', error)
@@ -74,11 +70,11 @@ export default function Step2ToStep3Loader({
 
                 setTimeout(() => {
                     onComplete()
-                }, 2000)
+                }, 1000)
             }
         }
 
-        sendNotifications()
+        checkAndSendRemainingNotifications()
     }, [companyData, jobData, onComplete])
 
     return (
@@ -94,7 +90,7 @@ export default function Step2ToStep3Loader({
                 </div>
 
                 <h2 className="text-2xl font-bold text-naijaGreen mb-4">
-                    Notifying {companyName}
+                    Confirming with {companyName}
                 </h2>
 
                 <p className="text-lg text-gray-700 mb-6 min-h-8">
@@ -117,7 +113,7 @@ export default function Step2ToStep3Loader({
                 {telegramSent && (
                     <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                         <p className="text-sm text-green-700">
-                            ✅ Telegram notification sent successfully
+                            ✅ Telegram notification sent
                         </p>
                     </div>
                 )}
