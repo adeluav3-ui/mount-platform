@@ -287,7 +287,6 @@ export default function Step2Companies({
             companyObjectKeys: Object.keys(company)
         });
 
-
         if (isSending) return // Prevent multiple clicks
 
         setIsSending(true)
@@ -356,6 +355,7 @@ export default function Step2Companies({
             let telegramSuccess = false;
             let pushSuccess = false;
             let smsSuccess = false;
+            let anyNotificationSent = false;
 
             try {
                 // Create database notification
@@ -391,75 +391,31 @@ export default function Step2Companies({
                 pushSuccess = notificationResult.results?.push?.success || false;
                 smsSuccess = notificationResult.results?.sms?.success || false;
 
-                // CRITICAL: Check if ANY notification was successful
-                const anyNotificationSent = telegramSuccess || pushSuccess || smsSuccess;
-
-                if (!anyNotificationSent) {
-                    throw new Error('Failed to send any notifications to the company. Please try again.');
-                }
+                // Check if ANY notification was successful
+                anyNotificationSent = telegramSuccess || pushSuccess || smsSuccess;
 
                 console.log('✅ Notification status:', {
                     telegram: telegramSuccess ? '✅' : '❌',
                     push: pushSuccess ? '✅' : '❌',
-                    sms: smsSuccess ? '✅' : '❌'
+                    sms: smsSuccess ? '✅' : '❌',
+                    anySent: anyNotificationSent
                 });
+
+                if (!anyNotificationSent) {
+                    console.warn('⚠️ No notifications were sent successfully');
+                    // We'll still proceed, but log the warning
+                }
 
             } catch (notifError) {
-                console.error('Notification sending failed:', notifError);
-
-                // Only proceed if notification is not critical
-                // For now, we'll still proceed but log the error
-                console.warn('⚠️ Notification failed but continuing...');
+                console.error('❌ Notification sending failed:', notifError);
+                // We'll still proceed to step 3 even if notifications fail
             }
 
-            // Success — go to step 3 ONLY after notifications are attempted
+            // Success — go to step 3 (proceed even if notifications failed)
             setSelectedCompany(company)
             setStep(3)
-
-
-            // Add this function to retry failed notifications
-            const retryFailedNotifications = async (company, jobData) => {
-                console.log('🔄 Retrying failed notifications...');
-
-                try {
-                    const retryResult = await NotificationService.notifyCompanyNewJob(
-                        company,
-                        jobData
-                    );
-
-                    console.log('🔄 Retry result:', retryResult);
-
-                    if (retryResult.success) {
-                        return { success: true, message: 'Notifications sent on retry' };
-                    } else {
-                        // Even if retry fails, we can proceed but log it
-                        console.warn('⚠️ Notifications still failed after retry');
-                        return { success: false, message: 'Notifications failed after retry' };
-                    }
-                } catch (error) {
-                    console.error('❌ Retry error:', error);
-                    return { success: false, message: error.message };
-                }
-            };
-
-            // Then in your sendJobToCompany, after initial notification attempt:
-            if (!anyNotificationSent && retryCount < 1) {
-                // Try once more
-                retryCount++;
-                const retryResult = await retryFailedNotifications(company, {
-                    id: newJobId,
-                    category: job.category,
-                    sub_service: job.sub_service,
-                    location: job.location,
-                    budget: Number(job.price) || 0,
-                    description: job.description
-                });
-
-                if (!retryResult.success) {
-                    console.warn('⚠️ Proceeding even though notifications failed');
-                    // We'll still proceed to step 3 but show a warning
-                }
-            }
+            setShowLoader(false)
+            setIsSending(false)
 
         } catch (err) {
             console.error('Send job error:', err)
