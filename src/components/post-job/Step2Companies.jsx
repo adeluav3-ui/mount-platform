@@ -15,7 +15,8 @@ export default function Step2Companies({
     setShowLoader,
     setLoaderCompanyName,
     setTempSelectedCompany,
-    services = {}
+    services = {},
+    setIsSending
 }) {
     // Add state for loading and reviews
     const [isSending, setIsSending] = useState(false)
@@ -355,7 +356,6 @@ export default function Step2Companies({
             let telegramSuccess = false;
             let pushSuccess = false;
             let smsSuccess = false;
-            let anyNotificationSent = false;
 
             try {
                 // Create database notification
@@ -391,34 +391,24 @@ export default function Step2Companies({
                 pushSuccess = notificationResult.results?.push?.success || false;
                 smsSuccess = notificationResult.results?.sms?.success || false;
 
-                // Check if ANY notification was successful
-                anyNotificationSent = telegramSuccess || pushSuccess || smsSuccess;
-
                 console.log('✅ Notification status:', {
                     telegram: telegramSuccess ? '✅' : '❌',
                     push: pushSuccess ? '✅' : '❌',
-                    sms: smsSuccess ? '✅' : '❌',
-                    anySent: anyNotificationSent
+                    sms: smsSuccess ? '✅' : '❌'
                 });
-
-                if (!anyNotificationSent) {
-                    console.warn('⚠️ No notifications were sent successfully');
-                    // We'll still proceed, but log the warning
-                }
 
             } catch (notifError) {
                 console.error('❌ Notification sending failed:', notifError);
-                // We'll still proceed to step 3 even if notifications fail
+                // Continue even if notifications fail
             }
 
-            // Success — go to step 3 (proceed even if notifications failed)
+
             setSelectedCompany(company)
-            setStep(3)
-            setShowLoader(false)
-            setIsSending(false)
+
+            // Keep the loader showing - it will call onComplete when done
 
         } catch (err) {
-            console.error('Send job error:', err)
+            console.error('❌ Send job error:', err)
             setShowLoader(false)
             setIsSending(false)
 
@@ -433,6 +423,7 @@ export default function Step2Companies({
 
             alert(errorMessage)
         }
+        // DO NOT setStep(3) here - let the loader handle it
     }
 
 

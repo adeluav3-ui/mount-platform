@@ -182,6 +182,7 @@ export default function PostJob() {
                     setLoaderCompanyName={setLoaderCompanyName}
                     setTempSelectedCompany={setTempSelectedCompany}
                     services={services}
+                    setIsSending={setIsSending}
                 />
             )}
 
@@ -194,12 +195,10 @@ export default function PostJob() {
             {showLoader && (
                 <Step2ToStep3Loader
                     companyName={loaderCompanyName}
-                    jobData={job} // Pass the job data
-                    companyData={tempSelectedCompany} // Pass company data
+                    companyData={tempSelectedCompany}
+                    jobData={job}
                     onComplete={() => {
                         setShowLoader(false)
-                        setIsSending(false)
-                        // Move to step 3
                         setStep(3)
                     }}
                 />
