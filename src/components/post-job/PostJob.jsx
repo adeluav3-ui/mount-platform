@@ -182,7 +182,6 @@ export default function PostJob() {
                     setLoaderCompanyName={setLoaderCompanyName}
                     setTempSelectedCompany={setTempSelectedCompany}
                     services={services}
-                    setIsSending={setIsSending}
                 />
             )}
 

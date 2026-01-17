@@ -16,7 +16,6 @@ export default function Step2Companies({
     setLoaderCompanyName,
     setTempSelectedCompany,
     services = {},
-    setIsSending
 }) {
     // Add state for loading and reviews
     const [isSending, setIsSending] = useState(false)
