@@ -121,15 +121,15 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                     <div className="bg-white p-3 rounded-lg border">
                                         <div className="flex items-center justify-between">
                                             <code className="text-gray-800 text-lg sm:text-xl font-bold tracking-wide">
-                                                0701 960 9312
+                                                0707 311 8697
                                             </code>
-                                            <div className="text-xs text-gray-500">NGN</div>
+                                            <div className="text-xs text-gray-500">NG</div>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             onClick={() => {
-                                                window.location.href = 'tel:+2347019609312';
+                                                window.location.href = 'tel:+2347073118697';
                                             }}
                                             className="py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2"
                                         >
@@ -140,7 +140,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText('07019609312');
+                                                navigator.clipboard.writeText('07073118697');
                                                 alert('Phone number copied to clipboard!');
                                             }}
                                             className="py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 flex items-center justify-center gap-2"
@@ -168,7 +168,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                 <button
                                     onClick={() => {
                                         const message = encodeURIComponent("Hello, I need help with Mount platform");
-                                        window.open(`https://wa.me/2347019609312?text=${message}`, '_blank');
+                                        window.open(`https://wa.me/2347073118697?text=${message}`, '_blank');
                                     }}
                                     className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 flex items-center justify-center gap-2"
                                 >
@@ -338,7 +338,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                         <span className="text-green-600">📱</span>
                                         <span className="text-sm text-gray-700">Phone:</span>
                                     </div>
-                                    <code className="text-green-600 text-sm font-bold">0701 960 9312</code>
+                                    <code className="text-green-600 text-sm font-bold">0707 311 8697</code>
                                 </div>
                             </div>
                         </div>
