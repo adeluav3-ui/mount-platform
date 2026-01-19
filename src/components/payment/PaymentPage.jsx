@@ -758,18 +758,13 @@ const PaymentPage = () => {
                                         <span className="text-gray-600">50% Deposit</span>
                                         <span>₦{baseAmount.toLocaleString()}</span>
                                     </div>
-                                    {!isServiceFeeWaived && serviceFee > 0 && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Service Fee</span>
-                                            <span className="text-blue-600">+ ₦{serviceFee.toLocaleString()}</span>
-                                        </div>
-                                    )}
-                                    {isServiceFeeWaived && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Service Fee</span>
-                                            <span className="text-green-600 line-through">Waived</span>
-                                        </div>
-                                    )}
+                                    {/* ALWAYS show service fee line, just show amount (0 or actual) */}
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Service Fee</span>
+                                        <span className={serviceFee > 0 ? "text-blue-600" : "text-gray-500"}>
+                                            {serviceFee > 0 ? "+ ₦" : "₦"}{serviceFee.toLocaleString()}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -781,7 +776,7 @@ const PaymentPage = () => {
                                     <div className="text-3xl font-bold text-naijaGreen">
                                         ₦{paymentAmount.toLocaleString()}
                                     </div>
-                                    {job.paymentType === 'deposit' && !isServiceFeeWaived && (
+                                    {job.paymentType === 'deposit' && serviceFee > 0 && (
                                         <div className="text-sm text-gray-500 mt-1">
                                             (Deposit: ₦{baseAmount.toLocaleString()} + Fee: ₦{serviceFee.toLocaleString()})
                                         </div>
