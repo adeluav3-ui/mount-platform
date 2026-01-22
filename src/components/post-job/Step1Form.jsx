@@ -52,6 +52,13 @@ export default function Step1Form({
         }
 
         if (!job.location) errors.push('Please select your location')
+        if (!job.exact_address?.trim()) {
+            errors.push('Please enter your exact address')
+        }
+        if (job.exact_address?.trim().length < 10) {
+            errors.push('Address should be at least 10 characters')
+        }
+
         if (!job.description?.trim()) errors.push('Please describe the job')
         if (job.description?.trim().length < 10) {
             errors.push('Description should be at least 10 characters')
@@ -195,6 +202,23 @@ export default function Step1Form({
                         <option value="">Select area</option>
                         {ogunLocations.map(l => <option key={l} value={l}>{l}</option>)}
                     </select>
+                </div>
+
+                {/* EXACT ADDRESS */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">
+                        Your Exact Address <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                        rows={3}
+                        value={job.exact_address}
+                        onChange={e => setJob({ ...job, exact_address: e.target.value })}
+                        placeholder="Enter your full address including house number, street name, landmarks, etc..."
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-naijaGreen outline-none resize-none"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                        This helps service providers find you easily. Include landmarks if possible.
+                    </p>
                 </div>
 
                 {/* DESCRIPTION */}

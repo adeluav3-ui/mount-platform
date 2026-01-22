@@ -100,6 +100,7 @@ export default function PostJob() {
         sub_service: '',
         custom_sub: '',
         location: '',
+        exact_address: '',
         description: '',
         price: ''
     })
