@@ -489,17 +489,30 @@ export default function Step2Companies({
                 <div className="space-y-6">
                     {filteredCompanies.map(c => {
                         const getPriceDisplay = () => {
-                            // NEW LOGIC: Always check if company has price for this specific sub-service
+                            // NEW LOGIC: Handle categories with and without subservices
                             const prices = c.subcategory_prices || {}
-                            const price = prices[job.sub_service]
 
-                            // If company doesn't have price for this specific sub-service
+                            // Get the category's subservices from the services object
+                            const categorySubservices = services[job.category] || []
+                            const hasSubservices = categorySubservices.length > 0 &&
+                                !(categorySubservices.length === 1 && categorySubservices[0] === "Other")
+
+                            let priceKey = job.sub_service
+
+                            // If category has NO subservices (like Logistics Services), use category name as key
+                            if (!hasSubservices) {
+                                priceKey = job.category
+                            }
+
+                            const price = prices[priceKey]
+
+                            // If company doesn't have price for this specific service
                             if (!price) {
                                 return "Contact for price"
                             }
 
                             // If price is "TBD"
-                            if (price === "TBD") {
+                            if (price === "TBD" || price?.status === "TBD") {
                                 return "TBD (To Be Determined)"
                             }
 

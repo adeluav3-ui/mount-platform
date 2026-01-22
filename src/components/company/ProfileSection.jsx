@@ -81,9 +81,9 @@ const servicesData = {
         "Facial Treatment",
         "Other"
     ],
-    "Cleaning Services": ["Other"],
-    "Pest Control & Fumigation": ["Other"],
-    "Logistics Services": ["Other"]
+    "Cleaning Services": [],
+    "Pest Control & Fumigation": [],
+    "Logistics Services": []
 }
 
 export default function ProfileSection({ company, editing, setEditing }) {
@@ -216,14 +216,37 @@ export default function ProfileSection({ company, editing, setEditing }) {
 
         setSelectedCategories(newSelected)
 
+        // When SELECTING a category WITHOUT subservices, automatically add it to subcategory_prices as TBD
+        if (!selectedCategories.includes(cat) && (!servicesData[cat] || servicesData[cat].length === 0)) {
+            // This is a category without subservices (like Logistics Services)
+            // Automatically add it to subcategory_prices as TBD
+            setSubcategoryPrices(prev => ({
+                ...prev,
+                [cat]: {
+                    status: "TBD",
+                    lastUpdated: new Date().toISOString(),
+                    autoAdded: true // Mark as auto-added so we can remove it if category is unselected
+                }
+            }))
+            console.log(`Auto-added ${cat} to subcategory_prices as TBD`)
+        }
+
         // When unselecting a category, remove all its subcategory prices
         if (selectedCategories.includes(cat) && !hasOriginalSubs) {
             const updatedPrices = { ...subcategoryPrices }
-            Object.keys(updatedPrices).forEach(sub => {
-                if (servicesData[cat]?.includes(sub)) {
-                    delete updatedPrices[sub]
-                }
-            })
+
+            // For categories without subservices, remove the category itself
+            if (!servicesData[cat] || servicesData[cat].length === 0) {
+                delete updatedPrices[cat]
+            } else {
+                // For categories with subservices, remove all its subcategory prices
+                Object.keys(updatedPrices).forEach(sub => {
+                    if (servicesData[cat]?.includes(sub)) {
+                        delete updatedPrices[sub]
+                    }
+                })
+            }
+
             setSubcategoryPrices(updatedPrices)
 
             // Also remove from new subcategories
@@ -433,6 +456,22 @@ export default function ProfileSection({ company, editing, setEditing }) {
             }
         })
 
+        // Ensure categories WITHOUT subservices are in subcategory_prices
+        const finalSubcategoryPrices = { ...subcategoryPrices }
+        selectedCategories.forEach(cat => {
+            // Check if this category has no subservices
+            if (!servicesData[cat] || servicesData[cat].length === 0) {
+                // If category is not in subcategory_prices, add it as TBD
+                if (!finalSubcategoryPrices[cat]) {
+                    finalSubcategoryPrices[cat] = {
+                        status: "TBD",
+                        lastUpdated: new Date().toISOString(),
+                        autoAdded: true
+                    }
+                }
+            }
+        })
+
         const updates = {
             company_name: form.company_name.trim(),
             address: form.address?.trim() || '',
@@ -440,7 +479,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
             bank_name: form.bank_name?.trim() || '',
             bank_account: form.bank_account?.trim() || '',
             services: selectedCategories,
-            subcategory_prices: subcategoryPrices,
+            subcategory_prices: finalSubcategoryPrices, // Use the updated prices
             portfolio_pictures: portfolioPictures,
             updated_at: new Date().toISOString()
         }
@@ -715,185 +754,351 @@ export default function ProfileSection({ company, editing, setEditing }) {
                                         <p className="text-gray-600">Select main categories first to set prices</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-6">
-                                        {selectedCategories.map(category => {
-                                            const displaySubs = getDisplaySubcategories(category)
-                                            const hasOriginalSubs = originalSubcategories[category]?.length > 0
-                                            const availableServices = getAvailableServices(category)
+                                    <div className="space-y-8">
+                                        {/* SECTION 1: Categories WITH subcategories */}
+                                        {selectedCategories
+                                            .filter(cat => servicesData[cat] && servicesData[cat].length > 0)
+                                            .map(category => {
+                                                const displaySubs = getDisplaySubcategories(category)
+                                                const hasOriginalSubs = originalSubcategories[category]?.length > 0
+                                                const availableServices = getAvailableServices(category)
 
-                                            return (
-                                                <div key={category} className="border border-gray-200 rounded-xl p-5">
-                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                                                                <span className="bg-naijaGreen text-white px-3 py-1 rounded-full text-sm">
-                                                                    {category}
-                                                                </span>
-                                                                <span className="text-sm text-gray-500">
-                                                                    ({displaySubs.length} services)
-                                                                </span>
-                                                            </h4>
-                                                            {hasOriginalSubs && (
-                                                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                                                    {originalSubcategories[category]?.length} original
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                return (
+                                                    <div key={category} className="border border-gray-200 rounded-xl p-5">
+                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <h4 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                                                                    <span className="bg-naijaGreen text-white px-3 py-1 rounded-full text-sm">
+                                                                        {category}
+                                                                    </span>
+                                                                    <span className="text-sm text-gray-500">
+                                                                        ({displaySubs.length} services)
+                                                                    </span>
+                                                                </h4>
+                                                                {hasOriginalSubs && (
+                                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                        {originalSubcategories[category]?.length} original
+                                                                    </span>
+                                                                )}
+                                                            </div>
 
-                                                        {/* Add new service dropdown */}
-                                                        <div className="relative">
-                                                            {availableServices.length > 0 ? (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => toggleDropdown(category)}
-                                                                        className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-2"
-                                                                    >
-                                                                        <span>+ Add Service</span>
-                                                                        <svg
-                                                                            className={`w-4 h-4 transition-transform ${showNewServiceDropdown[category] ? 'rotate-180' : ''}`}
-                                                                            fill="none"
-                                                                            stroke="currentColor"
-                                                                            viewBox="0 0 24 24"
+                                                            {/* Add new service dropdown */}
+                                                            <div className="relative">
+                                                                {availableServices.length > 0 ? (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={() => toggleDropdown(category)}
+                                                                            className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 flex items-center gap-2"
                                                                         >
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                                                        </svg>
-                                                                    </button>
+                                                                            <span>+ Add Service</span>
+                                                                            <svg
+                                                                                className={`w-4 h-4 transition-transform ${showNewServiceDropdown[category] ? 'rotate-180' : ''}`}
+                                                                                fill="none"
+                                                                                stroke="currentColor"
+                                                                                viewBox="0 0 24 24"
+                                                                            >
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                                            </svg>
+                                                                        </button>
 
-                                                                    {showNewServiceDropdown[category] && (
-                                                                        <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10 max-h-60 overflow-y-auto">
-                                                                            <div className="p-2">
-                                                                                <div className="px-3 py-2 text-xs text-gray-500 border-b">
-                                                                                    Select from available services:
-                                                                                </div>
-                                                                                {availableServices.map(service => (
-                                                                                    <button
-                                                                                        key={service}
-                                                                                        onClick={() => addServiceFromDropdown(category, service)}
-                                                                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md flex items-center gap-2"
-                                                                                    >
-                                                                                        <span>+</span>
-                                                                                        <span className="truncate">{service}</span>
-                                                                                    </button>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </>
-                                                            ) : (
-                                                                <div className="text-sm text-gray-500 px-3 py-2">
-                                                                    All services added
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {displaySubs.length === 0 ? (
-                                                        <div className="text-center py-6 bg-gray-50 rounded-lg">
-                                                            <p className="text-gray-500">No services selected for this category</p>
-                                                            <p className="text-sm text-gray-400 mt-1">
-                                                                Click "Add Service" to add from available options
-                                                            </p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-4">
-                                                            {displaySubs.map(sub => {
-                                                                const priceData = subcategoryPrices[sub]
-                                                                const isTBD = priceData?.status === "TBD"
-                                                                const isNew = isNewSubcategory(category, sub)
-                                                                const isOriginal = isOriginalSubcategory(category, sub)
-
-                                                                return (
-                                                                    <div key={sub} className={`bg-gray-50 rounded-lg p-4 ${isNew ? 'border-l-4 border-l-green-500' : ''}`}>
-                                                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="font-medium text-gray-800">{sub}</span>
-                                                                                {isNew && (
-                                                                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                                                                                        Added
-                                                                                    </span>
-                                                                                )}
-                                                                                {isOriginal && (
-                                                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
-                                                                                        Original
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-
-                                                                            <div className="flex items-center gap-3">
-                                                                                {isTBD ? (
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                                                                                            💭 TBD
-                                                                                        </span>
-                                                                                        <button
-                                                                                            onClick={() => removeTBD(sub)}
-                                                                                            className="text-sm text-gray-600 hover:text-blue-600 underline"
-                                                                                        >
-                                                                                            Set Price
-                                                                                        </button>
+                                                                        {showNewServiceDropdown[category] && (
+                                                                            <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 z-10 max-h-60 overflow-y-auto">
+                                                                                <div className="p-2">
+                                                                                    <div className="px-3 py-2 text-xs text-gray-500 border-b">
+                                                                                        Select from available services:
                                                                                     </div>
-                                                                                ) : (
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        {priceData?.min && priceData?.max ? (
-                                                                                            <span className="text-sm font-medium text-green-600">
-                                                                                                ₦{Number(priceData.min).toLocaleString()} - ₦{Number(priceData.max).toLocaleString()}
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="text-sm text-gray-500">No price set</span>
-                                                                                        )}
+                                                                                    {availableServices.map(service => (
                                                                                         <button
-                                                                                            onClick={() => handleTBD(sub)}
-                                                                                            className="text-sm text-gray-600 hover:text-naijaGreen underline"
+                                                                                            key={service}
+                                                                                            onClick={() => addServiceFromDropdown(category, service)}
+                                                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md flex items-center gap-2"
                                                                                         >
-                                                                                            Mark as TBD
+                                                                                            <span>+</span>
+                                                                                            <span className="truncate">{service}</span>
                                                                                         </button>
-                                                                                    </div>
-                                                                                )}
-
-                                                                                {isNew && (
-                                                                                    <button
-                                                                                        onClick={() => removeNewSubcategory(category, sub)}
-                                                                                        className="text-sm text-red-600 hover:text-red-800 ml-2"
-                                                                                        title="Remove this service"
-                                                                                    >
-                                                                                        × Remove
-                                                                                    </button>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {!isTBD && (
-                                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                                                <div>
-                                                                                    <label className="block text-xs text-gray-600 mb-1">Min Price (₦)</label>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        placeholder="5000"
-                                                                                        value={priceData?.min || ''}
-                                                                                        onChange={e => handlePriceChange(sub, 'min', e.target.value)}
-                                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
-                                                                                    />
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label className="block text-xs text-gray-600 mb-1">Max Price (₦)</label>
-                                                                                    <input
-                                                                                        type="number"
-                                                                                        placeholder="15000"
-                                                                                        value={priceData?.max || ''}
-                                                                                        onChange={e => handlePriceChange(sub, 'max', e.target.value)}
-                                                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
-                                                                                    />
+                                                                                    ))}
                                                                                 </div>
                                                                             </div>
                                                                         )}
+                                                                    </>
+                                                                ) : (
+                                                                    <div className="text-sm text-gray-500 px-3 py-2">
+                                                                        All services added
                                                                     </div>
-                                                                )
-                                                            })}
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            )
-                                        })}
+
+                                                        {displaySubs.length === 0 ? (
+                                                            <div className="text-center py-6 bg-gray-50 rounded-lg">
+                                                                <p className="text-gray-500">No services selected for this category</p>
+                                                                <p className="text-sm text-gray-400 mt-1">
+                                                                    Click "Add Service" to add from available options
+                                                                </p>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-4">
+                                                                {displaySubs.map(sub => {
+                                                                    const priceData = subcategoryPrices[sub]
+                                                                    const isTBD = priceData?.status === "TBD"
+                                                                    const isNew = isNewSubcategory(category, sub)
+                                                                    const isOriginal = isOriginalSubcategory(category, sub)
+
+                                                                    return (
+                                                                        <div key={sub} className={`bg-gray-50 rounded-lg p-4 ${isNew ? 'border-l-4 border-l-green-500' : ''}`}>
+                                                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className="font-medium text-gray-800">{sub}</span>
+                                                                                    {isNew && (
+                                                                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                                                                                            Added
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {isOriginal && (
+                                                                                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                                                                            Original
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+
+                                                                                <div className="flex items-center gap-3">
+                                                                                    {isTBD ? (
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                                                                                💭 TBD
+                                                                                            </span>
+                                                                                            <button
+                                                                                                onClick={() => removeTBD(sub)}
+                                                                                                className="text-sm text-gray-600 hover:text-blue-600 underline"
+                                                                                            >
+                                                                                                Set Price
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            {priceData?.min && priceData?.max ? (
+                                                                                                <span className="text-sm font-medium text-green-600">
+                                                                                                    ₦{Number(priceData.min).toLocaleString()} - ₦{Number(priceData.max).toLocaleString()}
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                <span className="text-sm text-gray-500">No price set</span>
+                                                                                            )}
+                                                                                            <button
+                                                                                                onClick={() => handleTBD(sub)}
+                                                                                                className="text-sm text-gray-600 hover:text-naijaGreen underline"
+                                                                                            >
+                                                                                                Mark as TBD
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {isNew && (
+                                                                                        <button
+                                                                                            onClick={() => removeNewSubcategory(category, sub)}
+                                                                                            className="text-sm text-red-600 hover:text-red-800 ml-2"
+                                                                                            title="Remove this service"
+                                                                                        >
+                                                                                            × Remove
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {!isTBD && (
+                                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                                    <div>
+                                                                                        <label className="block text-xs text-gray-600 mb-1">Min Price (₦)</label>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            placeholder="5000"
+                                                                                            value={priceData?.min || ''}
+                                                                                            onChange={e => handlePriceChange(sub, 'min', e.target.value)}
+                                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="block text-xs text-gray-600 mb-1">Max Price (₦)</label>
+                                                                                        <input
+                                                                                            type="number"
+                                                                                            placeholder="15000"
+                                                                                            value={priceData?.max || ''}
+                                                                                            onChange={e => handlePriceChange(sub, 'max', e.target.value)}
+                                                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-naijaGreen outline-none"
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+
+                                        {/* SECTION 2: Categories WITHOUT subcategories (like Logistics Services) */}
+                                        {selectedCategories
+                                            .filter(cat => !servicesData[cat] || servicesData[cat].length === 0)
+                                            .map(category => {
+                                                // For categories without subcategories, we use the category name itself as the "service"
+                                                const serviceName = category;
+                                                const priceData = subcategoryPrices[serviceName] || {};
+                                                const isTBD = priceData?.status === "TBD";
+
+                                                return (
+                                                    <div key={category} className="border-2 border-blue-200 rounded-xl p-5 bg-blue-50">
+                                                        <div className="flex items-center justify-between mb-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <h4 className="font-bold text-lg text-blue-800 flex items-center gap-2">
+                                                                    <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm">
+                                                                        {category}
+                                                                    </span>
+                                                                    <span className="text-sm text-gray-600">
+                                                                        (General Service)
+                                                                    </span>
+                                                                </h4>
+                                                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                    No subcategories
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-white rounded-lg p-5 border border-blue-200">
+                                                            <div className="mb-4">
+                                                                <p className="text-gray-700 mb-3">
+                                                                    <span className="font-medium">Set price range for your {category} service:</span>
+                                                                    <span className="text-sm text-gray-500 block mt-1">
+                                                                        Customers will see this price range when selecting companies for {category}.
+                                                                    </span>
+                                                                </p>
+                                                            </div>
+
+                                                            {/* Price range section */}
+                                                            <div className="space-y-4">
+                                                                {/* TBD Option */}
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    {isTBD ? (
+                                                                        <div className="flex items-center gap-3">
+                                                                            <span className="px-4 py-2 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium">
+                                                                                💭 Price To Be Determined (TBD)
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const updatedPrices = { ...subcategoryPrices };
+                                                                                    delete updatedPrices[serviceName];
+                                                                                    setSubcategoryPrices(updatedPrices);
+                                                                                }}
+                                                                                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                                                            >
+                                                                                Set Price Range
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center gap-3">
+                                                                            {priceData.min && priceData.max ? (
+                                                                                <span className="text-lg font-bold text-green-600">
+                                                                                    ₦{Number(priceData.min).toLocaleString()} - ₦{Number(priceData.max).toLocaleString()}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-gray-500">No price range set</span>
+                                                                            )}
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setSubcategoryPrices(prev => ({
+                                                                                        ...prev,
+                                                                                        [serviceName]: {
+                                                                                            status: "TBD",
+                                                                                            lastUpdated: new Date().toISOString()
+                                                                                        }
+                                                                                    }))
+                                                                                }}
+                                                                                className="text-sm text-gray-600 hover:text-naijaGreen underline"
+                                                                            >
+                                                                                Mark as TBD
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Price inputs (only show if not TBD) */}
+                                                                {!isTBD && (
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                                Minimum Price (₦)
+                                                                            </label>
+                                                                            <input
+                                                                                type="number"
+                                                                                placeholder="e.g., 5000"
+                                                                                value={priceData.min || ''}
+                                                                                onChange={e => setSubcategoryPrices(prev => ({
+                                                                                    ...prev,
+                                                                                    [serviceName]: {
+                                                                                        ...prev[serviceName],
+                                                                                        min: e.target.value,
+                                                                                        lastUpdated: new Date().toISOString()
+                                                                                    }
+                                                                                }))}
+                                                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                                                                            />
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                Starting price for basic services
+                                                                            </p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                                                Maximum Price (₦)
+                                                                            </label>
+                                                                            <input
+                                                                                type="number"
+                                                                                placeholder="e.g., 20000"
+                                                                                value={priceData.max || ''}
+                                                                                onChange={e => setSubcategoryPrices(prev => ({
+                                                                                    ...prev,
+                                                                                    [serviceName]: {
+                                                                                        ...prev[serviceName],
+                                                                                        max: e.target.value,
+                                                                                        lastUpdated: new Date().toISOString()
+                                                                                    }
+                                                                                }))}
+                                                                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                                                                            />
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                Maximum price for complex services
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Additional info for logistics */}
+                                                                {category === 'Logistics Services' && (
+                                                                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                                                        <p className="text-sm text-blue-700">
+                                                                            💡 <span className="font-medium">Tip for Logistics Services:</span>
+                                                                            Set a price range based on distance, package size, and service type (pickup/delivery).
+                                                                            Customers will provide exact details when posting jobs.
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+
+                                        {/* Explanation section */}
+                                        <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                            <p className="text-sm text-gray-700">
+                                                <span className="font-medium">How pricing works:</span>
+                                                <ul className="mt-2 space-y-1 list-disc pl-5 text-gray-600">
+                                                    <li>Categories <span className="font-medium">with subcategories</span> (like Electrical, Plumbing): Set prices for each specific service</li>
+                                                    <li>Categories <span className="font-medium">without subcategories</span> (like Logistics, Cleaning): Set one price range for the entire service category</li>
+                                                    <li><span className="text-blue-600">TBD</span> = "To Be Determined" - You'll quote after seeing job details</li>
+                                                    <li>Price ranges help customers understand your pricing before selecting</li>
+                                                </ul>
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
