@@ -198,10 +198,9 @@ export default function Login() {
 
             console.log("=== CUSTOMER SIGNUP AFTER TERMS ACCEPTANCE ===");
             console.log("1. Email:", email);
-            console.log("2. Name:", name);
-            console.log("3. Phone:", phone);
 
-            // FIX: Use supabase.auth.signUp directly with redirectTo
+            // Create auth user
+            console.log("2. Creating auth user...");
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email.trim(),
                 password: password.trim(),
@@ -214,53 +213,64 @@ export default function Login() {
                 }
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.error("Auth error:", authError);
+                throw authError;
+            }
 
-            console.log("4. Auth User ID:", authData.user?.id);
+            if (!authData.user) {
+                console.error("No user returned from auth:", authData);
+                throw new Error('User creation failed. Please try again.');
+            }
 
-            const userId = authData.user.id
+            const userId = authData.user.id;
+            console.log("3. User ID created:", userId);
 
-            // INSERT INTO PROFILES
-            const { error: profileError } = await supabase.from('profiles').upsert({
+            // Create profile
+            console.log("4. Creating profile...");
+            const { error: profileError } = await supabase.from('profiles').insert({
                 id: userId,
                 full_name: name,
                 phone: phone,
                 email: email,
                 role: 'customer',
                 updated_at: new Date().toISOString()
-            })
-            console.log("5. Profile insert result:", profileError?.message || "Success");
+            });
 
             if (profileError) {
                 console.error("Profile insert error:", profileError);
-                throw profileError
+                throw profileError;
             }
+            console.log("5. Profile created successfully");
 
-            // INSERT INTO CUSTOMERS TABLE
-            const { error: customerError } = await supabase.from('customers').upsert({
+            // Wait to ensure profile is committed
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Create customer record
+            console.log("6. Creating customer record...");
+            const { error: customerError } = await supabase.from('customers').insert({
                 id: userId,
                 customer_name: name,
                 phone: phone,
                 email: email,
                 created_at: new Date().toISOString()
-            })
-            console.log("6. Customer insert result:", customerError?.message || "Success");
+            });
 
             if (customerError) {
                 console.error("Customer insert error:", customerError);
-                throw customerError
+                throw customerError;
             }
+            console.log("7. Customer created successfully");
 
-            alert('Signup complete! Please check your email to confirm signup.');
+            alert('✅ Signup complete! Please check your email to confirm signup.');
 
         } catch (err) {
-            setError(err.message);
-            console.error('Signup error after terms acceptance:', err);
+            console.error('❌ Signup error after terms acceptance:', err);
+            setError(`Signup failed: ${err.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
     };
-
     const handleCompanyAgreementAccept = async () => {
         if (!consentAccepted) {
             alert('You must accept the Terms & Conditions and Privacy Policy');
@@ -287,15 +297,21 @@ export default function Login() {
 
             console.log("=== COMPANY SIGNUP AFTER AGREEMENT ACCEPTANCE ===");
             console.log("1. Selected Services:", selectedServices);
-            console.log("2. Selected Subcategories:", selectedSubCategories);
 
-            // Mark code as used
-            await supabase
+            // Step 1: Mark code as used FIRST (before anything else)
+            const { error: codeUpdateError } = await supabase
                 .from('verification_codes')
                 .update({ used: true })
                 .eq('code', enteredCode);
 
-            // CREATE AUTH USER
+            if (codeUpdateError) {
+                console.error("Code update error:", codeUpdateError);
+                throw codeUpdateError;
+            }
+            console.log("2. Code marked as used");
+
+            // Step 2: Create auth user
+            console.log("3. Creating auth user...");
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email.trim(),
                 password: password.trim(),
@@ -308,48 +324,22 @@ export default function Login() {
                 }
             });
 
-            if (authError) throw authError;
+            if (authError) {
+                console.error("Auth error:", authError);
+                throw authError;
+            }
+
+            if (!authData.user) {
+                console.error("No user returned from auth:", authData);
+                throw new Error('User creation failed. Please try again.');
+            }
 
             const userId = authData.user.id;
+            console.log("4. User ID created:", userId);
 
-            let pictureUrl = null;
-
-            // Upload picture if provided
-            if (companyPicture) {
-                const fileExt = companyPicture.name.split('.').pop();
-                const fileName = `${userId}/profile.${fileExt}`;
-
-                const { error: uploadError } = await supabase.storage
-                    .from('company-pictures')
-                    .upload(fileName, companyPicture, { upsert: true });
-
-                if (uploadError) throw uploadError;
-
-                const { data: urlData } = supabase.storage
-                    .from('company-pictures')
-                    .getPublicUrl(fileName);
-
-                pictureUrl = urlData.publicUrl;
-            }
-
-            // Create subcategory_prices object from selected subcategories
-            const subcategory_prices = {}
-
-            // FIX: Iterate over object entries, not array
-            if (selectedSubCategories && typeof selectedSubCategories === 'object') {
-                Object.entries(selectedSubCategories).forEach(([mainCategory, subCats]) => {
-                    if (subCats && Array.isArray(subCats)) {
-                        subCats.forEach(subCat => {
-                            subcategory_prices[subCat] = "TBD"
-                        })
-                    }
-                })
-            }
-
-            console.log("3. Subcategory prices to save:", subcategory_prices);
-
-            // INSERT PROFILE
-            const { error: profileError } = await supabase.from('profiles').upsert({
+            // Step 3: Create profile FIRST (immediately after auth)
+            console.log("5. Creating profile...");
+            const { error: profileError } = await supabase.from('profiles').insert({
                 id: userId,
                 full_name: companyName,
                 phone: phone,
@@ -358,9 +348,57 @@ export default function Login() {
                 updated_at: new Date().toISOString()
             });
 
-            if (profileError) throw profileError;
+            if (profileError) {
+                console.error("Profile insert error:", profileError);
+                throw profileError;
+            }
+            console.log("6. Profile inserted successfully");
 
-            // INSERT COMPANY DETAILS
+            // Step 4: Wait to ensure profile is committed
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            let pictureUrl = null;
+
+            // Step 5: Upload picture (AFTER profile is created)
+            if (companyPicture) {
+                console.log("7. Uploading company picture...");
+                const fileExt = companyPicture.name.split('.').pop();
+                const fileName = `${userId}/profile.${fileExt}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('company-pictures')
+                    .upload(fileName, companyPicture, { upsert: true });
+
+                if (uploadError) {
+                    console.error("Picture upload error:", uploadError);
+                    // Don't throw - just continue without picture
+                    console.warn("Continuing without company picture");
+                } else {
+                    const { data: urlData } = supabase.storage
+                        .from('company-pictures')
+                        .getPublicUrl(fileName);
+                    pictureUrl = urlData.publicUrl;
+                    console.log("8. Picture uploaded:", pictureUrl);
+                }
+            }
+
+            // Step 6: Create subcategory_prices object
+            const subcategory_prices = {};
+
+            if (selectedSubCategories && typeof selectedSubCategories === 'object') {
+                Object.entries(selectedSubCategories).forEach(([mainCategory, subCats]) => {
+                    if (subCats && Array.isArray(subCats)) {
+                        subCats.forEach(subCat => {
+                            subcategory_prices[subCat] = "TBD";
+                        });
+                    }
+                });
+            }
+
+            console.log("9. Subcategory prices to save:", subcategory_prices);
+
+            // Step 7: FINALLY create company record
+            console.log("10. Inserting into companies table...");
             const { error: companyInsertError } = await supabase.from('companies').insert({
                 id: userId,
                 company_name: companyName,
@@ -379,13 +417,17 @@ export default function Login() {
                 created_at: new Date().toISOString()
             });
 
-            if (companyInsertError) throw companyInsertError;
+            if (companyInsertError) {
+                console.error("Company insert error:", companyInsertError);
+                throw companyInsertError;
+            }
+            console.log("11. Company inserted successfully");
 
-            alert('Company created successfully! Agreement accepted. You can now log in.');
+            alert('✅ Company created successfully! Agreement accepted. You can now log in.');
 
         } catch (err) {
-            setError(err.message);
-            console.error('Company signup error after agreement:', err);
+            console.error('❌ Company signup error:', err);
+            setError(`Signup failed: ${err.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
