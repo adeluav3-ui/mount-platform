@@ -635,6 +635,14 @@ export default function JobsSection({
                                 )}
                             </div>
 
+                            {job.category === 'Logistics Services' && job.logistics_type && (
+                                <div className="mt-2">
+                                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${job.logistics_type === 'pickup' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                                        {job.logistics_type === 'pickup' ? '🔄 Pickup Service' : '🚚 Delivery Service'}
+                                    </span>
+                                </div>
+                            )}
+
                             <div className="mt-4 grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <p className="text-gray-700 text-sm sm:text-base">
@@ -643,6 +651,52 @@ export default function JobsSection({
                                     <p className="text-gray-700 text-sm sm:text-base">
                                         <span className="font-bold">Address:</span> {job.exact_address || 'Not provided'}
                                     </p>
+                                    {/* LOGISTICS INFORMATION - ONLY FOR LOGISTICS SERVICES */}
+                                    {job.category === 'Logistics Services' && (
+                                        <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                            <h4 className="font-bold text-blue-800 text-sm sm:text-base mb-2">📦 Logistics Details</h4>
+
+                                            <div className="space-y-2 text-sm sm:text-base">
+                                                <div className="flex items-center">
+                                                    <span className="font-medium text-blue-700 w-32 sm:w-36">Service Type:</span>
+                                                    <span className={`font-bold ${job.logistics_type === 'pickup' ? 'text-orange-600' : 'text-green-600'}`}>
+                                                        {job.logistics_type === 'pickup' ? '🔄 Pickup' : '🚚 Delivery'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-start">
+                                                    <span className="font-medium text-blue-700 w-32 sm:w-36">Contact Phone:</span>
+                                                    <div className="flex-1">
+                                                        <a
+                                                            href={`tel:${job.logistics_contact_phone}`}
+                                                            className="font-bold text-blue-800 hover:text-blue-600 hover:underline"
+                                                        >
+                                                            {job.logistics_contact_phone || 'N/A'}
+                                                        </a>
+                                                        <p className="text-xs text-gray-600 mt-1">
+                                                            {job.logistics_type === 'pickup'
+                                                                ? "Person to pick up from"
+                                                                : "Person to deliver to"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-start">
+                                                    <span className="font-medium text-blue-700 w-32 sm:w-36">
+                                                        {job.logistics_type === 'pickup' ? 'Pickup Address:' : 'Delivery Address:'}
+                                                    </span>
+                                                    <div className="flex-1">
+                                                        <p className="text-gray-800">{job.logistics_other_address || 'N/A'}</p>
+                                                        <p className="text-xs text-gray-600 mt-1">
+                                                            {job.logistics_type === 'pickup'
+                                                                ? "Where to collect package from"
+                                                                : "Where to deliver package to"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                     <p className="text-gray-700 text-sm sm:text-base">
                                         <span className="font-bold">Customer Budget:</span>
                                         <span className="text-naijaGreen font-bold ml-2">₦{Number(job.budget || 0).toLocaleString()}</span>

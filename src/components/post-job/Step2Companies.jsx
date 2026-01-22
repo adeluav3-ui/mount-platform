@@ -352,6 +352,13 @@ export default function Step2Companies({
 
             const newJobId = jobData.id;
 
+            // ADD LOGISTICS FIELDS IF CATEGORY IS LOGISTICS
+            if (job.category === 'Logistics Services') {
+                jobDataToInsert.logistics_type = job.logistics_type;
+                jobDataToInsert.logistics_contact_phone = job.logistics_contact_phone;
+                jobDataToInsert.logistics_other_address = job.logistics_other_address;
+            }
+
             // 2. SECOND: Send all notifications (now we have jobId)
             let telegramSuccess = false;
             let pushSuccess = false;
