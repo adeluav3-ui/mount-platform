@@ -102,7 +102,10 @@ export default function PostJob() {
         location: '',
         exact_address: '',
         description: '',
-        price: ''
+        price: '',
+        logistics_type: '',
+        logistics_contact_phone: '',
+        logistics_other_address: ''
     })
 
     const [companies, setCompanies] = useState([])

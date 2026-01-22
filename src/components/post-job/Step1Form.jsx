@@ -2,6 +2,7 @@
 import React from 'react';
 import { useSupabase } from '../../context/SupabaseContext'
 import { useState, useEffect } from 'react'
+import LogisticsFields from './LogisticsFields';
 
 const ogunLocations = [
     'Abeokuta', 'Sango-Ota', 'Ijebu-Ode', 'Sagamu',
@@ -65,6 +66,30 @@ export default function Step1Form({
         }
         if (!job.price || Number(job.price) <= 0) {
             errors.push('Please enter a valid budget amount')
+        }
+
+        // NEW VALIDATION FOR LOGISTICS SERVICES
+        if (job.category === 'Logistics Services') {
+            if (!job.logistics_type) {
+                errors.push('Please select logistics service type (Pickup or Delivery)')
+            }
+
+            if (!job.logistics_contact_phone?.trim()) {
+                errors.push(`Please enter ${job.logistics_type === 'pickup' ? "sender's" : "receiver's"} phone number`)
+            } else {
+                // Validate Nigerian phone number
+                const phoneRegex = /^(0[7-9][0-1]\d{8}|\+234[7-9][0-1]\d{8})$/;
+                if (!phoneRegex.test(job.logistics_contact_phone.replace(/\s+/g, ''))) {
+                    errors.push('Please enter a valid Nigerian phone number (e.g., 08012345678 or +2348012345678)')
+                }
+            }
+
+            if (!job.logistics_other_address?.trim()) {
+                errors.push(`Please enter ${job.logistics_type === 'pickup' ? 'pickup' : 'delivery'} address`)
+            }
+            if (job.logistics_other_address?.trim().length < 10) {
+                errors.push(`${job.logistics_type === 'pickup' ? 'Pickup' : 'Delivery'} address should be at least 10 characters`)
+            }
         }
 
         return errors
@@ -220,6 +245,11 @@ export default function Step1Form({
                         This helps service providers find you easily. Include landmarks if possible.
                     </p>
                 </div>
+
+                {/* LOGISTICS-SPECIFIC FIELDS - ONLY SHOW FOR LOGISTICS SERVICES */}
+                {job.category === 'Logistics Services' && (
+                    <LogisticsFields job={job} setJob={setJob} />
+                )}
 
                 {/* DESCRIPTION */}
                 <div>
