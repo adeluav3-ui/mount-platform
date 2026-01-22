@@ -1,4 +1,4 @@
-// src/components/CompanyAgreement.jsx
+// src/components/CompanyAgreement.jsx - MOBILE OPTIMIZED
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,11 +14,6 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
         onAccept();
     };
 
-    const handleScroll = (e) => {
-        const { scrollTop, scrollHeight, clientHeight } = e.target;
-        const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 10;
-    };
-
     return (
         <AnimatePresence>
             {isOpen && (
@@ -29,30 +24,30 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center p-2 sm:p-4 overflow-y-auto"
                     >
                         {/* Modal */}
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                            animate={{ scale: 1, opacity: 1, y: 0 }}
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+                            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl my-4 sm:my-8 flex flex-col max-h-[calc(100vh-2rem)]"
                         >
-                            {/* Header */}
-                            <div className="bg-gradient-to-r from-naijaGreen to-darkGreen p-6">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <h2 className="text-2xl md:text-3xl font-bold text-white">
+                            {/* Header - Mobile Optimized */}
+                            <div className="bg-gradient-to-r from-naijaGreen to-darkGreen p-4 sm:p-6 sticky top-0 z-10">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight">
                                             Service Provider Agreement
                                         </h2>
-                                        <p className="text-white/90 mt-1">
-                                            {companyName ? `For ${companyName}` : 'Business Terms & Conditions'}
+                                        <p className="text-white/90 text-sm sm:text-base mt-1">
+                                            {companyName ? `For ${companyName}` : 'Business Terms'}
                                         </p>
                                     </div>
                                     <button
                                         onClick={onClose}
-                                        className="text-white hover:text-yellow-300 text-2xl"
+                                        className="text-white hover:text-yellow-300 text-2xl ml-2"
                                     >
                                         ×
                                     </button>
@@ -60,24 +55,20 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
                             </div>
 
                             {/* Content - Scrollable */}
-                            <div
-                                className="flex-1 overflow-y-auto p-6 md:p-8"
-                                onScroll={handleScroll}
-                            >
-                                <div className="space-y-8">
+                            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                                <div className="space-y-6">
                                     {/* WARNING BANNER */}
-                                    <div className="bg-red-50 border-l-4 border-red-500 p-4">
+                                    <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4">
                                         <div className="flex items-start">
-                                            <div className="flex-shrink-0">
-                                                <span className="text-red-500 text-2xl">⚖️</span>
+                                            <div className="flex-shrink-0 pt-1">
+                                                <span className="text-red-500 text-xl">⚖️</span>
                                             </div>
                                             <div className="ml-3">
-                                                <h3 className="text-lg font-semibold text-red-800">
+                                                <h3 className="text-base sm:text-lg font-semibold text-red-800">
                                                     LEGALLY BINDING CONTRACT
                                                 </h3>
-                                                <p className="text-red-700 mt-1">
+                                                <p className="text-red-700 text-sm sm:text-base mt-1">
                                                     This agreement governs your use of our platform as a service provider.
-                                                    By accepting, you enter into a legally enforceable contract.
                                                 </p>
                                             </div>
                                         </div>
@@ -85,53 +76,61 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
 
                                     {/* SECTION 1: COMMISSION & PAYMENTS */}
                                     <div>
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">
+                                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 pb-2 border-b">
                                             ARTICLE 1: COMMISSION & PAYMENT TERMS
                                         </h3>
-                                        <div className="space-y-4 text-gray-800">
-                                            <div className="bg-green-50 p-4 rounded-lg">
-                                                <h4 className="font-bold text-green-800 text-lg">1.1 Commission Structure</h4>
+                                        <div className="space-y-4 text-gray-800 text-sm sm:text-base">
+                                            <div className="bg-green-50 p-3 sm:p-4 rounded-lg">
+                                                <h4 className="font-bold text-green-800 text-base sm:text-lg">1.1 Commission Structure</h4>
                                                 <p className="mt-2">
                                                     <strong>Platform Commission:</strong> 5% of total job value
                                                 </p>
-                                                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="bg-white p-4 rounded-lg border">
-                                                        <p className="font-bold text-naijaGreen">💰 Payment Flow:</p>
-                                                        <ul className="mt-2 space-y-2 text-sm">
-                                                            <li>✅ Customer pays 50% deposit → You receive <strong>immediately</strong></li>
-                                                            <li>✅ Customer pays 50% balance → You receive <strong>45%</strong></li>
-                                                            <li>✅ Platform keeps <strong>5%</strong> as commission</li>
+                                                <div className="mt-3 space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 gap-3">
+                                                    <div className="bg-white p-3 sm:p-4 rounded-lg border">
+                                                        <p className="font-bold text-naijaGreen text-sm sm:text-base">💰 Payment Flow:</p>
+                                                        <ul className="mt-2 space-y-1 text-xs sm:text-sm">
+                                                            <li className="flex items-start">
+                                                                <span className="mr-2">✅</span>
+                                                                <span>50% deposit → You get <strong>immediately</strong></span>
+                                                            </li>
+                                                            <li className="flex items-start">
+                                                                <span className="mr-2">✅</span>
+                                                                <span>50% balance → You get <strong>45%</strong></span>
+                                                            </li>
+                                                            <li className="flex items-start">
+                                                                <span className="mr-2">✅</span>
+                                                                <span>Platform keeps <strong>5%</strong> commission</span>
+                                                            </li>
                                                         </ul>
                                                     </div>
-                                                    <div className="bg-white p-4 rounded-lg border">
-                                                        <p className="font-bold text-naijaGreen">📊 Example (₦100,000 job):</p>
-                                                        <ul className="mt-2 space-y-1 text-sm">
-                                                            <li>Deposit: ₦50,000 (you get ₦50,000)</li>
-                                                            <li>Balance: ₦50,000 (you get ₦45,000)</li>
-                                                            <li>Platform: ₦5,000 commission</li>
-                                                            <li className="font-bold">Your total: ₦95,000</li>
+                                                    <div className="bg-white p-3 sm:p-4 rounded-lg border">
+                                                        <p className="font-bold text-naijaGreen text-sm sm:text-base">📊 Example (₦100k):</p>
+                                                        <ul className="mt-2 space-y-1 text-xs sm:text-sm">
+                                                            <li>Deposit: ₦50k (you get ₦50k)</li>
+                                                            <li>Balance: ₦50k (you get ₦45k)</li>
+                                                            <li>Platform: ₦5k commission</li>
+                                                            <li className="font-bold">Your total: ₦95k</li>
                                                         </ul>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <h4 className="font-bold text-gray-900">1.2 Payment Schedule</h4>
-                                                <ul className="list-disc pl-5 mt-2 space-y-2">
-                                                    <li><strong>Deposit Release:</strong> Within 24 hours of customer payment confirmation</li>
-                                                    <li><strong>Final Payment:</strong> Within 48 hours after customer approves completed work</li>
-                                                    <li><strong>Payment Method:</strong> Bank transfer to your registered account</li>
+                                                <h4 className="font-bold text-gray-900 text-base">1.2 Payment Schedule</h4>
+                                                <ul className="list-disc pl-4 sm:pl-5 mt-2 space-y-2">
+                                                    <li><strong>Deposit Release:</strong> Within 24 hours</li>
+                                                    <li><strong>Final Payment:</strong> Within 48 hours after approval</li>
+                                                    <li><strong>Payment Method:</strong> Bank transfer</li>
                                                 </ul>
                                             </div>
 
-                                            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                                <h4 className="font-bold text-yellow-800">1.3 Non-Circumvention Clause</h4>
-                                                <p className="mt-2">
-                                                    <strong>Important:</strong> You agree not to contact customers directly for 12 months after job completion
-                                                    to arrange work outside our platform. Violation results in:
+                                            <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
+                                                <h4 className="font-bold text-yellow-800 text-base">1.3 Non-Circumvention</h4>
+                                                <p className="mt-2 text-sm">
+                                                    <strong>Important:</strong> Do not contact customers directly for 12 months.
                                                 </p>
-                                                <ul className="list-disc pl-5 mt-2 space-y-1">
-                                                    <li>Immediate platform suspension</li>
+                                                <ul className="list-disc pl-4 sm:pl-5 mt-2 space-y-1 text-sm">
+                                                    <li>Immediate suspension if violated</li>
                                                     <li>Legal action for damages</li>
                                                 </ul>
                                             </div>
@@ -140,42 +139,42 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
 
                                     {/* SECTION 2: SERVICE STANDARDS */}
                                     <div>
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">
-                                            ARTICLE 2: SERVICE STANDARDS & OBLIGATIONS
+                                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 pb-2 border-b">
+                                            ARTICLE 2: SERVICE STANDARDS
                                         </h3>
-                                        <div className="space-y-4 text-gray-800">
+                                        <div className="space-y-4 text-gray-800 text-sm sm:text-base">
                                             <div>
-                                                <h4 className="font-bold text-gray-900">2.1 Response Time Requirements</h4>
-                                                <ul className="list-disc pl-5 mt-2 space-y-2">
-                                                    <li><strong>Job Proposals:</strong> Respond within 1 hour</li>
-                                                    <li><strong>Customer Messages:</strong> Respond within 1 hour</li>
-                                                    <li><strong>Onsite Requests:</strong> Schedule within 48 hours if requested</li>
+                                                <h4 className="font-bold text-gray-900 text-base">2.1 Response Times</h4>
+                                                <ul className="list-disc pl-4 sm:pl-5 mt-2 space-y-2">
+                                                    <li><strong>Job Proposals:</strong> Within 1 hour</li>
+                                                    <li><strong>Messages:</strong> Within 1 hour</li>
+                                                    <li><strong>Onsite:</strong> Schedule within 48 hours</li>
                                                 </ul>
                                             </div>
 
                                             <div>
-                                                <h4 className="font-bold text-gray-900">2.2 Quality & Professionalism</h4>
-                                                <ul className="list-disc pl-5 mt-2 space-y-2">
-                                                    <li>Maintain adequate tools, equipment, and materials</li>
-                                                    <li>Ensure all technicians are properly trained</li>
-                                                    <li>Provide accurate quotes with detailed breakdowns</li>
-                                                    <li>Complete work within agreed timeframe</li>
+                                                <h4 className="font-bold text-gray-900 text-base">2.2 Quality Standards</h4>
+                                                <ul className="list-disc pl-4 sm:pl-5 mt-2 space-y-2">
+                                                    <li>Maintain proper tools & equipment</li>
+                                                    <li>Ensure technicians are trained</li>
+                                                    <li>Provide accurate quotes</li>
+                                                    <li>Complete work on time</li>
                                                 </ul>
                                             </div>
 
-                                            <div className="bg-red-50 p-4 rounded-lg">
-                                                <h4 className="font-bold text-red-800">2.3 Insurance & Liability</h4>
+                                            <div className="bg-red-50 p-3 sm:p-4 rounded-lg">
+                                                <h4 className="font-bold text-red-800 text-base">2.3 Insurance & Liability</h4>
                                                 <p className="mt-2">
                                                     You are responsible for:
                                                 </p>
-                                                <ul className="list-disc pl-5 mt-2 space-y-1">
-                                                    <li>Public liability insurance for your work</li>
-                                                    <li>Injury to your employees or subcontractors</li>
-                                                    <li>Damage to customer property during work</li>
-                                                    <li>Warranty on Mountship (minimum 30 days)</li>
+                                                <ul className="list-disc pl-4 sm:pl-5 mt-2 space-y-1">
+                                                    <li>Public liability insurance</li>
+                                                    <li>Employee injuries</li>
+                                                    <li>Property damage</li>
+                                                    <li>30-day warranty</li>
                                                 </ul>
-                                                <p className="mt-3 text-sm text-red-700">
-                                                    <strong>Note:</strong> Our platform acts as a marketplace only. We are not liable for your work.
+                                                <p className="mt-3 text-xs sm:text-sm text-red-700">
+                                                    <strong>Note:</strong> Platform is marketplace only, not liable for your work.
                                                 </p>
                                             </div>
                                         </div>
@@ -183,33 +182,27 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
 
                                     {/* SECTION 3: DISPUTE RESOLUTION */}
                                     <div>
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">
+                                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 pb-2 border-b">
                                             ARTICLE 3: DISPUTE RESOLUTION
                                         </h3>
-                                        <div className="space-y-4 text-gray-800">
+                                        <div className="space-y-4 text-gray-800 text-sm sm:text-base">
                                             <div>
-                                                <h4 className="font-bold text-gray-900">3.1 Platform Mediation</h4>
-                                                <p>
-                                                    All disputes must first go through our mediation process:
-                                                </p>
-                                                <ol className="list-decimal pl-5 mt-2 space-y-2">
-                                                    <li>Customer submits complaint through platform</li>
-                                                    <li>You have 48 hours to respond with solution</li>
-                                                    <li>If unresolved, platform investigates and makes binding decision</li>
-                                                    <li>Both parties agree to accept platform's decision</li>
+                                                <h4 className="font-bold text-gray-900 text-base">3.1 Platform Mediation</h4>
+                                                <ol className="list-decimal pl-4 sm:pl-5 mt-2 space-y-2">
+                                                    <li>Customer submits complaint</li>
+                                                    <li>You have 48 hours to respond</li>
+                                                    <li>Platform investigates</li>
+                                                    <li>Binding decision by platform</li>
                                                 </ol>
                                             </div>
 
-                                            <div className="bg-blue-50 p-4 rounded-lg">
-                                                <h4 className="font-bold text-blue-800">3.2 Legal Jurisdiction</h4>
+                                            <div className="bg-blue-50 p-3 sm:p-4 rounded-lg">
+                                                <h4 className="font-bold text-blue-800 text-base">3.2 Legal Jurisdiction</h4>
                                                 <p className="mt-2">
-                                                    <strong>Governing Law:</strong> Laws of the Federal Republic of Nigeria
+                                                    <strong>Governing Law:</strong> Laws of Nigeria
                                                 </p>
                                                 <p className="mt-2">
-                                                    <strong>Dispute Venue:</strong> Courts in Ogun State, Nigeria
-                                                </p>
-                                                <p className="mt-2 text-sm">
-                                                    This agreement is enforceable in Nigerian courts.
+                                                    <strong>Venue:</strong> Courts in Ogun State
                                                 </p>
                                             </div>
                                         </div>
@@ -217,113 +210,114 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
 
                                     {/* SECTION 4: TERMINATION */}
                                     <div>
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">
-                                            ARTICLE 4: TERMINATION & SUSPENSION
+                                        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 pb-2 border-b">
+                                            ARTICLE 4: TERMINATION
                                         </h3>
-                                        <div className="space-y-4 text-gray-800">
+                                        <div className="space-y-4 text-gray-800 text-sm sm:text-base">
                                             <div>
-                                                <h4 className="font-bold text-gray-900">4.1 Grounds for Immediate Suspension</h4>
-                                                <ul className="list-disc pl-5 mt-2 space-y-2">
-                                                    <li>Rating falls below 3.0 stars</li>
-                                                    <li>Multiple customer complaints (3+ in 30 days)</li>
-                                                    <li>Attempt to circumvent platform payments</li>
-                                                    <li>Providing false information</li>
+                                                <h4 className="font-bold text-gray-900 text-base">4.1 Suspension Reasons</h4>
+                                                <ul className="list-disc pl-4 sm:pl-5 mt-2 space-y-2">
+                                                    <li>Rating below 3.0 stars</li>
+                                                    <li>Multiple complaints (3+ in 30 days)</li>
+                                                    <li>Circumventing payments</li>
+                                                    <li>False information</li>
                                                     <li>Unprofessional conduct</li>
                                                 </ul>
                                             </div>
 
                                             <div>
-                                                <h4 className="font-bold text-gray-900">4.2 Outstanding Payments</h4>
+                                                <h4 className="font-bold text-gray-900 text-base">4.2 Outstanding Payments</h4>
                                                 <p>
-                                                    Upon termination, you remain entitled to payments for completed work,
-                                                    minus any chargebacks or dispute resolutions.
+                                                    Upon termination, you get payments for completed work minus chargebacks.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* ACCEPTANCE SECTION */}
-                                    <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-                                        <div className="mb-6">
-                                            <h4 className="font-bold text-gray-900 text-lg mb-2">Declaration</h4>
-                                            <p className="text-gray-700">
+                                    <div className="bg-gray-50 p-4 sm:p-6 rounded-xl border border-gray-200">
+                                        <div className="mb-4">
+                                            <h4 className="font-bold text-gray-900 text-base sm:text-lg mb-2">Declaration</h4>
+                                            <p className="text-gray-700 text-sm sm:text-base">
                                                 I, the authorized representative of {companyName || 'this business'}, confirm that:
                                             </p>
                                         </div>
 
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             <label className="flex items-start space-x-3 cursor-pointer">
                                                 <input
                                                     type="checkbox"
                                                     checked={accepted}
                                                     onChange={(e) => setAccepted(e.target.checked)}
-                                                    className="mt-1 w-5 h-5 text-naijaGreen rounded focus:ring-naijaGreen focus:ring-2"
+                                                    className="mt-1 w-5 h-5 text-naijaGreen rounded focus:ring-naijaGreen focus:ring-2 flex-shrink-0"
                                                 />
                                                 <div className="flex-1">
-                                                    <span className="font-bold text-gray-800 text-lg">
-                                                        I ACCEPT ALL TERMS OF THIS AGREEMENT
+                                                    <span className="font-bold text-gray-800 text-base sm:text-lg block">
+                                                        I ACCEPT ALL TERMS
                                                     </span>
-                                                    <div className="mt-2 space-y-2 text-gray-700">
-                                                        <p className="flex items-center">
-                                                            <span className="mr-2">✅</span>
-                                                            I understand this is a legally binding contract
+                                                    <div className="mt-2 space-y-1 text-gray-700 text-sm">
+                                                        <p className="flex items-start">
+                                                            <span className="mr-2 mt-0.5">✅</span>
+                                                            <span>Legally binding contract</span>
                                                         </p>
-                                                        <p className="flex items-center">
-                                                            <span className="mr-2">✅</span>
-                                                            I agree to 5% commission on all jobs
+                                                        <p className="flex items-start">
+                                                            <span className="mr-2 mt-0.5">✅</span>
+                                                            <span>Agree to 5% commission</span>
                                                         </p>
-                                                        <p className="flex items-center">
-                                                            <span className="mr-2">✅</span>
-                                                            I will not circumvent the platform for 12 months
+                                                        <p className="flex items-start">
+                                                            <span className="mr-2 mt-0.5">✅</span>
+                                                            <span>No circumvention for 12 months</span>
                                                         </p>
-                                                        <p className="flex items-center">
-                                                            <span className="mr-2">✅</span>
-                                                            I accept platform mediation for disputes
+                                                        <p className="flex items-start">
+                                                            <span className="mr-2 mt-0.5">✅</span>
+                                                            <span>Accept platform mediation</span>
                                                         </p>
                                                     </div>
                                                 </div>
                                             </label>
                                         </div>
 
-                                        <div className="mt-6 p-4 bg-white rounded-lg border">
-                                            <p className="text-sm text-gray-600">
-                                                <strong>Electronic Signature:</strong> By checking this box, you electronically sign this agreement.
-                                                This electronic signature has the same legal effect as a handwritten signature.
+                                        <div className="mt-4 p-3 bg-white rounded-lg border text-xs sm:text-sm">
+                                            <p className="text-gray-600">
+                                                <strong>Electronic Signature:</strong> By checking, you electronically sign this agreement.
                                             </p>
-                                            <p className="text-sm text-gray-600 mt-2">
-                                                <strong>Record Keeping:</strong> We will record your IP address, timestamp, and agreement version for legal purposes.
+                                            <p className="text-gray-600 mt-2">
+                                                <strong>Record Keeping:</strong> We record IP, timestamp, and agreement version.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Footer */}
-                            <div className="border-t border-gray-200 p-6 bg-gray-50">
-                                <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                                    <div className="text-sm text-gray-600">
+                            {/* Footer - Mobile Optimized */}
+                            <div className="border-t border-gray-200 p-4 sm:p-6 bg-gray-50">
+                                <div className="flex flex-col gap-4">
+                                    <div className="text-xs sm:text-sm text-gray-600 text-center sm:text-left">
                                         <p>Version 1.0 • Effective: {new Date().toLocaleDateString()}</p>
-                                        <p className="mt-1">Agreement ID: SP-{Date.now().toString(36).toUpperCase()}</p>
+                                        <p className="mt-1">Agreement ID: SP-{Date.now().toString(36).toUpperCase().slice(-6)}</p>
                                     </div>
 
-                                    <div className="flex flex-col sm:flex-row gap-4">
+                                    <div className="flex flex-col sm:flex-row gap-3">
                                         <button
                                             onClick={onClose}
-                                            className="px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 transition"
+                                            className="px-4 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-100 transition text-sm sm:text-base"
                                         >
                                             Decline & Cancel
                                         </button>
                                         <button
                                             onClick={handleAccept}
-                                            className="px-8 py-3 bg-naijaGreen text-white font-bold rounded-xl hover:bg-darkGreen transition flex items-center justify-center gap-2"
+                                            disabled={!accepted}
+                                            className={`px-4 py-3 font-bold rounded-xl transition flex items-center justify-center gap-2 text-sm sm:text-base ${accepted
+                                                ? 'bg-naijaGreen text-white hover:bg-darkGreen'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                         >
                                             <span>Accept Agreement</span>
-                                            <span className="text-xl">⚡</span>
+                                            <span className="text-lg">⚡</span>
                                         </button>
                                     </div>
                                 </div>
-                                <p className="text-center text-gray-500 text-sm mt-4">
-                                    This agreement is governed by Nigerian law and enforceable in Nigerian courts.
+                                <p className="text-center text-gray-500 text-xs sm:text-sm mt-4">
+                                    This agreement is governed by Nigerian law.
                                 </p>
                             </div>
                         </motion.div>
@@ -334,4 +328,4 @@ const CompanyAgreement = ({ isOpen, onAccept, onClose, companyName = '' }) => {
     );
 };
 
-export default CompanyAgreement; // ← THIS LINE IS CRITICAL
+export default CompanyAgreement;
