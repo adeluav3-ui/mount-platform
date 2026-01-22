@@ -228,7 +228,7 @@ export default function Step1Form({
                         rows={4}
                         value={job.description}
                         onChange={e => setJob({ ...job, description: e.target.value })}
-                        placeholder="Tell us exactly what needs fixing..."
+                        placeholder="Tell us exactly what you need in full details..."
                         className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-naijaGreen outline-none resize-none"
                     />
                 </div>

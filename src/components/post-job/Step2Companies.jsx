@@ -340,6 +340,7 @@ export default function Step2Companies({
                 sub_service: job.sub_service,
                 custom_sub_description: job.sub_service === 'Other' ? job.custom_sub : null,
                 location: job.location,
+                exact_address: job.exact_address,
                 description: job.description,
                 budget: Number(job.price) || 0,
                 photos: photoUrls,

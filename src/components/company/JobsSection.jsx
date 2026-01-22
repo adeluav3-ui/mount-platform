@@ -641,6 +641,9 @@ export default function JobsSection({
                                         <span className="font-bold">Location:</span> {job.location || 'Not specified'}
                                     </p>
                                     <p className="text-gray-700 text-sm sm:text-base">
+                                        <span className="font-bold">Address:</span> {job.exact_address || 'Not provided'}
+                                    </p>
+                                    <p className="text-gray-700 text-sm sm:text-base">
                                         <span className="font-bold">Customer Budget:</span>
                                         <span className="text-naijaGreen font-bold ml-2">₦{Number(job.budget || 0).toLocaleString()}</span>
                                     </p>
