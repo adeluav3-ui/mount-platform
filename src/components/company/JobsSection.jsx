@@ -695,6 +695,45 @@ export default function JobsSection({
                                                     </div>
                                                 </div>
                                             </div>
+                                            {/* Destination Information */}
+                                            <div className="flex items-start">
+                                                <span className="font-medium text-blue-700 w-32 sm:w-36">
+                                                    Destination Type:
+                                                </span>
+                                                <div className="flex-1">
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${job.logistics_destination_type === 'intrastate' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                                                        {job.logistics_destination_type === 'intrastate' ? '🏠 Within Ogun State' : '🗺️ Outside Ogun State'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {job.logistics_destination_type === 'intrastate' && job.logistics_destination_location && (
+                                                <div className="flex items-start">
+                                                    <span className="font-medium text-blue-700 w-32 sm:w-36">
+                                                        Destination Area:
+                                                    </span>
+                                                    <div className="flex-1">
+                                                        <p className="text-gray-800 font-medium">{job.logistics_destination_location}</p>
+                                                        <p className="text-xs text-gray-600 mt-1">
+                                                            Location in Ogun State
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {job.logistics_destination_type === 'interstate' && job.logistics_interstate_state && (
+                                                <div className="flex items-start">
+                                                    <span className="font-medium text-blue-700 w-32 sm:w-36">
+                                                        Destination State:
+                                                    </span>
+                                                    <div className="flex-1">
+                                                        <p className="text-gray-800 font-medium">{job.logistics_interstate_state}</p>
+                                                        <p className="text-xs text-gray-600 mt-1">
+                                                            State outside Ogun
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                     <p className="text-gray-700 text-sm sm:text-base">

@@ -39,7 +39,7 @@ export default function PaymentProofUpload({ reference, amount, jobId, bankDetai
             setUploaded(true);
 
             // Show success message
-            alert('Proof uploaded successfully! Admin will verify within 2-4 hours.');
+            alert('Proof uploaded successfully! Admin will verify within 5-15 minutes.');
 
         } catch (error) {
             console.error('Upload error:', error);

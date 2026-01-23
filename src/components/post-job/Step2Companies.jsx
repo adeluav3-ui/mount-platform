@@ -86,12 +86,66 @@ export default function Step2Companies({
         const hasSubservices = categorySubservices.length > 0 &&
             !(categorySubservices.length === 1 && categorySubservices[0] === "Other")
 
-        // 3. If category has NO subservices (like Cleaning Services), include the company
+        // 3. SPECIAL FILTERING FOR LOGISTICS SERVICES
+        if (job.category === 'Logistics Services') {
+            console.log(`[LOGISTICS FILTER STEP2] Checking ${company.company_name}...`)
+
+            // Get company's logistics service areas (with fallbacks for missing columns)
+            const serviceType = c.logistics_service_type || 'intrastate'
+            const servedLocations = Array.isArray(c.logistics_served_locations) ? c.logistics_served_locations : []
+            const interstateStates = Array.isArray(c.logistics_interstate_states) ? c.logistics_interstate_states : []
+
+            console.log(`[LOGISTICS FILTER STEP2] Service type: ${serviceType}`)
+            console.log(`[LOGISTICS FILTER STEP2] Served locations:`, servedLocations)
+            console.log(`[LOGISTICS FILTER STEP2] Interstate states:`, interstateStates)
+
+            // Check if job destination matches company's service area
+            if (job.logistics_destination_type === 'intrastate') {
+                // For intrastate, check if company serves this specific location
+                const destination = job.logistics_destination_location
+
+                // If company has specific locations, check if destination is in their list
+                if (servedLocations.length > 0) {
+                    const servesLocation = servedLocations.includes(destination)
+                    console.log(`[LOGISTICS FILTER STEP2] Serves ${destination}?`, servesLocation)
+                    return servesLocation
+                } else {
+                    // If company doesn't have specific locations, assume they serve all of Ogun State
+                    console.log(`[LOGISTICS FILTER STEP2] No specific locations, assuming all Ogun State`)
+                    return true
+                }
+            } else if (job.logistics_destination_type === 'interstate') {
+                // For interstate, check if company serves interstate and the specific state
+                const destinationState = job.logistics_interstate_state
+
+                if (serviceType === 'interstate' || serviceType === 'both') {
+                    if (interstateStates.length > 0) {
+                        const servesState = interstateStates.includes(destinationState)
+                        console.log(`[LOGISTICS FILTER STEP2] Serves ${destinationState}?`, servesState)
+                        return servesState
+                    } else {
+                        // If company has no specific interstate states, assume they serve all
+                        console.log(`[LOGISTICS FILTER STEP2] Serves interstate (all states)`)
+                        return true
+                    }
+                } else {
+                    // Company doesn't do interstate
+                    console.log(`[LOGISTICS FILTER STEP2] Doesn't do interstate`)
+                    return false
+                }
+            }
+
+            // If we reach here, something went wrong with the destination type
+            console.log(`[LOGISTICS FILTER STEP2] Unknown destination type`)
+            return false
+        }
+
+        // 4. If category has NO subservices (like Cleaning Services), include the company
         if (!hasSubservices) {
             return true
         }
 
-        // 4. Only check sub-service filtering for categories WITH subservices
+        // 5. Only check sub-service filtering for categories WITH subservices
         const prices = company.subcategory_prices || {}
 
         // If sub_service is "Other", check if company has any "Other" subcategory

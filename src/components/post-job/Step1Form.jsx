@@ -135,10 +135,69 @@ export default function Step1Form({
         })
 
         // SIMPLE FILTERING: Show companies that offer this main category
+        // FILTERING: Show companies that offer this main category
         const matches = data.filter(c => {
             const offersCategory = c.services?.includes(job.category)
+            if (!offersCategory) return false
+
             console.log(`Company ${c.company_name}: offers ${job.category}?`, offersCategory)
-            return offersCategory
+
+            // SPECIAL FILTERING FOR LOGISTICS SERVICES
+            if (job.category === 'Logistics Services') {
+                console.log(`[LOGISTICS FILTER] Checking ${c.company_name} for logistics...`)
+
+                // Get company's logistics service areas (with fallbacks for missing columns)
+                const serviceType = c.logistics_service_type || 'intrastate'
+                const servedLocations = Array.isArray(c.logistics_served_locations) ? c.logistics_served_locations : []
+                const interstateStates = Array.isArray(c.logistics_interstate_states) ? c.logistics_interstate_states : []
+
+                console.log(`[LOGISTICS FILTER] ${c.company_name} service type: ${serviceType}`)
+                console.log(`[LOGISTICS FILTER] Served locations:`, servedLocations)
+                console.log(`[LOGISTICS FILTER] Interstate states:`, interstateStates)
+
+                // Check if job destination matches company's service area
+                if (job.logistics_destination_type === 'intrastate') {
+                    // For intrastate, check if company serves this specific location
+                    const destination = job.logistics_destination_location
+
+                    // If company has specific locations, check if destination is in their list
+                    if (servedLocations.length > 0) {
+                        const servesLocation = servedLocations.includes(destination)
+                        console.log(`[LOGISTICS FILTER] ${c.company_name} serves ${destination}?`, servesLocation)
+                        return servesLocation
+                    } else {
+                        // If company doesn't have specific locations, assume they serve all of Ogun State
+                        console.log(`[LOGISTICS FILTER] ${c.company_name} has no specific locations, assuming all Ogun State`)
+                        return true
+                    }
+                } else if (job.logistics_destination_type === 'interstate') {
+                    // For interstate, check if company serves interstate and the specific state
+                    const destinationState = job.logistics_interstate_state
+
+                    if (serviceType === 'interstate' || serviceType === 'both') {
+                        if (interstateStates.length > 0) {
+                            const servesState = interstateStates.includes(destinationState)
+                            console.log(`[LOGISTICS FILTER] ${c.company_name} serves ${destinationState}?`, servesState)
+                            return servesState
+                        } else {
+                            // If company has no specific interstate states, assume they serve all
+                            console.log(`[LOGISTICS FILTER] ${c.company_name} serves interstate (all states)`)
+                            return true
+                        }
+                    } else {
+                        // Company doesn't do interstate
+                        console.log(`[LOGISTICS FILTER] ${c.company_name} doesn't do interstate`)
+                        return false
+                    }
+                }
+
+                // If we reach here, something went wrong with the destination type
+                console.log(`[LOGISTICS FILTER] Unknown destination type: ${job.logistics_destination_type}`)
+                return false
+            }
+
+            // For non-logistics services, use original filtering
+            return true
         })
 
         console.log('=== DEBUG: FILTERED COMPANIES ===')
