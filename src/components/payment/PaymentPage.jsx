@@ -707,43 +707,6 @@ const PaymentPage = () => {
                     </div>
                 </div>
 
-                {/* Payment Progress */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                    <h3 className="font-bold mb-4">Payment Progress</h3>
-                    <div className="space-y-3">
-                        <div className="flex justify-between">
-                            <span className={job.hasDeposit ? "text-green-600 font-medium" : "text-gray-600"}>
-                                {job.hasDeposit ? "✓ " : ""}50% Deposit
-                            </span>
-                            <span className={job.hasDeposit ? "text-green-600 font-medium" : "text-gray-600"}>
-                                ₦{(totalAmount * 0.5).toLocaleString()}
-                            </span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className={job.hasIntermediate ? "text-green-600 font-medium" : "text-gray-600"}>
-                                {job.hasIntermediate ? "✓ " : ""}30% Materials
-                            </span>
-                            <span className={job.hasIntermediate ? "text-green-600 font-medium" : "text-gray-600"}>
-                                ₦{(totalAmount * 0.3).toLocaleString()}
-                            </span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className={job.hasFinal ? "text-green-600 font-medium" : "text-gray-600"}>
-                                {job.hasFinal ? "✓ " : ""}20% Final
-                            </span>
-                            <span className={job.hasFinal ? "text-green-600 font-medium" : "text-gray-600"}>
-                                ₦{(totalAmount * 0.2).toLocaleString()}
-                            </span>
-                        </div>
-                        <div className="border-t pt-3">
-                            <div className="flex justify-between font-bold">
-                                <span>Balance Due:</span>
-                                <span className="text-naijaGreen">₦{job.balance.toLocaleString()}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Payment Method - Only Bank Transfer */}
                 <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
                     <h2 className="text-xl font-bold mb-4">Payment Method</h2>
