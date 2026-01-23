@@ -309,8 +309,8 @@ const BankTransferPayment = () => {
 
                 {/* Support Info */}
                 <div className="mt-8 text-center text-sm text-gray-500">
-                    <p>Need help? Contact support: support@mount.ng | 0800-MOUNT-NG</p>
-                    <p className="mt-2">Verification usually takes 2-4 business hours during 9am-5pm</p>
+                    <p>Need help? Contact support: mountservicesltd@gmail.com | 08139672432</p>
+                    <p className="mt-2">Verification usually takes 5-15 minutes </p>
                 </div>
             </div>
         </div>
