@@ -963,7 +963,9 @@ Click OK to proceed to payment.`;
                                                                 Final Balance ({job.paymentData?.hasIntermediate ? '20%' : '50%'})
                                                             </p>
                                                             <p className="text-xl font-bold text-naijaGreen">
-                                                                ₦{Number(job.paymentData?.balanceDue).toLocaleString()}
+                                                                ₦{Number(job.paymentData?.balanceDue ||
+                                                                    (job.paymentData?.hasIntermediate ? job.quoted_price * 0.2 : job.quoted_price * 0.5)
+                                                                ).toLocaleString()}
                                                             </p>
                                                         </div>
 
@@ -1066,7 +1068,7 @@ Click OK to proceed to payment.`;
                                                             <div className="flex justify-between items-center">
                                                                 <p className="text-gray-600">Materials Paid (30%)</p>
                                                                 <p className="text-lg font-bold text-purple-700">
-                                                                    ₦{Number(job.paymentData?.intermediatePaid || (job.quoted_price * 0.3)).toLocaleString()}
+                                                                    ₦{Number(job.paymentData?.intermediatePaid).toLocaleString()}
                                                                 </p>
                                                             </div>
                                                         )}
