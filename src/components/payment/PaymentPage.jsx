@@ -735,7 +735,7 @@ const PaymentPage = () => {
                             <li>Transfer the exact amount shown above</li>
                             <li>Use the unique reference code provided</li>
                             <li>Upload proof of payment</li>
-                            <li>Admin verifies within 2-4 hours</li>
+                            <li>Admin verifies within 5-15 minutes</li>
                             <li>Job status updates automatically</li>
                         </ol>
                     </div>

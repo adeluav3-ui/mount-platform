@@ -113,8 +113,8 @@ export default function PaymentProofUpload({ reference, amount, jobId, bankDetai
             </div>
 
             <div className="text-sm text-gray-500">
-                <p>⏰ Verification time: 2-4 business hours</p>
-                <p>📞 Need help? Call: 0800-MOUNT-NG</p>
+                <p>⏰ Verification time: 5-15 minutes</p>
+                <p>📞 Need help? Call: 08139672432</p>
             </div>
         </div>
     );
