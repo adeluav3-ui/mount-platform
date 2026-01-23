@@ -56,7 +56,6 @@ export default function MyJobs({ onHasNewQuotes }) {
                 }
 
                 // Process each job with its payment data
-                // Process each job with its payment data
                 const jobsWithPaymentData = await Promise.all(
                     jobsList.map(async (job) => {
                         // Fetch payments for THIS SPECIFIC JOB
@@ -73,19 +72,6 @@ export default function MyJobs({ onHasNewQuotes }) {
 
                         const payments = jobPayments || [];
 
-                        // SPECIAL DEBUG for the specific job
-                        if (job.id === 'd802ee1a-9fe7-4292-b784-3886684b7bbd') {
-                            console.log('🔴 DEBUG - SPECIFIC JOB PAYMENTS:', {
-                                jobId: job.id,
-                                jobStatus: job.status,
-                                paymentsCount: payments.length,
-                                payments: payments,
-                                quotedPrice: job.quoted_price
-                            });
-                        }
-
-                        console.log(`🧮 Job ${job.id.substring(0, 8)} has ${payments.length} payments:`, payments);
-
                         // Calculate payment summary
                         let depositPaid = 0;
                         let intermediatePaid = 0;
@@ -96,51 +82,78 @@ export default function MyJobs({ onHasNewQuotes }) {
                         let pendingIntermediate = false;
 
                         payments.forEach(payment => {
-                            console.log(`💰 Payment for ${job.id.substring(0, 8)}:`, payment);
-
-                            if (payment.type === 'deposit') {
-                                if (payment.status === 'completed') {
-                                    depositPaid += payment.amount || 0;
-                                    hasDeposit = true;
-                                }
+                            if (payment.type === 'deposit' && payment.status === 'completed') {
+                                depositPaid += payment.amount || 0;
+                                hasDeposit = true;
                             } else if (payment.type === 'intermediate') {
                                 if (payment.status === 'completed') {
                                     intermediatePaid += payment.amount || 0;
                                     hasIntermediate = true;
                                 } else if (payment.status === 'pending') {
-                                    // Track pending intermediate payments
                                     pendingIntermediate = true;
-                                    // Still show the amount that was requested
-                                    intermediatePaid += payment.amount || 0;
-                                    hasIntermediate = true;  // ← ADD THIS LINE!
-                                    console.log('⏳ Pending intermediate found:', payment.amount);
+                                    // Don't add pending payments to intermediatePaid
+                                    // Just track that there's a pending request
                                 }
-                            } else if (payment.type === 'final_payment') {
-                                if (payment.status === 'completed') {
-                                    finalPaid += payment.amount || 0;
-                                    hasFinal = true;
-                                }
+                            } else if (payment.type === 'final_payment' && payment.status === 'completed') {
+                                finalPaid += payment.amount || 0;
+                                hasFinal = true;
                             }
                         });
 
                         const totalPaid = depositPaid + intermediatePaid + finalPaid;
-                        const balanceDue = (job.quoted_price || 0) - totalPaid;
+                        const quotedPrice = job.quoted_price || 0;
+                        const balanceDue = quotedPrice - totalPaid;
 
-                        // Calculate percentages
-                        const depositPercentage = job.quoted_price > 0 ? (depositPaid / job.quoted_price) * 100 : 0;
-                        const intermediatePercentage = job.quoted_price > 0 ? (intermediatePaid / job.quoted_price) * 100 : 0;
-                        const finalPercentage = job.quoted_price > 0 ? (balanceDue / job.quoted_price) * 100 : 0;
+                        // NEW: Calculate ACTUAL percentages based on payment patterns
+                        let depositPercentage = 0;
+                        let intermediatePercentage = 0;
+                        let finalPercentage = 0;
 
-                        console.log(`📊 Summary for ${job.id.substring(0, 8)}:`, {
+                        if (quotedPrice > 0) {
+                            // Check for standard payment patterns
+                            if (hasDeposit && !hasIntermediate && !hasFinal) {
+                                // Only deposit paid (50%)
+                                depositPercentage = 50;
+                                intermediatePercentage = 0;
+                                finalPercentage = 50;
+                            } else if (hasDeposit && hasIntermediate && !hasFinal) {
+                                // Deposit + intermediate paid (50% + 30%)
+                                depositPercentage = 50;
+                                intermediatePercentage = 30;
+                                finalPercentage = 20;
+                            } else if (hasDeposit && hasIntermediate && hasFinal) {
+                                // All payments made (50% + 30% + 20%)
+                                depositPercentage = 50;
+                                intermediatePercentage = 30;
+                                finalPercentage = 0;
+                            } else if (hasDeposit && !hasIntermediate && hasFinal) {
+                                // Deposit + final (50% + 50%) - no intermediate
+                                depositPercentage = 50;
+                                intermediatePercentage = 0;
+                                finalPercentage = 0;
+                            } else {
+                                // Fallback: Calculate based on actual amounts
+                                depositPercentage = (depositPaid / quotedPrice) * 100;
+                                intermediatePercentage = (intermediatePaid / quotedPrice) * 100;
+                                finalPercentage = (balanceDue / quotedPrice) * 100;
+                            }
+                        }
+
+                        // Round only for display, keep more precision for calculations
+                        const displayDepositPercentage = Math.round(depositPercentage);
+                        const displayIntermediatePercentage = Math.round(intermediatePercentage);
+                        const displayFinalPercentage = Math.round(finalPercentage);
+
+                        console.log(`📊 Payment Summary for ${job.id.substring(0, 8)}:`, {
                             depositPaid,
                             intermediatePaid,
                             finalPaid,
-                            hasDeposit,
-                            hasIntermediate,
-                            hasFinal,
-                            pendingIntermediate,
                             totalPaid,
-                            balanceDue
+                            balanceDue,
+                            depositPercentage: displayDepositPercentage,
+                            intermediatePercentage: displayIntermediatePercentage,
+                            finalPercentage: displayFinalPercentage,
+                            paymentPattern: `${hasDeposit ? 'D' : ''}${hasIntermediate ? 'I' : ''}${hasFinal ? 'F' : ''}`
                         });
 
                         return {
@@ -155,9 +168,12 @@ export default function MyJobs({ onHasNewQuotes }) {
                                 hasIntermediate,
                                 hasFinal,
                                 pendingIntermediate,
-                                depositPercentage: Math.round(depositPercentage),
-                                intermediatePercentage: Math.round(intermediatePercentage),
-                                finalPercentage: Math.round(finalPercentage)
+                                depositPercentage: displayDepositPercentage,
+                                intermediatePercentage: displayIntermediatePercentage,
+                                finalPercentage: displayFinalPercentage,
+                                // Add these for easier logic
+                                shouldShow50_50: hasDeposit && !hasIntermediate,
+                                shouldShow50_30_20: hasDeposit && hasIntermediate
                             }
                         };
                     })
@@ -1060,12 +1076,12 @@ Click OK to proceed to payment.`;
                                                     </div>
                                                 )}
 
-                                                {/* UPDATED PAYMENT BREAKDOWN - USING PAYMENT DATA */}
+                                                {/* FIXED: Correct Payment Breakdown */}
                                                 <div className="bg-white p-3 rounded-lg border border-yellow-100 mb-4">
                                                     <div className="space-y-2">
-                                                        {/* Deposit */}
+                                                        {/* Deposit - Always 50% */}
                                                         <div className="flex justify-between items-center">
-                                                            <p className="text-gray-600">Deposit Paid ({job.paymentData?.depositPercentage || 50}%)</p>
+                                                            <p className="text-gray-600">Deposit Paid (50%)</p>
                                                             <p className="text-lg font-bold text-blue-700">
                                                                 ₦{Number(job.paymentData?.depositPaid || (job.quoted_price * 0.5)).toLocaleString()}
                                                             </p>
@@ -1074,17 +1090,28 @@ Click OK to proceed to payment.`;
                                                         {/* Intermediate Payment - Only show if it exists */}
                                                         {job.paymentData?.hasIntermediate && (
                                                             <div className="flex justify-between items-center">
-                                                                <p className="text-gray-600">Materials Paid ({job.paymentData?.intermediatePercentage || 30}%)</p>
+                                                                <p className="text-gray-600">Materials Paid (30%)</p>
                                                                 <p className="text-lg font-bold text-purple-700">
                                                                     ₦{Number(job.paymentData?.intermediatePaid || (job.quoted_price * 0.3)).toLocaleString()}
                                                                 </p>
                                                             </div>
                                                         )}
 
-                                                        {/* Final Balance */}
+                                                        {/* Final Balance - Calculate based on what's already paid */}
                                                         <div className="flex justify-between items-center pt-2 border-t">
-                                                            <p className="text-gray-600 font-bold">Final Balance ({job.paymentData?.finalPercentage ||
-                                                                (job.paymentData?.hasIntermediate ? 20 : 50)}%)</p>
+                                                            <p className="text-gray-600 font-bold">
+                                                                Final Balance (
+                                                                {(() => {
+                                                                    const totalPaid = (job.paymentData?.depositPaid || 0) + (job.paymentData?.intermediatePaid || 0);
+                                                                    const paidPercentage = job.quoted_price > 0 ? (totalPaid / job.quoted_price) * 100 : 0;
+
+                                                                    // Always return the correct percentage based on payment pattern
+                                                                    if (Math.abs(paidPercentage - 50) < 1) return '50%'; // Only deposit paid
+                                                                    if (Math.abs(paidPercentage - 80) < 1) return '20%'; // Deposit + intermediate
+                                                                    return `${Math.round(100 - paidPercentage)}%`;
+                                                                })()}
+                                                                )
+                                                            </p>
                                                             <p className="text-xl font-bold text-naijaGreen">
                                                                 ₦{Number(job.paymentData?.balanceDue ||
                                                                     (job.paymentData?.hasIntermediate ? job.quoted_price * 0.2 : job.quoted_price * 0.5)
@@ -1105,15 +1132,12 @@ Click OK to proceed to payment.`;
                                                 {/* Customer can now approve the fix */}
                                                 <div className="space-y-3">
                                                     <button
-                                                        onClick={() => {
-                                                            // Just call handleApproveWork directly
-                                                            handleApproveWork(job.id, job.quoted_price, companyName);
-                                                        }}
+                                                        onClick={() => handleApproveWork(job.id, job.quoted_price, companyName)}
                                                         disabled={isProcessing === job.id}
                                                         className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition disabled:opacity-50"
                                                     >
                                                         {isProcessing === job.id ? 'Processing...' :
-                                                            `✅ Accept Fix & Pay ${job.paymentData?.hasIntermediate ? '20%' : '50%'} Balance`}
+                                                            `✅ Accept Fix & Pay Balance`}
                                                     </button>
 
                                                     <button
