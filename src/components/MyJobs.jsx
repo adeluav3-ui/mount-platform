@@ -819,20 +819,10 @@ Click OK to proceed to payment.`;
                                                             </div>
                                                         )}
 
-                                                        {/* Final balance - use payment data to determine percentage */}
-                                                        <div className="flex justify-between items-center">
+                                                        {/* Final balance - clean percentage */}
+                                                        <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="text-gray-600 font-bold">
-                                                                Final Balance (
-                                                                {(() => {
-                                                                    // More accurate calculation
-                                                                    const totalPaid = (job.paymentData?.depositPaid || 0) + (job.paymentData?.intermediatePaid || 0);
-                                                                    const paidPercentage = job.quoted_price > 0 ? (totalPaid / job.quoted_price) * 100 : 0;
-
-                                                                    if (paidPercentage >= 80) return '20%';
-                                                                    if (paidPercentage >= 50) return '50%';
-                                                                    return '50%'; // Default
-                                                                })()}
-                                                                )
+                                                                Final Balance ({job.paymentData?.hasIntermediate ? '20%' : '50%'})
                                                             </p>
                                                             <p className="text-xl font-bold text-naijaGreen">
                                                                 ₦{Number(job.paymentData?.balanceDue ||
@@ -842,17 +832,14 @@ Click OK to proceed to payment.`;
                                                         </div>
 
                                                         {/* Total */}
-                                                        <div className="border-t pt-2 mt-2">
-                                                            <div className="flex justify-between items-center">
-                                                                <p className="font-medium">Total Job Amount:</p>
-                                                                <p className="text-xl font-bold text-gray-800">
-                                                                    ₦{Number(job.quoted_price).toLocaleString()}
-                                                                </p>
-                                                            </div>
+                                                        <div className="flex justify-between items-center pt-2 border-t">
+                                                            <p className="font-medium">Total Job Amount:</p>
+                                                            <p className="text-xl font-bold text-gray-800">
+                                                                ₦{Number(job.quoted_price).toLocaleString()}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </div>
-
                                                 {/* ACTION BUTTON */}
                                                 <button
                                                     onClick={() => handlePayIntermediate(job.id, job.quoted_price, companyName)}
@@ -961,7 +948,7 @@ Click OK to proceed to payment.`;
                                                         </div>
 
                                                         {/* Show intermediate payment if it exists */}
-                                                        {job.paymentData?.hasIntermediate && (
+                                                        {job.paymentData?.hasIntermediate && !job.paymentData?.hasFinal && (
                                                             <div className="flex justify-between items-center">
                                                                 <p className="text-gray-600">Materials Paid (30%)</p>
                                                                 <p className="text-lg font-bold text-purple-700">
@@ -970,26 +957,22 @@ Click OK to proceed to payment.`;
                                                             </div>
                                                         )}
 
-                                                        {/* Final balance - use payment data to determine percentage */}
-                                                        <div className="flex justify-between items-center">
+                                                        {/* Final balance - always clean percentage */}
+                                                        <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="text-gray-600 font-bold">
                                                                 Final Balance ({job.paymentData?.hasIntermediate ? '20%' : '50%'})
                                                             </p>
                                                             <p className="text-xl font-bold text-naijaGreen">
-                                                                ₦{Number(job.paymentData?.balanceDue ||
-                                                                    (job.paymentData?.hasIntermediate ? job.quoted_price * 0.2 : job.quoted_price * 0.5)
-                                                                ).toLocaleString()}
+                                                                ₦{Number(job.paymentData?.balanceDue).toLocaleString()}
                                                             </p>
                                                         </div>
 
                                                         {/* Total */}
-                                                        <div className="border-t pt-2 mt-2">
-                                                            <div className="flex justify-between items-center">
-                                                                <p className="font-medium">Total Job Amount:</p>
-                                                                <p className="text-xl font-bold text-gray-800">
-                                                                    ₦{Number(job.quoted_price).toLocaleString()}
-                                                                </p>
-                                                            </div>
+                                                        <div className="flex justify-between items-center pt-2 border-t">
+                                                            <p className="font-medium">Total Job Amount:</p>
+                                                            <p className="text-xl font-bold text-gray-800">
+                                                                ₦{Number(job.quoted_price).toLocaleString()}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1078,8 +1061,8 @@ Click OK to proceed to payment.`;
                                                             </p>
                                                         </div>
 
-                                                        {/* Intermediate Payment - Only show if it exists */}
-                                                        {job.paymentData?.hasIntermediate && (
+                                                        {/* Intermediate Payment - Only show if it exists and final not paid */}
+                                                        {job.paymentData?.hasIntermediate && !job.paymentData?.hasFinal && (
                                                             <div className="flex justify-between items-center">
                                                                 <p className="text-gray-600">Materials Paid (30%)</p>
                                                                 <p className="text-lg font-bold text-purple-700">
@@ -1088,25 +1071,19 @@ Click OK to proceed to payment.`;
                                                             </div>
                                                         )}
 
-                                                        {/* Final Balance - Calculate based on what's already paid */}
+                                                        {/* Final Balance - Always clean percentage */}
                                                         <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="text-gray-600 font-bold">
                                                                 Final Balance (
                                                                 {(() => {
-                                                                    const totalPaid = (job.paymentData?.depositPaid || 0) + (job.paymentData?.intermediatePaid || 0);
-                                                                    const paidPercentage = job.quoted_price > 0 ? (totalPaid / job.quoted_price) * 100 : 0;
-
-                                                                    // Always return the correct percentage based on payment pattern
-                                                                    if (Math.abs(paidPercentage - 50) < 1) return '50%'; // Only deposit paid
-                                                                    if (Math.abs(paidPercentage - 80) < 1) return '20%'; // Deposit + intermediate
-                                                                    return `${Math.round(100 - paidPercentage)}%`;
+                                                                    if (job.paymentData?.hasFinal) return '0%';
+                                                                    if (job.paymentData?.hasIntermediate) return '20%';
+                                                                    return '50%';
                                                                 })()}
                                                                 )
                                                             </p>
                                                             <p className="text-xl font-bold text-naijaGreen">
-                                                                ₦{Number(job.paymentData?.balanceDue ||
-                                                                    (job.paymentData?.hasIntermediate ? job.quoted_price * 0.2 : job.quoted_price * 0.5)
-                                                                ).toLocaleString()}
+                                                                ₦{Number(job.paymentData?.balanceDue).toLocaleString()}
                                                             </p>
                                                         </div>
 
