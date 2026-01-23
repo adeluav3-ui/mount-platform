@@ -62,7 +62,7 @@ export default function MyJobs({ onHasNewQuotes }) {
                         // Fetch payments for THIS SPECIFIC JOB
                         const { data: jobPayments, error: paymentError } = await supabase
                             .from('financial_transactions')
-                            .select('type, amount, status, verified_by_admin')
+                            .select('type, amount, status, verified_by_admin, platform_fee')
                             .eq('job_id', job.id)
                             .or('status.eq.completed,type.eq.intermediate')
                             .order('created_at', { ascending: false });
@@ -74,8 +74,9 @@ export default function MyJobs({ onHasNewQuotes }) {
                         const payments = jobPayments || [];
                         const quotedPrice = job.quoted_price || 0;
 
-                        // Calculate payment summary
+                        // Calculate payment summary - SEPARATE DEPOSIT FROM SERVICE FEE
                         let depositPaid = 0;
+                        let serviceFeePaid = 0;
                         let intermediatePaid = 0;
                         let finalPaid = 0;
                         let hasDeposit = false;
@@ -85,7 +86,10 @@ export default function MyJobs({ onHasNewQuotes }) {
 
                         payments.forEach(payment => {
                             if (payment.type === 'deposit' && payment.status === 'completed') {
-                                depositPaid += payment.amount || 0;
+                                // IMPORTANT: depositPaid should be the base amount WITHOUT service fee
+                                // The service fee is stored in platform_fee
+                                depositPaid += (payment.amount || 0) - (payment.platform_fee || 0);
+                                serviceFeePaid += payment.platform_fee || 0;
                                 hasDeposit = true;
                             } else if (payment.type === 'intermediate') {
                                 if (payment.status === 'completed') {
@@ -100,11 +104,14 @@ export default function MyJobs({ onHasNewQuotes }) {
                             }
                         });
 
-                        const totalPaid = depositPaid + intermediatePaid + finalPaid;
-                        const balanceDue = quotedPrice - totalPaid;
+                        // Total paid INCLUDING service fee (for display)
+                        const totalPaidWithFees = depositPaid + serviceFeePaid + intermediatePaid + finalPaid;
 
-                        // FIXED: Use standard payment percentages instead of calculating
-                        // Based on your payment structure: 50% deposit, 30% intermediate (optional), 20% final
+                        // Total paid WITHOUT service fee (for balance calculation)
+                        const totalPaidWithoutFees = depositPaid + intermediatePaid + finalPaid;
+
+                        // Balance should be calculated WITHOUT considering service fee
+                        const balanceDue = quotedPrice - totalPaidWithoutFees;
 
                         // Determine payment pattern
                         let depositPercentage = 50; // Always 50% for deposit
@@ -133,9 +140,11 @@ export default function MyJobs({ onHasNewQuotes }) {
                         console.log(`📊 Payment Summary for ${job.id.substring(0, 8)}:`, {
                             quotedPrice,
                             depositPaid,
+                            serviceFeePaid,
                             intermediatePaid,
                             finalPaid,
-                            totalPaid,
+                            totalPaidWithFees,
+                            totalPaidWithoutFees,
                             balanceDue,
                             hasDeposit,
                             hasIntermediate,
@@ -150,9 +159,11 @@ export default function MyJobs({ onHasNewQuotes }) {
                             ...job,
                             paymentData: {
                                 depositPaid,
+                                serviceFeePaid,
                                 intermediatePaid,
                                 finalPaid,
-                                totalPaid,
+                                totalPaidWithFees,
+                                totalPaidWithoutFees,
                                 balanceDue,
                                 hasDeposit,
                                 hasIntermediate,
@@ -161,7 +172,7 @@ export default function MyJobs({ onHasNewQuotes }) {
                                 depositPercentage: displayDepositPercentage,
                                 intermediatePercentage: displayIntermediatePercentage,
                                 finalPercentage: displayFinalPercentage,
-                                // Add these for easier logic
+                                // Expected amounts
                                 expectedDepositAmount: quotedPrice * 0.5,
                                 expectedIntermediateAmount: quotedPrice * 0.3,
                                 expectedFinalAmount: hasIntermediate ? quotedPrice * 0.2 : quotedPrice * 0.5
@@ -744,6 +755,7 @@ Click OK to proceed to payment.`;
                                     )}
 
                                     {/* DEPOSIT PAID - WORK ONGOING */}
+                                    {/* DEPOSIT PAID - WORK ONGOING */}
                                     {status === 'deposit_paid' && (
                                         <div className="mb-6">
                                             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
@@ -759,17 +771,38 @@ Click OK to proceed to payment.`;
                                                 </p>
 
                                                 <div className="bg-white p-3 rounded-lg border border-blue-100">
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <p className="text-gray-600">Already Paid (50%)</p>
-                                                        <p className="text-lg font-bold text-blue-700">
-                                                            ₦{Number(job.upfront_payment || 0).toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <p className="text-gray-600">Balance Due (50%)</p>
-                                                        <p className="text-lg font-bold text-gray-800">
-                                                            ₦{(job.quoted_price * 0.5).toLocaleString()}
-                                                        </p>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <p className="text-gray-600">Deposit Paid (50%)</p>
+                                                            <p className="text-lg font-bold text-blue-700">
+                                                                ₦{Number(job.paymentData?.depositPaid || (job.quoted_price * 0.5)).toLocaleString()}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Show service fee if it was charged */}
+                                                        {job.paymentData?.serviceFeePaid > 0 && (
+                                                            <div className="flex justify-between items-center">
+                                                                <p className="text-gray-600">Service Fee</p>
+                                                                <p className="text-sm text-purple-600">
+                                                                    + ₦{Number(job.paymentData?.serviceFeePaid).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        <div className="flex justify-between items-center pt-2 border-t">
+                                                            <p className="text-gray-600 font-bold">Balance Due (50%)</p>
+                                                            <p className="text-lg font-bold text-gray-800">
+                                                                ₦{(job.quoted_price * 0.5).toLocaleString()}
+                                                            </p>
+                                                        </div>
+
+                                                        {/* Total paid including fees */}
+                                                        <div className="flex justify-between items-center pt-2 border-t">
+                                                            <p className="text-gray-600">Total Paid:</p>
+                                                            <p className="font-bold text-green-700">
+                                                                ₦{Number(job.paymentData?.totalPaidWithFees || (job.quoted_price * 0.5)).toLocaleString()}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -923,6 +956,7 @@ Click OK to proceed to payment.`;
                                     )}
 
                                     {/* WORK COMPLETED - AWAITING CUSTOMER APPROVAL */}
+                                    {/* WORK COMPLETED - AWAITING CUSTOMER APPROVAL */}
                                     {status === 'work_completed' && (
                                         <div className="mb-6">
                                             <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
@@ -937,7 +971,6 @@ Click OK to proceed to payment.`;
                                                     {companyName} has marked this job as completed. Please review the work and confirm if you're satisfied.
                                                 </p>
 
-                                                {/* NEW PAYMENT BREAKDOWN - USING PAYMENT DATA */}
                                                 <div className="bg-white p-3 rounded-lg border border-orange-100 mb-4">
                                                     <div className="space-y-2">
                                                         <div className="flex justify-between items-center">
@@ -947,17 +980,27 @@ Click OK to proceed to payment.`;
                                                             </p>
                                                         </div>
 
+                                                        {/* Show service fee if it was charged */}
+                                                        {job.paymentData?.serviceFeePaid > 0 && (
+                                                            <div className="flex justify-between items-center">
+                                                                <p className="text-gray-600">Service Fee</p>
+                                                                <p className="text-sm text-purple-600">
+                                                                    ₦{Number(job.paymentData?.serviceFeePaid).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
                                                         {/* Show intermediate payment if it exists */}
                                                         {job.paymentData?.hasIntermediate && !job.paymentData?.hasFinal && (
                                                             <div className="flex justify-between items-center">
                                                                 <p className="text-gray-600">Materials Paid (30%)</p>
                                                                 <p className="text-lg font-bold text-purple-700">
-                                                                    ₦{Number(job.paymentData?.intermediatePaid || (job.quoted_price * 0.3)).toLocaleString()}
+                                                                    ₦{Number(job.paymentData?.intermediatePaid).toLocaleString()}
                                                                 </p>
                                                             </div>
                                                         )}
 
-                                                        {/* Final balance - always clean percentage */}
+                                                        {/* Final balance */}
                                                         <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="text-gray-600 font-bold">
                                                                 Final Balance ({job.paymentData?.hasIntermediate ? '20%' : '50%'})
@@ -969,22 +1012,30 @@ Click OK to proceed to payment.`;
                                                             </p>
                                                         </div>
 
-                                                        {/* Total */}
+                                                        {/* Total job amount */}
                                                         <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="font-medium">Total Job Amount:</p>
                                                             <p className="text-xl font-bold text-gray-800">
                                                                 ₦{Number(job.quoted_price).toLocaleString()}
                                                             </p>
                                                         </div>
+
+                                                        {/* Total paid including fees */}
+                                                        <div className="flex justify-between items-center pt-2 border-t">
+                                                            <p className="text-gray-600">Total Paid:</p>
+                                                            <p className="font-bold text-green-700">
+                                                                ₦{Number(job.paymentData?.totalPaidWithFees ||
+                                                                    (job.paymentData?.hasIntermediate ? job.quoted_price * 0.8 : job.quoted_price * 0.5)
+                                                                ).toLocaleString()}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
 
-                                                {/* CUSTOMER ACTIONS - APPROVE OR REJECT WORK */}
+                                                {/* CUSTOMER ACTIONS */}
                                                 <div className="space-y-3">
                                                     <button
-                                                        onClick={() => {
-                                                            handleApproveWork(job.id, job.quoted_price, companyName);
-                                                        }}
+                                                        onClick={() => handleApproveWork(job.id, job.quoted_price, companyName)}
                                                         disabled={isProcessing === job.id}
                                                         className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition disabled:opacity-50"
                                                     >
@@ -1003,7 +1054,6 @@ Click OK to proceed to payment.`;
                                             </div>
                                         </div>
                                     )}
-
                                     {/* WORK DISPUTED - Customer reported issue */}
                                     {status === 'work_disputed' && (
                                         <div className="mb-6">
@@ -1053,6 +1103,7 @@ Click OK to proceed to payment.`;
                                                 )}
 
                                                 {/* FIXED: Correct Payment Breakdown */}
+                                                {/* FIXED: Correct Payment Breakdown */}
                                                 <div className="bg-white p-3 rounded-lg border border-yellow-100 mb-4">
                                                     <div className="space-y-2">
                                                         {/* Deposit - Always 50% */}
@@ -1062,6 +1113,16 @@ Click OK to proceed to payment.`;
                                                                 ₦{Number(job.paymentData?.depositPaid || (job.quoted_price * 0.5)).toLocaleString()}
                                                             </p>
                                                         </div>
+
+                                                        {/* Show service fee if it was charged */}
+                                                        {job.paymentData?.serviceFeePaid > 0 && (
+                                                            <div className="flex justify-between items-center">
+                                                                <p className="text-gray-600">Service Fee</p>
+                                                                <p className="text-sm text-purple-600">
+                                                                    ₦{Number(job.paymentData?.serviceFeePaid).toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                        )}
 
                                                         {/* Intermediate Payment - Only show if it exists and final not paid */}
                                                         {job.paymentData?.hasIntermediate && !job.paymentData?.hasFinal && (
@@ -1073,7 +1134,7 @@ Click OK to proceed to payment.`;
                                                             </div>
                                                         )}
 
-                                                        {/* Final Balance - Always clean percentage */}
+                                                        {/* Final Balance */}
                                                         <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="text-gray-600 font-bold">
                                                                 Final Balance (
@@ -1089,16 +1150,28 @@ Click OK to proceed to payment.`;
                                                             </p>
                                                         </div>
 
-                                                        {/* Total */}
+                                                        {/* Total job amount */}
                                                         <div className="flex justify-between items-center pt-2 border-t">
                                                             <p className="font-medium">Total Job Amount:</p>
                                                             <p className="text-xl font-bold text-gray-800">
                                                                 ₦{Number(job.quoted_price).toLocaleString()}
                                                             </p>
                                                         </div>
+
+                                                        {/* Total paid including fees */}
+                                                        <div className="flex justify-between items-center pt-2 border-t">
+                                                            <p className="text-gray-600">Total Paid:</p>
+                                                            <p className="font-bold text-green-700">
+                                                                ₦{Number(job.paymentData?.totalPaidWithFees ||
+                                                                    (job.paymentData?.hasIntermediate ?
+                                                                        (job.quoted_price * 0.8) + (job.paymentData?.serviceFeePaid || 0) :
+                                                                        (job.quoted_price * 0.5) + (job.paymentData?.serviceFeePaid || 0)
+                                                                    )
+                                                                ).toLocaleString()}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-
                                                 {/* Customer can now approve the fix */}
                                                 <div className="space-y-3">
                                                     <button
