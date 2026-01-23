@@ -69,9 +69,22 @@ export default function Step1Form({
         }
 
         // NEW VALIDATION FOR LOGISTICS SERVICES
+        // NEW VALIDATION FOR LOGISTICS SERVICES
         if (job.category === 'Logistics Services') {
             if (!job.logistics_type) {
                 errors.push('Please select logistics service type (Pickup or Delivery)')
+            }
+
+            if (!job.logistics_destination_type) {
+                errors.push('Please select destination type (Within Ogun State or Outside Ogun State)')
+            }
+
+            if (job.logistics_destination_type === 'intrastate' && !job.logistics_destination_location) {
+                errors.push('Please select destination area in Ogun State')
+            }
+
+            if (job.logistics_destination_type === 'interstate' && !job.logistics_interstate_state) {
+                errors.push('Please select destination state')
             }
 
             if (!job.logistics_contact_phone?.trim()) {
@@ -111,12 +124,15 @@ export default function Step1Form({
         const { data, error } = await supabase
             .from('companies')
             .select(`
-            *,
-            average_rating,
-            total_reviews,
-            subcategory_prices,
-            phone  
-        `)
+        *,
+        average_rating,
+        total_reviews,
+        subcategory_prices,
+        phone,
+        logistics_service_type,
+        logistics_served_locations,
+        logistics_interstate_states
+    `)
             .eq('approved', true)
 
         if (error) {

@@ -91,10 +91,9 @@ export default function Step2Companies({
             console.log(`[LOGISTICS FILTER STEP2] Checking ${company.company_name}...`)
 
             // Get company's logistics service areas (with fallbacks for missing columns)
-            const serviceType = c.logistics_service_type || 'intrastate'
-            const servedLocations = Array.isArray(c.logistics_served_locations) ? c.logistics_served_locations : []
-            const interstateStates = Array.isArray(c.logistics_interstate_states) ? c.logistics_interstate_states : []
-
+            const serviceType = company.logistics_service_type || 'intrastate'
+            const servedLocations = Array.isArray(company.logistics_served_locations) ? company.logistics_served_locations : []
+            const interstateStates = Array.isArray(company.logistics_interstate_states) ? company.logistics_interstate_states : []
             console.log(`[LOGISTICS FILTER STEP2] Service type: ${serviceType}`)
             console.log(`[LOGISTICS FILTER STEP2] Served locations:`, servedLocations)
             console.log(`[LOGISTICS FILTER STEP2] Interstate states:`, interstateStates)
@@ -405,6 +404,9 @@ export default function Step2Companies({
             // ADD LOGISTICS FIELDS IF CATEGORY IS LOGISTICS
             if (job.category === 'Logistics Services') {
                 jobDataToInsert.logistics_type = job.logistics_type;
+                jobDataToInsert.logistics_destination_type = job.logistics_destination_type;
+                jobDataToInsert.logistics_destination_location = job.logistics_destination_location;
+                jobDataToInsert.logistics_interstate_state = job.logistics_interstate_state;
                 jobDataToInsert.logistics_contact_phone = job.logistics_contact_phone;
                 jobDataToInsert.logistics_other_address = job.logistics_other_address;
             }
