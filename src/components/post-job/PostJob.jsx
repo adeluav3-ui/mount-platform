@@ -103,7 +103,11 @@ export default function PostJob() {
         exact_address: '',
         description: '',
         price: '',
-        logistics_type: '',
+        // NEW FIELDS FOR LOGISTICS
+        logistics_type: '', // 'pickup' or 'delivery'
+        logistics_destination_type: '', // 'intrastate' or 'interstate'
+        logistics_destination_location: '', // Ogun State location if intrastate
+        logistics_interstate_state: '', // State name if interstate
         logistics_contact_phone: '',
         logistics_other_address: ''
     })

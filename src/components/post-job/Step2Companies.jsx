@@ -411,6 +411,7 @@ export default function Step2Companies({
                 jobDataToInsert.logistics_other_address = job.logistics_other_address;
             }
 
+
             const { error: jobError, data: jobData } = await supabase.from('jobs')
                 .insert(jobDataToInsert)
                 .select('id')

@@ -1,14 +1,44 @@
-import React from 'react';
+import React, { useState } from 'react';
+
+const ogunLocations = [
+    'Abeokuta', 'Sango-Ota', 'Ijebu-Ode', 'Sagamu',
+    'Ota', 'Mowe-Ibafo', 'Ewekoro', 'Ilaro', 'Ifo', 'Owode', 'Odeda', 'Others'
+];
+
+const nigerianStates = [
+    'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+    'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Federal Capital Territory',
+    'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
+    'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers',
+    'Sokoto', 'Taraba', 'Yobe', 'Zamfara'
+];
 
 const LogisticsFields = ({ job, setJob }) => {
+    const [showStateInput, setShowStateInput] = useState(false);
+
     const handleLogisticsTypeChange = (type) => {
         setJob({
             ...job,
             logistics_type: type,
             // Clear other fields when type changes
             logistics_contact_phone: '',
-            logistics_other_address: ''
+            logistics_other_address: '',
+            logistics_service_area: '',
+            logistics_destination_type: '',
+            logistics_destination_location: '',
+            logistics_interstate_state: ''
         });
+        setShowStateInput(false);
+    };
+
+    const handleDestinationTypeChange = (type) => {
+        setJob({
+            ...job,
+            logistics_destination_type: type,
+            logistics_destination_location: '',
+            logistics_interstate_state: ''
+        });
+        setShowStateInput(type === 'interstate');
     };
 
     const validatePhone = (phone) => {
@@ -49,6 +79,80 @@ const LogisticsFields = ({ job, setJob }) => {
                     </button>
                 </div>
             </div>
+
+            {/* Destination Type - Only show if logistics_type is selected */}
+            {job.logistics_type && (
+                <div>
+                    <label className="block text-sm font-medium mb-2">
+                        Destination Type <span className="text-red-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => handleDestinationTypeChange('intrastate')}
+                            className={`py-3 px-4 rounded-lg border-2 font-medium transition-colors ${job.logistics_destination_type === 'intrastate' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'}`}
+                        >
+                            🏠 Within Ogun State
+                            <div className="text-xs mt-1 opacity-80">
+                                Intrastate service
+                            </div>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleDestinationTypeChange('interstate')}
+                            className={`py-3 px-4 rounded-lg border-2 font-medium transition-colors ${job.logistics_destination_type === 'interstate' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300 hover:border-purple-500'}`}
+                        >
+                            🗺️ Outside Ogun State
+                            <div className="text-xs mt-1 opacity-80">
+                                Interstate service
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Destination Location - Show based on destination type */}
+            {job.logistics_destination_type === 'intrastate' && (
+                <div>
+                    <label className="block text-sm font-medium mb-1">
+                        Destination in Ogun State <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        value={job.logistics_destination_location || ''}
+                        onChange={e => setJob({ ...job, logistics_destination_location: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-naijaGreen outline-none"
+                    >
+                        <option value="">Select destination area</option>
+                        {ogunLocations.map(location => (
+                            <option key={location} value={location}>{location}</option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Where in Ogun State do you need {job.logistics_type === 'pickup' ? 'pickup from' : 'delivery to'}?
+                    </p>
+                </div>
+            )}
+
+            {job.logistics_destination_type === 'interstate' && (
+                <div>
+                    <label className="block text-sm font-medium mb-1">
+                        Destination State <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        value={job.logistics_interstate_state || ''}
+                        onChange={e => setJob({ ...job, logistics_interstate_state: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-naijaGreen outline-none"
+                    >
+                        <option value="">Select state</option>
+                        {nigerianStates.map(state => (
+                            <option key={state} value={state}>{state}</option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Which state do you need {job.logistics_type === 'pickup' ? 'pickup from' : 'delivery to'}?
+                    </p>
+                </div>
+            )}
 
             {/* Contact Phone */}
             {job.logistics_type && (
