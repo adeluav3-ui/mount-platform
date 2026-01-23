@@ -56,6 +56,7 @@ export default function MyJobs({ onHasNewQuotes }) {
                 }
 
                 // Process each job with its payment data
+                // Process each job with its payment data
                 const jobsWithPaymentData = await Promise.all(
                     jobsList.map(async (job) => {
                         // Fetch payments for THIS SPECIFIC JOB
@@ -71,6 +72,7 @@ export default function MyJobs({ onHasNewQuotes }) {
                         }
 
                         const payments = jobPayments || [];
+                        const quotedPrice = job.quoted_price || 0;
 
                         // Calculate payment summary
                         let depositPaid = 0;
@@ -91,8 +93,6 @@ export default function MyJobs({ onHasNewQuotes }) {
                                     hasIntermediate = true;
                                 } else if (payment.status === 'pending') {
                                     pendingIntermediate = true;
-                                    // Don't add pending payments to intermediatePaid
-                                    // Just track that there's a pending request
                                 }
                             } else if (payment.type === 'final_payment' && payment.status === 'completed') {
                                 finalPaid += payment.amount || 0;
@@ -101,59 +101,49 @@ export default function MyJobs({ onHasNewQuotes }) {
                         });
 
                         const totalPaid = depositPaid + intermediatePaid + finalPaid;
-                        const quotedPrice = job.quoted_price || 0;
                         const balanceDue = quotedPrice - totalPaid;
 
-                        // NEW: Calculate ACTUAL percentages based on payment patterns
-                        let depositPercentage = 0;
+                        // FIXED: Use standard payment percentages instead of calculating
+                        // Based on your payment structure: 50% deposit, 30% intermediate (optional), 20% final
+
+                        // Determine payment pattern
+                        let depositPercentage = 50; // Always 50% for deposit
                         let intermediatePercentage = 0;
                         let finalPercentage = 0;
 
-                        if (quotedPrice > 0) {
-                            // Check for standard payment patterns
-                            if (hasDeposit && !hasIntermediate && !hasFinal) {
-                                // Only deposit paid (50%)
-                                depositPercentage = 50;
-                                intermediatePercentage = 0;
-                                finalPercentage = 50;
-                            } else if (hasDeposit && hasIntermediate && !hasFinal) {
-                                // Deposit + intermediate paid (50% + 30%)
-                                depositPercentage = 50;
-                                intermediatePercentage = 30;
-                                finalPercentage = 20;
-                            } else if (hasDeposit && hasIntermediate && hasFinal) {
-                                // All payments made (50% + 30% + 20%)
-                                depositPercentage = 50;
-                                intermediatePercentage = 30;
-                                finalPercentage = 0;
-                            } else if (hasDeposit && !hasIntermediate && hasFinal) {
-                                // Deposit + final (50% + 50%) - no intermediate
-                                depositPercentage = 50;
-                                intermediatePercentage = 0;
-                                finalPercentage = 0;
-                            } else {
-                                // Fallback: Calculate based on actual amounts
-                                depositPercentage = (depositPaid / quotedPrice) * 100;
-                                intermediatePercentage = (intermediatePaid / quotedPrice) * 100;
-                                finalPercentage = (balanceDue / quotedPrice) * 100;
-                            }
+                        if (hasIntermediate) {
+                            // 50/30/20 pattern
+                            intermediatePercentage = 30;
+                            finalPercentage = 20;
+                        } else {
+                            // 50/50 pattern (no intermediate)
+                            finalPercentage = 50;
                         }
 
-                        // Round only for display, keep more precision for calculations
-                        const displayDepositPercentage = Math.round(depositPercentage);
-                        const displayIntermediatePercentage = Math.round(intermediatePercentage);
-                        const displayFinalPercentage = Math.round(finalPercentage);
+                        // If final payment already made, show 0%
+                        if (hasFinal) {
+                            finalPercentage = 0;
+                        }
+
+                        // For display - always show clean percentages
+                        const displayDepositPercentage = depositPercentage;
+                        const displayIntermediatePercentage = intermediatePercentage;
+                        const displayFinalPercentage = finalPercentage;
 
                         console.log(`📊 Payment Summary for ${job.id.substring(0, 8)}:`, {
+                            quotedPrice,
                             depositPaid,
                             intermediatePaid,
                             finalPaid,
                             totalPaid,
                             balanceDue,
-                            depositPercentage: displayDepositPercentage,
-                            intermediatePercentage: displayIntermediatePercentage,
-                            finalPercentage: displayFinalPercentage,
-                            paymentPattern: `${hasDeposit ? 'D' : ''}${hasIntermediate ? 'I' : ''}${hasFinal ? 'F' : ''}`
+                            hasDeposit,
+                            hasIntermediate,
+                            hasFinal,
+                            displayDepositPercentage,
+                            displayIntermediatePercentage,
+                            displayFinalPercentage,
+                            pattern: hasIntermediate ? '50/30/20' : '50/50'
                         });
 
                         return {
@@ -172,8 +162,9 @@ export default function MyJobs({ onHasNewQuotes }) {
                                 intermediatePercentage: displayIntermediatePercentage,
                                 finalPercentage: displayFinalPercentage,
                                 // Add these for easier logic
-                                shouldShow50_50: hasDeposit && !hasIntermediate,
-                                shouldShow50_30_20: hasDeposit && hasIntermediate
+                                expectedDepositAmount: quotedPrice * 0.5,
+                                expectedIntermediateAmount: quotedPrice * 0.3,
+                                expectedFinalAmount: hasIntermediate ? quotedPrice * 0.2 : quotedPrice * 0.5
                             }
                         };
                     })
