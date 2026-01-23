@@ -1,11 +1,10 @@
-// src/components/payment/PaymentPage.jsx - WITH TIERED SERVICE FEE
+// src/components/payment/PaymentPage.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../context/SupabaseContext';
 import PaymentService from '../../utils/PaymentService';
 
-// Helper function to calculate payment with service fee
-// Update the calculatePaymentWithServiceFee function in PaymentPage.jsx
+// Helper function to calculate payment with service fee - SIMPLIFIED
 const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType, jobCreatedDate) => {
     try {
         // Only apply service fee to deposit payments
@@ -24,45 +23,30 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
 
         const depositAmount = jobAmount * 0.5;
 
-        // LOGIC FIX: Handle first job promotion properly
+        // Handle first job promotion
         if (promotionResult.isFirstJob && jobCreatedDate) {
             // Set promotion for first job
-            const setPromotionResult = await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
+            await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
 
-            if (setPromotionResult.success) {
-                // Promotion set successfully - fee waived
-                return {
-                    baseAmount: depositAmount,
-                    serviceFee: 0,
-                    totalPayment: depositAmount,
-                    isFeeWaived: true,
-                    isDepositPayment: true,
-                    isFirstJob: true
-                };
-            } else {
-                // Failed to set promotion - still give benefit of doubt (first job)
-                console.warn('Failed to set promotion, but treating as first job:', setPromotionResult.message);
-                return {
-                    baseAmount: depositAmount,
-                    serviceFee: 0,
-                    totalPayment: depositAmount,
-                    isFeeWaived: true,
-                    isDepositPayment: true,
-                    isFirstJob: true
-                };
-            }
-        }
-
-        // Check if in promotion (after handling first job case)
-        if (promotionResult.isInPromotion) {
-            // In promotion: no service fee
             return {
                 baseAmount: depositAmount,
                 serviceFee: 0,
                 totalPayment: depositAmount,
                 isFeeWaived: true,
                 isDepositPayment: true,
-                isFirstJob: promotionResult.isFirstJob || false
+                isFirstJob: true
+            };
+        }
+
+        // Check if in promotion
+        if (promotionResult.isInPromotion) {
+            return {
+                baseAmount: depositAmount,
+                serviceFee: 0,
+                totalPayment: depositAmount,
+                isFeeWaived: true,
+                isDepositPayment: true,
+                isFirstJob: false
             };
         } else {
             // Not in promotion: add tiered service fee
@@ -78,13 +62,13 @@ const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType
         }
     } catch (error) {
         console.error('Error calculating payment with fee:', error);
-        // Fallback: just deposit without fee (give benefit of doubt for first job)
+        // Fallback to deposit without fee
         const depositAmount = jobAmount * 0.5;
         return {
             baseAmount: depositAmount,
             serviceFee: 0,
             totalPayment: depositAmount,
-            isFeeWaived: true, // Changed from false to true - benefit of doubt
+            isFeeWaived: true,
             isDepositPayment: true,
             isFirstJob: false
         };
@@ -119,6 +103,98 @@ const PaymentPage = () => {
     useEffect(() => {
         fetchJobDetails();
     }, [jobId]);
+
+    // SIMPLIFIED: Get total amount paid for a job
+    const getTotalPaidAmount = (verifiedPayments) => {
+        if (!verifiedPayments || !Array.isArray(verifiedPayments)) return 0;
+
+        return verifiedPayments.reduce((total, payment) => {
+            return total + (payment.amount || 0);
+        }, 0);
+    };
+
+    // SIMPLIFIED: Determine payment type based on job status and payments
+    const determinePaymentType = (jobData, paidAmount, hasDeposit, hasIntermediate, hasFinal) => {
+        const totalAmount = jobData.quoted_price || 0;
+        const balance = totalAmount - paidAmount;
+
+        // Check job status first
+        switch (jobData.status) {
+            case 'price_set':
+                // First payment - always deposit
+                return {
+                    type: 'deposit',
+                    amount: totalAmount * 0.5,
+                    description: '50% Deposit to start the job'
+                };
+
+            case 'work_ongoing':
+                // Check for pending intermediate
+                if (!hasIntermediate) {
+                    return {
+                        type: 'intermediate',
+                        amount: totalAmount * 0.3,
+                        description: '30% Materials payment'
+                    };
+                }
+            // Fall through if already has intermediate
+
+            case 'work_completed':
+            case 'work_rectified':
+                // Always final payment in these statuses
+                return {
+                    type: 'final_payment',
+                    amount: balance,
+                    description: 'Final balance payment'
+                };
+
+            case 'deposit_paid':
+                // Can be intermediate or final based on payments
+                if (!hasIntermediate && !hasFinal) {
+                    return {
+                        type: 'intermediate',
+                        amount: totalAmount * 0.3,
+                        description: '30% Materials payment'
+                    };
+                } else if (hasIntermediate && !hasFinal) {
+                    return {
+                        type: 'final_payment',
+                        amount: totalAmount * 0.2,
+                        description: '20% Final payment'
+                    };
+                }
+                break;
+
+            default:
+                // Generic logic based on payments
+                if (!hasDeposit && !hasIntermediate && !hasFinal) {
+                    return {
+                        type: 'deposit',
+                        amount: totalAmount * 0.5,
+                        description: '50% Deposit to start the job'
+                    };
+                } else if (hasDeposit && !hasIntermediate && !hasFinal) {
+                    return {
+                        type: 'intermediate',
+                        amount: totalAmount * 0.3,
+                        description: '30% Materials payment'
+                    };
+                } else if (hasDeposit && hasIntermediate && !hasFinal) {
+                    return {
+                        type: 'final_payment',
+                        amount: totalAmount * 0.2,
+                        description: '20% Final payment'
+                    };
+                }
+        }
+
+        // Default fallback
+        return {
+            type: 'final_payment',
+            amount: balance,
+            description: 'Balance payment'
+        };
+    };
 
     const fetchJobDetails = async () => {
         try {
@@ -157,7 +233,7 @@ const PaymentPage = () => {
             // 5. Get all verified payments for this job
             const { data: verifiedPayments } = await supabase
                 .from('financial_transactions')
-                .select('type, amount')
+                .select('type, amount, status, verified_by_admin')
                 .eq('job_id', jobId)
                 .eq('status', 'completed')
                 .eq('verified_by_admin', true);
@@ -165,263 +241,82 @@ const PaymentPage = () => {
             console.log('✅ Verified payments:', verifiedPayments);
 
             // 6. Calculate what's been paid
-            let paidAmount = 0;
-            let hasDeposit = false;
-            let hasIntermediate = false;
-            let hasFinal = false;
+            const paidAmount = getTotalPaidAmount(verifiedPayments);
 
-            if (verifiedPayments) {
-                verifiedPayments.forEach(payment => {
-                    paidAmount += payment.amount || 0;
-                    if (payment.type === 'deposit') hasDeposit = true;
-                    if (payment.type === 'intermediate') hasIntermediate = true;
-                    if (payment.type === 'final_payment') hasFinal = true;
-                });
-            }
-
-            const paidPercentage = totalAmount > 0 ? (paidAmount / totalAmount) * 100 : 0;
-            const balance = totalAmount - paidAmount;
+            // Track which payment types have been made
+            const hasDeposit = verifiedPayments?.some(p => p.type === 'deposit') || false;
+            const hasIntermediate = verifiedPayments?.some(p => p.type === 'intermediate') || false;
+            const hasFinal = verifiedPayments?.some(p => p.type === 'final_payment') || false;
 
             console.log('💰 Payment analysis:', {
                 totalAmount,
                 paidAmount,
-                paidPercentage: paidPercentage + '%',
-                balance,
+                hasDeposit,
+                hasIntermediate,
+                hasFinal,
+                balance: totalAmount - paidAmount
+            });
+
+            // 7. DETERMINE PAYMENT TYPE - SIMPLIFIED
+            const paymentDetails = determinePaymentType(
+                jobData,
+                paidAmount,
                 hasDeposit,
                 hasIntermediate,
                 hasFinal
-            });
+            );
 
-            // 7. DETERMINE PAYMENT TYPE
-            let paymentType = '';
-            let paymentAmount = 0;
-            let paymentDescription = '';
-            let paymentCalculationResult = null;
-
-            // First, check for pending intermediate payments (for work_ongoing status)
-            if (jobData.status === 'work_ongoing') {
-                console.log('🔄 Job is work_ongoing, checking for pending intermediate...');
-
-                const { data: pendingIntermediate, error: pendingError } = await supabase
-                    .from('financial_transactions')
-                    .select('type, status, amount')
-                    .eq('job_id', jobId)
-                    .eq('type', 'intermediate')
-                    .eq('status', 'pending')
-                    .eq('verified_by_admin', false)
-                    .order('created_at', { ascending: false })
-                    .limit(1);
-
-                if (!pendingError && pendingIntermediate && pendingIntermediate.length > 0) {
-                    console.log('💰 Found pending intermediate payment:', pendingIntermediate[0]);
-                    paymentType = 'intermediate';
-                    paymentAmount = pendingIntermediate[0].amount || totalAmount * 0.3;
-                    paymentDescription = '30% Intermediate payment for materials';
-                    paymentCalculationResult = {
-                        baseAmount: paymentAmount,
-                        serviceFee: 0,
-                        totalPayment: paymentAmount,
-                        isFeeWaived: true,
-                        isDepositPayment: false
-                    };
-                } else {
-                    // No pending intermediate, check what's been paid
-                    if (hasDeposit && !hasIntermediate && !hasFinal) {
-                        paymentType = 'intermediate';
-                        paymentAmount = totalAmount * 0.3;
-                        paymentDescription = '30% Intermediate payment for materials';
-                        paymentCalculationResult = {
-                            baseAmount: paymentAmount,
-                            serviceFee: 0,
-                            totalPayment: paymentAmount,
-                            isFeeWaived: true,
-                            isDepositPayment: false
-                        };
-                    } else if (hasDeposit && hasIntermediate && !hasFinal) {
-                        paymentType = 'final_payment';
-                        paymentAmount = totalAmount * 0.2;
-                        paymentDescription = 'Final payment (20% balance)';
-                        paymentCalculationResult = {
-                            baseAmount: paymentAmount,
-                            serviceFee: 0,
-                            totalPayment: paymentAmount,
-                            isFeeWaived: true,
-                            isDepositPayment: false
-                        };
-                    }
-                }
-            }
-            // SPECIAL SCENARIO: Job is work_rectified
-            else if (jobData.status === 'work_rectified') {
-                console.log('🔄 Job is work_rectified. Calculating balance based on actual payments...');
-
-                // Calculate total paid
-                let totalPaid = 0;
-                if (verifiedPayments) {
-                    verifiedPayments.forEach(payment => {
-                        totalPaid += payment.amount || 0;
-                    });
-                }
-
-                const balance = totalAmount - totalPaid;
-
-                // Determine what type of payment this is
-                if (hasDeposit && hasIntermediate && !hasFinal) {
-                    paymentType = 'final_payment';
-                    paymentAmount = balance;
-                    paymentDescription = `Final payment (${((balance / totalAmount) * 100).toFixed(0)}% balance)`;
-                } else if (hasDeposit && !hasIntermediate && !hasFinal) {
-                    paymentType = 'final_payment';
-                    paymentAmount = balance;
-                    paymentDescription = `Final payment (${((balance / totalAmount) * 100).toFixed(0)}% balance)`;
-                } else {
-                    paymentType = 'final_payment';
-                    paymentAmount = balance;
-                    paymentDescription = `Balance payment (₦${balance.toLocaleString()})`;
-                }
-
-                paymentCalculationResult = {
-                    baseAmount: paymentAmount,
-                    serviceFee: 0,
-                    totalPayment: paymentAmount,
-                    isFeeWaived: true,
-                    isDepositPayment: false
-                };
-
-                console.log('💰 work_rectified calculation:', {
+            // 8. Calculate payment with service fee if it's a deposit
+            let paymentCalculationResult;
+            if (paymentDetails.type === 'deposit') {
+                paymentCalculationResult = await calculatePaymentWithServiceFee(
                     totalAmount,
-                    totalPaid,
-                    balance,
-                    paymentAmount,
-                    depositCount: hasDeposit,
-                    intermediateCount: hasIntermediate,
-                    finalCount: hasFinal
-                });
-            }
-            // SCENARIO 1: No payments made yet - DEPOSIT with possible service fee
-            else if (!hasDeposit && !hasIntermediate && !hasFinal) {
-                paymentType = 'deposit';
-                paymentDescription = '50% Deposit to start the job';
-
-                // Calculate deposit WITH service fee
-                paymentCalculationResult = await calculatePaymentWithServiceFee(totalAmount, user.id, 'deposit');
-                paymentAmount = paymentCalculationResult.totalPayment;
-            }
-            // SCENARIO 2: Only deposit paid (50%), no intermediate
-            else if (hasDeposit && !hasIntermediate && !hasFinal) {
-                // Check job status - if work is completed, it should be FINAL payment
-                if (jobData.status === 'work_completed' || jobData.status === 'work_rectified') {
-                    paymentType = 'final_payment';
-                    paymentAmount = totalAmount * 0.5;
-                    paymentDescription = 'Final payment (50% balance)';
-                    paymentCalculationResult = {
-                        baseAmount: paymentAmount,
-                        serviceFee: 0,
-                        totalPayment: paymentAmount,
-                        isFeeWaived: true,
-                        isDepositPayment: false
-                    };
-                } else {
-                    // For ongoing work, show intermediate payment option
-                    paymentType = 'intermediate';
-                    paymentAmount = totalAmount * 0.3;
-                    paymentDescription = '30% Intermediate payment for materials';
-                    paymentCalculationResult = {
-                        baseAmount: paymentAmount,
-                        serviceFee: 0,
-                        totalPayment: paymentAmount,
-                        isFeeWaived: true,
-                        isDepositPayment: false
-                    };
-                }
-            }
-            // SCENARIO 3: Deposit (50%) + Intermediate (30%) paid, need final 20%
-            else if (hasDeposit && hasIntermediate && !hasFinal) {
-                paymentType = 'final_payment';
-                paymentAmount = totalAmount * 0.2;
-                paymentDescription = 'Final payment (20% balance)';
+                    user.id,
+                    'deposit',
+                    jobData.created_at
+                );
+            } else {
                 paymentCalculationResult = {
-                    baseAmount: paymentAmount,
+                    baseAmount: paymentDetails.amount,
                     serviceFee: 0,
-                    totalPayment: paymentAmount,
+                    totalPayment: paymentDetails.amount,
                     isFeeWaived: true,
                     isDepositPayment: false
                 };
             }
-            // SCENARIO 4: All payments made
-            else if (hasDeposit && hasIntermediate && hasFinal) {
-                throw new Error('All payments for this job have been completed.');
-            }
-            // SCENARIO 5: Edge cases
-            else {
-                // Calculate based on actual paid amount
-                if (paidPercentage >= 80) {
-                    // Paid 80%+, need final 20%
-                    paymentType = 'final_payment';
-                    paymentAmount = totalAmount * 0.2;
-                    paymentDescription = 'Final payment (20% balance)';
-                    paymentCalculationResult = {
-                        baseAmount: paymentAmount,
-                        serviceFee: 0,
-                        totalPayment: paymentAmount,
-                        isFeeWaived: true,
-                        isDepositPayment: false
-                    };
-                } else if (paidPercentage >= 50) {
-                    // Paid 50%+, need either intermediate or final
-                    paymentType = 'final_payment';
-                    paymentAmount = balance;
-                    paymentDescription = `Balance payment (₦${balance.toLocaleString()})`;
-                    paymentCalculationResult = {
-                        baseAmount: paymentAmount,
-                        serviceFee: 0,
-                        totalPayment: paymentAmount,
-                        isFeeWaived: true,
-                        isDepositPayment: false
-                    };
-                } else {
-                    // Paid less than 50%
-                    paymentType = 'deposit';
-                    paymentDescription = '50% Deposit to start the job';
 
-                    // Calculate deposit WITH service fee
-                    paymentCalculationResult = await calculatePaymentWithServiceFee(totalAmount, user.id, 'deposit');
-                    paymentAmount = paymentCalculationResult.totalPayment;
-                }
-            }
-
-            // 8. Generate reference
+            // 9. Generate reference
             const ref = generateReference(jobId);
 
-            // 9. Set payment calculation state
-            if (paymentCalculationResult) {
-                setPaymentCalculation(paymentCalculationResult);
-            }
+            // 10. Set payment calculation state
+            setPaymentCalculation(paymentCalculationResult);
 
-            // 10. Set job data
+            // 11. Set job data
             const jobWithDetails = {
                 ...jobData,
                 companyName: companyName,
                 totalAmount: totalAmount,
-                paymentAmount: paymentAmount,
-                paymentDescription: paymentDescription,
-                paymentType: paymentType,
+                paymentAmount: paymentCalculationResult.totalPayment,
+                paymentDescription: paymentDetails.description,
+                paymentType: paymentDetails.type,
                 reference: ref,
                 paidAmount: paidAmount,
-                balance: balance,
-                serviceFee: paymentCalculationResult?.serviceFee || 0,
-                isServiceFeeWaived: paymentCalculationResult?.isFeeWaived || true,
-                baseAmount: paymentCalculationResult?.baseAmount || paymentAmount
+                balance: totalAmount - paidAmount,
+                serviceFee: paymentCalculationResult.serviceFee || 0,
+                isServiceFeeWaived: paymentCalculationResult.isFeeWaived || true,
+                baseAmount: paymentCalculationResult.baseAmount || paymentDetails.amount,
+                hasDeposit,
+                hasIntermediate,
+                hasFinal
             };
 
             console.log('🎯 Final payment details:', {
-                type: paymentType,
-                amount: paymentAmount,
-                description: paymentDescription,
-                baseAmount: paymentCalculationResult?.baseAmount,
-                serviceFee: paymentCalculationResult?.serviceFee,
-                isFeeWaived: paymentCalculationResult?.isFeeWaived,
-                shouldBe20Percent: paymentAmount === totalAmount * 0.2
+                paymentType: paymentDetails.type,
+                amount: paymentDetails.amount,
+                baseAmount: paymentCalculationResult.baseAmount,
+                serviceFee: paymentCalculationResult.serviceFee,
+                isFeeWaived: paymentCalculationResult.isFeeWaived,
+                totalPayment: paymentCalculationResult.totalPayment
             });
 
             setJob(jobWithDetails);
@@ -458,7 +353,7 @@ const PaymentPage = () => {
                 throw new Error(`Invalid payment type: ${dbPaymentType}. Must be one of: ${allowedTypes.join(', ')}`);
             }
 
-            // CRITICAL: Check for existing pending payment record FIRST
+            // Check for existing pending payment record
             console.log('🔍 Checking for existing payment records...');
             const { data: existingPayments, error: checkError } = await supabase
                 .from('financial_transactions')
@@ -506,8 +401,8 @@ const PaymentPage = () => {
                 job_id: jobId,
                 user_id: user.id,
                 type: dbPaymentType,
-                amount: job.paymentAmount, // Total amount (base + service fee if applicable)
-                platform_fee: job.serviceFee || 0, // Store service fee separately
+                amount: job.paymentAmount,
+                platform_fee: job.serviceFee || 0,
                 description: `${job.paymentType} payment for: ${job.description || `Job #${jobId.substring(0, 8)}`}`,
                 reference: reference,
                 status: 'pending',
@@ -523,9 +418,9 @@ const PaymentPage = () => {
                     created_via: 'customer_payment_page',
                     job_status: job.status,
                     total_job_amount: job.totalAmount,
-                    base_amount: job.baseAmount || (job.totalAmount * (dbPaymentType === 'deposit' ? 0.5 : dbPaymentType === 'intermediate' ? 0.3 : 0.2)),
-                    service_fee: job.serviceFee || 0,
-                    is_service_fee_waived: job.isServiceFeeWaived || true,
+                    base_amount: job.baseAmount,
+                    service_fee: job.serviceFee,
+                    is_service_fee_waived: job.isServiceFeeWaived,
                     is_deposit_payment: dbPaymentType === 'deposit',
                     calculated_correctly: true
                 },
@@ -542,7 +437,7 @@ const PaymentPage = () => {
                     .from('financial_transactions')
                     .update({
                         ...paymentData,
-                        id: transactionId // Keep same ID
+                        id: transactionId
                     })
                     .eq('id', transactionId)
                     .select()
@@ -616,7 +511,8 @@ const PaymentPage = () => {
                     paymentType: job.paymentType,
                     transactionId: transactionId,
                     isUpdate: !!existingPayment,
-                    isServiceFeeWaived: job.isServiceFeeWaived
+                    isServiceFeeWaived: job.isServiceFeeWaived,
+                    paymentDescription: job.paymentDescription
                 }
             });
 
@@ -697,6 +593,17 @@ const PaymentPage = () => {
     const baseAmount = job.baseAmount || paymentAmount;
     const isServiceFeeWaived = job.isServiceFeeWaived;
 
+    // Calculate percentage for display
+    const getPaymentPercentage = () => {
+        if (job.paymentType === 'deposit') return '50%';
+        if (job.paymentType === 'intermediate') return '30%';
+        if (job.paymentType === 'final_payment') {
+            if (job.hasIntermediate) return '20%';
+            return '50%';
+        }
+        return '';
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 p-4">
             <div className="max-w-2xl mx-auto">
@@ -732,13 +639,14 @@ const PaymentPage = () => {
                         <div className="space-y-3">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Payment Type</span>
-                                <span className="font-medium capitalize">{job.paymentType} Payment</span>
+                                <span className="font-medium capitalize">{job.paymentType} Payment ({getPaymentPercentage()})</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Job Status</span>
                                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${job.status === 'price_set' ? 'bg-blue-100 text-blue-800' :
                                     job.status === 'deposit_paid' ? 'bg-green-100 text-green-800' :
-                                        'bg-gray-100 text-gray-800'
+                                        job.status === 'work_rectified' ? 'bg-yellow-100 text-yellow-800' :
+                                            'bg-gray-100 text-gray-800'
                                     }`}>
                                     {job.status?.replace('_', ' ').toUpperCase()}
                                 </span>
@@ -749,25 +657,32 @@ const PaymentPage = () => {
                             </div>
                         </div>
 
-                        {/* Service Fee Breakdown (only for deposit payments) */}
-                        {job.paymentType === 'deposit' && (
-                            <div className="pt-4 border-t border-gray-200">
-                                <h4 className="font-medium text-gray-800 mb-3">Payment Breakdown</h4>
-                                <div className="space-y-2">
+                        {/* Payment Breakdown */}
+                        <div className="pt-4 border-t border-gray-200">
+                            <h4 className="font-medium text-gray-800 mb-3">Payment Breakdown</h4>
+                            <div className="space-y-2">
+                                {job.paymentType === 'deposit' ? (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">50% Deposit</span>
+                                            <span>₦{baseAmount.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Service Fee</span>
+                                            <span className={serviceFee > 0 ? "text-blue-600" : "text-gray-500"}>
+                                                {serviceFee > 0 ? "+ ₦" : "₦"}{serviceFee.toLocaleString()}
+                                                {serviceFee === 0 && " (Waived)"}
+                                            </span>
+                                        </div>
+                                    </>
+                                ) : (
                                     <div className="flex justify-between">
-                                        <span className="text-gray-600">50% Deposit</span>
+                                        <span className="text-gray-600">{getPaymentPercentage()} Payment</span>
                                         <span>₦{baseAmount.toLocaleString()}</span>
                                     </div>
-                                    {/* ALWAYS show service fee line, just show amount (0 or actual) */}
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">Service Fee</span>
-                                        <span className={serviceFee > 0 ? "text-blue-600" : "text-gray-500"}>
-                                            {serviceFee > 0 ? "+ ₦" : "₦"}{serviceFee.toLocaleString()}
-                                        </span>
-                                    </div>
-                                </div>
+                                )}
                             </div>
-                        )}
+                        </div>
 
                         <div className="pt-4 border-t">
                             <div className="flex justify-between items-center">
@@ -781,7 +696,49 @@ const PaymentPage = () => {
                                             (Deposit: ₦{baseAmount.toLocaleString()} + Fee: ₦{serviceFee.toLocaleString()})
                                         </div>
                                     )}
+                                    {job.paymentType === 'deposit' && serviceFee === 0 && (
+                                        <div className="text-sm text-green-600 mt-1">
+                                            ✓ Service fee waived
+                                        </div>
+                                    )}
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Payment Progress */}
+                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                    <h3 className="font-bold mb-4">Payment Progress</h3>
+                    <div className="space-y-3">
+                        <div className="flex justify-between">
+                            <span className={job.hasDeposit ? "text-green-600 font-medium" : "text-gray-600"}>
+                                {job.hasDeposit ? "✓ " : ""}50% Deposit
+                            </span>
+                            <span className={job.hasDeposit ? "text-green-600 font-medium" : "text-gray-600"}>
+                                ₦{(totalAmount * 0.5).toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className={job.hasIntermediate ? "text-green-600 font-medium" : "text-gray-600"}>
+                                {job.hasIntermediate ? "✓ " : ""}30% Materials
+                            </span>
+                            <span className={job.hasIntermediate ? "text-green-600 font-medium" : "text-gray-600"}>
+                                ₦{(totalAmount * 0.3).toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className={job.hasFinal ? "text-green-600 font-medium" : "text-gray-600"}>
+                                {job.hasFinal ? "✓ " : ""}20% Final
+                            </span>
+                            <span className={job.hasFinal ? "text-green-600 font-medium" : "text-gray-600"}>
+                                ₦{(totalAmount * 0.2).toLocaleString()}
+                            </span>
+                        </div>
+                        <div className="border-t pt-3">
+                            <div className="flex justify-between font-bold">
+                                <span>Balance Due:</span>
+                                <span className="text-naijaGreen">₦{job.balance.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
