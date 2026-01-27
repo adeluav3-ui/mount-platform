@@ -88,55 +88,29 @@ export default function Step2Companies({
 
         // 3. SPECIAL FILTERING FOR LOGISTICS SERVICES
         if (job.category === 'Logistics Services') {
-            console.log(`[LOGISTICS FILTER STEP2] Checking ${company.company_name}...`)
+            console.log(`[LOGISTICS FILTER STEP2] Checking ${company.company_name}...`);
 
-            // Get company's logistics service areas (with fallbacks for missing columns)
-            const serviceType = company.logistics_service_type || 'intrastate'
-            const servedLocations = Array.isArray(company.logistics_served_locations) ? company.logistics_served_locations : []
-            const interstateStates = Array.isArray(company.logistics_interstate_states) ? company.logistics_interstate_states : []
-            console.log(`[LOGISTICS FILTER STEP2] Service type: ${serviceType}`)
-            console.log(`[LOGISTICS FILTER STEP2] Served locations:`, servedLocations)
-            console.log(`[LOGISTICS FILTER STEP2] Interstate states:`, interstateStates)
+            // SPECIAL CASE: Yharah logistics only serves Abeokuta
+            if (company.company_name === 'Yharah logistics' || company.company_name === 'Yharah Logistics') {
+                console.log(`[LOGISTICS FILTER STEP2] This is Yharah - checking service area...`);
 
-            // Check if job destination matches company's service area
-            if (job.logistics_destination_type === 'intrastate') {
-                // For intrastate, check if company serves this specific location
-                const destination = job.logistics_destination_location
-
-                // If company has specific locations, check if destination is in their list
-                if (servedLocations.length > 0) {
-                    const servesLocation = servedLocations.includes(destination)
-                    console.log(`[LOGISTICS FILTER STEP2] Serves ${destination}?`, servesLocation)
-                    return servesLocation
-                } else {
-                    // If company doesn't have specific locations, assume they serve all of Ogun State
-                    console.log(`[LOGISTICS FILTER STEP2] No specific locations, assuming all Ogun State`)
-                    return true
+                // Yharah only serves Abeokuta for intrastate
+                if (job.logistics_destination_type === 'intrastate') {
+                    const destination = job.logistics_destination_location;
+                    const servesAbeokuta = destination === 'Abeokuta';
+                    console.log(`[LOGISTICS FILTER STEP2] Yharah serves ${destination}?`, servesAbeokuta);
+                    return servesAbeokuta;
+                } else if (job.logistics_destination_type === 'interstate') {
+                    // Yharah doesn't do interstate at all
+                    console.log(`[LOGISTICS FILTER STEP2] Yharah doesn't do interstate`);
+                    return false;
                 }
-            } else if (job.logistics_destination_type === 'interstate') {
-                // For interstate, check if company serves interstate and the specific state
-                const destinationState = job.logistics_interstate_state
-
-                if (serviceType === 'interstate' || serviceType === 'both') {
-                    if (interstateStates.length > 0) {
-                        const servesState = interstateStates.includes(destinationState)
-                        console.log(`[LOGISTICS FILTER STEP2] Serves ${destinationState}?`, servesState)
-                        return servesState
-                    } else {
-                        // If company has no specific interstate states, assume they serve all
-                        console.log(`[LOGISTICS FILTER STEP2] Serves interstate (all states)`)
-                        return true
-                    }
-                } else {
-                    // Company doesn't do interstate
-                    console.log(`[LOGISTICS FILTER STEP2] Doesn't do interstate`)
-                    return false
-                }
+                return false; // Fallback
             }
 
-            // If we reach here, something went wrong with the destination type
-            console.log(`[LOGISTICS FILTER STEP2] Unknown destination type`)
-            return false
+            // For ALL OTHER logistics companies: Show for ALL areas
+            console.log(`[LOGISTICS FILTER STEP2] ${company.company_name} is not Yharah - showing for all areas`);
+            return true;
         }
 
         // 4. If category has NO subservices (like Cleaning Services), include the company

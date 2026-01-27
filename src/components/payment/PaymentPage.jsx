@@ -794,25 +794,6 @@ const PaymentPage = () => {
                 >
                     {reference ? 'Proceed to Bank Transfer' : 'Loading...'}
                 </button>
-
-                {/* Important Notice */}
-                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                    <div className="flex items-start gap-3">
-                        <span className="text-yellow-600 text-xl">⚠️</span>
-                        <div>
-                            <h4 className="font-medium text-yellow-800">Important Notice</h4>
-                            <p className="text-sm text-yellow-700 mt-1">
-                                Payments are held in escrow until job completion. Your money is protected.
-                                Service providers only receive payment when you confirm job completion.
-                                {job.paymentType === 'deposit' && !isServiceFeeWaived && (
-                                    <span className="block mt-1">
-                                        Service fee is charged only on deposit payments and is non-refundable.
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );
