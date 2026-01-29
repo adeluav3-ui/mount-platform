@@ -880,6 +880,27 @@ export default function JobsSection({
                                 </span>
                             </div>
 
+                            {/* ACTION BUTTONS FOR PENDING STATUS */}
+                            {job.status === 'pending' && (
+                                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setSelectedJobForOnsite(job)
+                                            setShowOnsiteModal(true)
+                                        }}
+                                        className="bg-orange-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-orange-700 transition-colors text-sm sm:text-base"
+                                    >
+                                        Request Onsite Check
+                                    </button>
+                                    <button
+                                        onClick={() => setJobToQuote(job)}
+                                        className="bg-naijaGreen text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors text-sm sm:text-base"
+                                    >
+                                        Send Quote Now
+                                    </button>
+                                </div>
+                            )}
+
                             {/* ONSITE FEE REQUESTED - Waiting for customer payment */}
                             {job.status === 'onsite_fee_requested' && (
                                 <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-xl">
