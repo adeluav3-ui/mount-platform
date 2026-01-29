@@ -399,56 +399,88 @@ export default function JobsSection({
     }, [showJobs, supabase, user])
 
     const handleRequestOnsiteCheck = async (jobId) => {
-        // First, get the company's bank details
-        const { data: companyData, error: companyError } = await supabase
-            .from('companies')
-            .select('bank_name, account_number, account_name')
-            .eq('id', user.id)
-            .single();
-
-        if (companyError || !companyData) {
-            alert('Please update your bank details in your profile before requesting onsite check.');
-            return;
-        }
-
-        // Ask for the onsite fee amount
-        const feeInput = prompt(
-            `Enter the onsite check fee amount (in Naira):\n\n` +
-            `This fee covers transportation and serves as commitment from the customer.\n\n` +
-            `Your bank details:\n` +
-            `Bank: ${companyData.bank_name}\n` +
-            `Account: ${companyData.account_number}\n` +
-            `Name: ${companyData.account_name}\n\n` +
-            `Enter amount (e.g., 5000):`
-        );
-
-        if (!feeInput) return;
-
-        const onsiteFee = parseFloat(feeInput);
-        if (isNaN(onsiteFee) || onsiteFee <= 0) {
-            alert('Please enter a valid amount.');
-            return;
-        }
-
-        if (!window.confirm(
-            `Request onsite check with fee of ₦${onsiteFee.toLocaleString()}?\n\n` +
-            `Customer will need to pay this amount directly to your bank account before you visit.`
-        )) {
-            return;
-        }
-
         try {
+            // First, get the company's details using the user's ID
+            const { data: companyData, error: companyError } = await supabase
+                .from('companies')
+                .select('id, company_name, bank_name, account_number, account_name')
+                .eq('user_id', user.id)  // Changed from .eq('id', user.id) to .eq('user_id', user.id)
+                .single();
+
+            console.log('Company data fetch:', {
+                user_id: user.id,
+                companyData,
+                companyError
+            });
+
+            if (companyError) {
+                console.error('Company fetch error:', companyError);
+
+                // Try alternative: maybe the company ID is stored differently
+                const { data: altCompanyData, error: altError } = await supabase
+                    .from('companies')
+                    .select('id, company_name, bank_name, account_number, account_name')
+                    .eq('id', user.id)  // Try with user.id as company.id
+                    .single();
+
+                if (altError || !altCompanyData) {
+                    alert('Company profile not found. Please complete your company registration first.');
+                    return;
+                }
+
+                // Use alternative data
+                var finalCompanyData = altCompanyData;
+            } else if (!companyData) {
+                alert('Company profile not found. Please complete your company registration first.');
+                return;
+            } else {
+                var finalCompanyData = companyData;
+            }
+
+            // Check if bank details exist
+            if (!finalCompanyData.bank_name || !finalCompanyData.account_number || !finalCompanyData.account_name) {
+                alert('Please update your bank details in your company profile before requesting onsite check.');
+                return;
+            }
+
+            // Ask for the onsite fee amount
+            const feeInput = prompt(
+                `Enter the onsite check fee amount (in Naira):\n\n` +
+                `This fee covers transportation and serves as commitment from the customer.\n\n` +
+                `Your bank details:\n` +
+                `Bank: ${finalCompanyData.bank_name}\n` +
+                `Account: ${finalCompanyData.account_number}\n` +
+                `Name: ${finalCompanyData.account_name}\n\n` +
+                `Enter amount (e.g., 5000):`
+            );
+
+            if (!feeInput) return;
+
+            const onsiteFee = parseFloat(feeInput);
+            if (isNaN(onsiteFee) || onsiteFee <= 0) {
+                alert('Please enter a valid amount.');
+                return;
+            }
+
+            if (!window.confirm(
+                `Request onsite check with fee of ₦${onsiteFee.toLocaleString()}?\n\n` +
+                `Customer will need to pay this amount directly to your bank account before you visit.`
+            )) {
+                return;
+            }
+
             // Update job with onsite fee details
             const { error } = await supabase
                 .from('jobs')
                 .update({
-                    status: 'onsite_fee_requested', // NEW STATUS
+                    status: 'onsite_fee_requested',
                     onsite_fee_requested: true,
                     onsite_fee_amount: onsiteFee,
                     onsite_fee_bank_details: JSON.stringify({
-                        bank_name: companyData.bank_name,
-                        account_number: companyData.account_number,
-                        account_name: companyData.account_name
+                        bank_name: finalCompanyData.bank_name,
+                        account_number: finalCompanyData.account_number,
+                        account_name: finalCompanyData.account_name,
+                        company_name: finalCompanyData.company_name
                     }),
                     updated_at: new Date().toISOString()
                 })
@@ -475,12 +507,12 @@ export default function JobsSection({
                     job_id: jobId,
                     type: 'onsite_fee_requested',
                     title: 'Onsite Check Fee Requested',
-                    message: `Company has requested an onsite check. Please pay ₦${onsiteFee.toLocaleString()} to their bank account to proceed.`,
+                    message: `${finalCompanyData.company_name || 'Company'} has requested an onsite check. Please pay ₦${onsiteFee.toLocaleString()} to their bank account to proceed.`,
                     read: false,
                     created_at: new Date().toISOString(),
                     metadata: {
                         fee_amount: onsiteFee,
-                        bank_details: companyData
+                        bank_details: finalCompanyData
                     }
                 });
             }
