@@ -1,11 +1,14 @@
+// src/components/AuthCheck.jsx - FIXED VERSION
 import React, { useEffect, useState, useRef } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
+import { useLocation } from 'react-router-dom';
 
 const AuthCheck = ({ children }) => {
     const { getCurrentUser, getSession } = useSupabase();
     const [authStatus, setAuthStatus] = useState('checking'); // 'checking', 'authenticated', 'unauthenticated'
     const hasChecked = useRef(false);
     const [hasLoaded, setHasLoaded] = useState(false);
+    const location = useLocation(); // Get current location
 
     useEffect(() => {
         // Skip if we've already checked
@@ -14,9 +17,17 @@ const AuthCheck = ({ children }) => {
         const verifyAuth = async () => {
             try {
                 console.log('AuthCheck - Initial authentication check...');
+                console.log('Current path:', location.pathname);
+
+                // Give a small delay for Supabase to establish session after login
+                if (location.pathname === '/login') {
+                    console.log('On login page, adding extra delay...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
 
                 // Try to get current user
                 const user = await getCurrentUser();
+                console.log('AuthCheck - getCurrentUser result:', user ? 'User found' : 'No user');
 
                 if (user) {
                     console.log('✅ AuthCheck - User authenticated:', user.email);
@@ -28,6 +39,7 @@ const AuthCheck = ({ children }) => {
 
                 // Try to get session
                 const session = await getSession();
+                console.log('AuthCheck - getSession result:', session ? 'Session found' : 'No session');
 
                 if (session) {
                     console.log('✅ AuthCheck - Session found:', session.user.email);
@@ -52,7 +64,18 @@ const AuthCheck = ({ children }) => {
         };
 
         verifyAuth();
-    }, [getCurrentUser, getSession]);
+    }, [getCurrentUser, getSession, location.pathname]);
+
+    // Reset check when location changes (for login/logout)
+    useEffect(() => {
+        // When path changes to login, reset the check
+        if (location.pathname === '/login') {
+            console.log('Reset auth check for login page');
+            hasChecked.current = false;
+            setHasLoaded(false);
+            setAuthStatus('checking');
+        }
+    }, [location.pathname]);
 
     // Add visibility change handler to prevent re-checks
     useEffect(() => {
@@ -86,9 +109,16 @@ const AuthCheck = ({ children }) => {
 
     // If unauthenticated but in a protected route, show login prompt
     if (authStatus === 'unauthenticated') {
-        const isProtectedRoute = !['/', '/login'].includes(window.location.pathname);
+        const isProtectedRoute = !['/', '/login'].includes(location.pathname);
+
+        console.log('AuthCheck - Checking if protected route:', {
+            pathname: location.pathname,
+            isProtectedRoute,
+            authStatus
+        });
 
         if (isProtectedRoute) {
+            console.log('AuthCheck - Showing login prompt for protected route');
             return (
                 <div className="min-h-screen bg-gradient-to-br from-naijaGreen to-darkGreen flex items-center justify-center">
                     <div className="text-center text-white max-w-md p-8">
@@ -101,7 +131,7 @@ const AuthCheck = ({ children }) => {
                         <p className="mb-6 opacity-90">You need to login to access this page.</p>
                         <button
                             onClick={() => {
-                                window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+                                window.location.href = '/login?redirect=' + encodeURIComponent(location.pathname);
                             }}
                             className="bg-white text-naijaGreen font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
                         >
@@ -114,6 +144,7 @@ const AuthCheck = ({ children }) => {
     }
 
     // If authenticated or on public route, show children
+    console.log('AuthCheck - Rendering children, authStatus:', authStatus);
     return children;
 };
 
