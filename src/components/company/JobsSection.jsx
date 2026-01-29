@@ -400,45 +400,30 @@ export default function JobsSection({
 
     const handleRequestOnsiteCheck = async (jobId) => {
         try {
-            // First, get the company's details using the user's ID
+            console.log('DEBUG: Fetching company for user:', user.id);
+
+            // Get company data - companies.id should match user.id
             const { data: companyData, error: companyError } = await supabase
                 .from('companies')
-                .select('id, company_name, bank_name, account_number, account_name')
-                .eq('user_id', user.id)  // Changed from .eq('id', user.id) to .eq('user_id', user.id)
+                .select('id, company_name, bank_name, bank_account, email') // Use bank_account, not account_number
+                .eq('id', user.id)
                 .single();
 
-            console.log('Company data fetch:', {
-                user_id: user.id,
-                companyData,
-                companyError
-            });
+            console.log('Company data:', { companyData, companyError, userId: user.id });
 
             if (companyError) {
                 console.error('Company fetch error:', companyError);
-
-                // Try alternative: maybe the company ID is stored differently
-                const { data: altCompanyData, error: altError } = await supabase
-                    .from('companies')
-                    .select('id, company_name, bank_name, account_number, account_name')
-                    .eq('id', user.id)  // Try with user.id as company.id
-                    .single();
-
-                if (altError || !altCompanyData) {
-                    alert('Company profile not found. Please complete your company registration first.');
-                    return;
-                }
-
-                // Use alternative data
-                var finalCompanyData = altCompanyData;
-            } else if (!companyData) {
                 alert('Company profile not found. Please complete your company registration first.');
                 return;
-            } else {
-                var finalCompanyData = companyData;
+            }
+
+            if (!companyData) {
+                alert('Company profile not found. Please complete your company registration first.');
+                return;
             }
 
             // Check if bank details exist
-            if (!finalCompanyData.bank_name || !finalCompanyData.account_number || !finalCompanyData.account_name) {
+            if (!companyData.bank_name || !companyData.bank_account) {
                 alert('Please update your bank details in your company profile before requesting onsite check.');
                 return;
             }
@@ -448,9 +433,9 @@ export default function JobsSection({
                 `Enter the onsite check fee amount (in Naira):\n\n` +
                 `This fee covers transportation and serves as commitment from the customer.\n\n` +
                 `Your bank details:\n` +
-                `Bank: ${finalCompanyData.bank_name}\n` +
-                `Account: ${finalCompanyData.account_number}\n` +
-                `Name: ${finalCompanyData.account_name}\n\n` +
+                `Bank: ${companyData.bank_name}\n` +
+                `Account: ${companyData.bank_account}\n` +
+                `Name: ${companyData.company_name} (company name)\n\n` +
                 `Enter amount (e.g., 5000):`
             );
 
@@ -470,23 +455,26 @@ export default function JobsSection({
             }
 
             // Update job with onsite fee details
-            const { error } = await supabase
+            const { error: updateError } = await supabase
                 .from('jobs')
                 .update({
                     status: 'onsite_fee_requested',
                     onsite_fee_requested: true,
                     onsite_fee_amount: onsiteFee,
                     onsite_fee_bank_details: JSON.stringify({
-                        bank_name: finalCompanyData.bank_name,
-                        account_number: finalCompanyData.account_number,
-                        account_name: finalCompanyData.account_name,
-                        company_name: finalCompanyData.company_name
+                        bank_name: companyData.bank_name,
+                        account_number: companyData.bank_account, // Using bank_account
+                        account_name: companyData.company_name, // Using company_name as account name
+                        company_name: companyData.company_name
                     }),
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', jobId);
 
-            if (error) throw error;
+            if (updateError) {
+                console.error('Job update error:', updateError);
+                throw updateError;
+            }
 
             console.log('=== DEBUG: Creating onsite fee notification ===');
             console.log('Job ID:', jobId);
@@ -507,12 +495,16 @@ export default function JobsSection({
                     job_id: jobId,
                     type: 'onsite_fee_requested',
                     title: 'Onsite Check Fee Requested',
-                    message: `${finalCompanyData.company_name || 'Company'} has requested an onsite check. Please pay ₦${onsiteFee.toLocaleString()} to their bank account to proceed.`,
+                    message: `${companyData.company_name} has requested an onsite check. Please pay ₦${onsiteFee.toLocaleString()} to their bank account to proceed.`,
                     read: false,
                     created_at: new Date().toISOString(),
                     metadata: {
                         fee_amount: onsiteFee,
-                        bank_details: finalCompanyData
+                        bank_details: {
+                            bank_name: companyData.bank_name,
+                            account_number: companyData.bank_account,
+                            account_name: companyData.company_name
+                        }
                     }
                 });
             }
