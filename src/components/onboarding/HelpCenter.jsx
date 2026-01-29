@@ -121,7 +121,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                     <div className="bg-white p-3 rounded-lg border">
                                         <div className="flex items-center justify-between">
                                             <code className="text-gray-800 text-lg sm:text-xl font-bold tracking-wide">
-                                                0707 311 8697
+                                                0813 9672 432
                                             </code>
                                             <div className="text-xs text-gray-500">NG</div>
                                         </div>
@@ -129,7 +129,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             onClick={() => {
-                                                window.location.href = 'tel:+2347073118697';
+                                                window.location.href = 'tel:+2348139672432';
                                             }}
                                             className="py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2"
                                         >
@@ -140,7 +140,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                navigator.clipboard.writeText('07073118697');
+                                                navigator.clipboard.writeText('08139672432');
                                                 alert('Phone number copied to clipboard!');
                                             }}
                                             className="py-3 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 flex items-center justify-center gap-2"
@@ -168,7 +168,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                 <button
                                     onClick={() => {
                                         const message = encodeURIComponent("Hello, I need help with Mount platform");
-                                        window.open(`https://wa.me/2347073118697?text=${message}`, '_blank');
+                                        window.open(`https://wa.me/2348139672432?text=${message}`, '_blank');
                                     }}
                                     className="w-full py-3 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 flex items-center justify-center gap-2"
                                 >
@@ -259,224 +259,224 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                 );
 
             case 'video':
-    return (
-        <div className="space-y-6">
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Video Tutorials</h3>
-            <p className="text-gray-600 mb-4">
-                Quick video guides to help you use Mount effectively
-            </p>
+                return (
+                    <div className="space-y-6">
+                        <h3 className="text-xl font-bold text-gray-800 mb-2">Video Tutorials</h3>
+                        <p className="text-gray-600 mb-4">
+                            Quick video guides to help you use Mount effectively
+                        </p>
 
-            {/* Video Grid */}
-            <div className="space-y-4">
-                {/* 1. How to Post a Job */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="p-4">
-                        <div className="flex items-start gap-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-lg">📝</span>
+                        {/* Video Grid */}
+                        <div className="space-y-4">
+                            {/* 1. How to Post a Job */}
+                            <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <span className="text-lg">📝</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-800 text-base">How to Post a Job</h4>
+                                            <p className="text-gray-600 text-sm">Step-by-step guide to creating job requests</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                    ⏱️ YouTube Short
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* YouTube Shorts Player */}
+                                    <div className="aspect-[9/16] max-w-[300px] mx-auto bg-black rounded-xl overflow-hidden mb-3 border-4 border-white shadow-lg">
+                                        <iframe
+                                            src="https://www.youtube.com/embed/XsekD9aBfmE?rel=0&modestbranding=1"
+                                            title="How to Post a Job - Mount Tutorial"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            className="w-full h-full"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            window.open('https://youtube.com/shorts/XsekD9aBfmE', '_blank', 'noopener,noreferrer');
+                                        }}
+                                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                                        </svg>
+                                        Watch on YouTube
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-gray-800 text-base">How to Post a Job</h4>
-                                <p className="text-gray-600 text-sm">Step-by-step guide to creating job requests</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                        ⏱️ YouTube Short
-                                    </span>
+
+                            {/* 2. How to Leave a Review */}
+                            <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <span className="text-lg">⭐</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-800 text-base">How to Leave a Review</h4>
+                                            <p className="text-gray-600 text-sm">Leaving feedback for service providers</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                    ⏱️ YouTube Short
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="aspect-[9/16] max-w-[300px] mx-auto bg-black rounded-xl overflow-hidden mb-3 border-4 border-white shadow-lg">
+                                        <iframe
+                                            src="https://www.youtube.com/embed/irF11sxFX4s?rel=0&modestbranding=1"
+                                            title="How to Leave a Review - Mount Tutorial"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            className="w-full h-full"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            window.open('https://youtube.com/shorts/irF11sxFX4s', '_blank', 'noopener,noreferrer');
+                                        }}
+                                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                                        </svg>
+                                        Watch on YouTube
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 3. How to Get Verified */}
+                            <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <span className="text-lg">✅</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-800 text-base">How to Get Verified</h4>
+                                            <p className="text-gray-600 text-sm">Account verification process</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                    ⏱️ YouTube Short
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="aspect-[9/16] max-w-[300px] mx-auto bg-black rounded-xl overflow-hidden mb-3 border-4 border-white shadow-lg">
+                                        <iframe
+                                            src="https://www.youtube.com/embed/IlGfkt6JlQE?rel=0&modestbranding=1"
+                                            title="How to Get Verified - Mount Tutorial"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            className="w-full h-full"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            window.open('https://youtube.com/shorts/IlGfkt6JlQE', '_blank', 'noopener,noreferrer');
+                                        }}
+                                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                                        </svg>
+                                        Watch on YouTube
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 4. How to Make Payments */}
+                            <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <span className="text-lg">💳</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-gray-800 text-base">How to Make Payments</h4>
+                                            <p className="text-gray-600 text-sm">Secure payment process explained</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                    ⏱️ Regular Video
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="aspect-video bg-black rounded-lg overflow-hidden mb-3">
+                                        <iframe
+                                            src="https://www.youtube.com/embed/IaSRhF8sqTU?rel=0&modestbranding=1"
+                                            title="How to Make Payments - Mount Tutorial"
+                                            frameBorder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowFullScreen
+                                            className="w-full h-full"
+                                            loading="lazy"
+                                        ></iframe>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            window.open('https://youtu.be/IaSRhF8sqTU', '_blank', 'noopener,noreferrer');
+                                        }}
+                                        className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                                        </svg>
+                                        Watch on YouTube
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                        
-                        {/* YouTube Shorts Player */}
-                        <div className="aspect-[9/16] max-w-[300px] mx-auto bg-black rounded-xl overflow-hidden mb-3 border-4 border-white shadow-lg">
-                            <iframe
-                                src="https://www.youtube.com/embed/XsekD9aBfmE?rel=0&modestbranding=1"
-                                title="How to Post a Job - Mount Tutorial"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                                loading="lazy"
-                            ></iframe>
-                        </div>
-                        
-                        <button
-                            onClick={() => {
-                                window.open('https://youtube.com/shorts/XsekD9aBfmE', '_blank', 'noopener,noreferrer');
-                            }}
-                            className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
-                        >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                            </svg>
-                            Watch on YouTube
-                        </button>
-                    </div>
-                </div>
 
-                {/* 2. How to Leave a Review */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="p-4">
-                        <div className="flex items-start gap-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-lg">⭐</span>
+                        {/* Helpful Tips */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mt-6">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="text-blue-600 text-xl">🎯</span>
+                                <h4 className="font-bold text-blue-800">Need More Help?</h4>
                             </div>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-gray-800 text-base">How to Leave a Review</h4>
-                                <p className="text-gray-600 text-sm">Leaving feedback for service providers</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                        ⏱️ YouTube Short
-                                    </span>
-                                </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setSelectedOption('support')}
+                                    className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors text-left"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-blue-600">📞</span>
+                                        <span className="font-medium text-blue-800 text-sm">Contact Support</span>
+                                    </div>
+                                    <p className="text-blue-600 text-xs mt-1">Get direct help from our team</p>
+                                </button>
+                                <button
+                                    onClick={() => setSelectedOption('faq')}
+                                    className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors text-left"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-blue-600">❓</span>
+                                        <span className="font-medium text-blue-800 text-sm">Read FAQs</span>
+                                    </div>
+                                    <p className="text-blue-600 text-xs mt-1">Common questions answered</p>
+                                </button>
                             </div>
                         </div>
-                        
-                        <div className="aspect-[9/16] max-w-[300px] mx-auto bg-black rounded-xl overflow-hidden mb-3 border-4 border-white shadow-lg">
-                            <iframe
-                                src="https://www.youtube.com/embed/irF11sxFX4s?rel=0&modestbranding=1"
-                                title="How to Leave a Review - Mount Tutorial"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                                loading="lazy"
-                            ></iframe>
-                        </div>
-                        
-                        <button
-                            onClick={() => {
-                                window.open('https://youtube.com/shorts/irF11sxFX4s', '_blank', 'noopener,noreferrer');
-                            }}
-                            className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
-                        >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                            </svg>
-                            Watch on YouTube
-                        </button>
                     </div>
-                </div>
-
-                {/* 3. How to Get Verified */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="p-4">
-                        <div className="flex items-start gap-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-lg">✅</span>
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-gray-800 text-base">How to Get Verified</h4>
-                                <p className="text-gray-600 text-sm">Account verification process</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                        ⏱️ YouTube Short
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="aspect-[9/16] max-w-[300px] mx-auto bg-black rounded-xl overflow-hidden mb-3 border-4 border-white shadow-lg">
-                            <iframe
-                                src="https://www.youtube.com/embed/IlGfkt6JlQE?rel=0&modestbranding=1"
-                                title="How to Get Verified - Mount Tutorial"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                                loading="lazy"
-                            ></iframe>
-                        </div>
-                        
-                        <button
-                            onClick={() => {
-                                window.open('https://youtube.com/shorts/IlGfkt6JlQE', '_blank', 'noopener,noreferrer');
-                            }}
-                            className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
-                        >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                            </svg>
-                            Watch on YouTube
-                        </button>
-                    </div>
-                </div>
-
-                {/* 4. How to Make Payments */}
-                <div className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="p-4">
-                        <div className="flex items-start gap-3 mb-3">
-                            <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-lg">💳</span>
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="font-bold text-gray-800 text-base">How to Make Payments</h4>
-                                <p className="text-gray-600 text-sm">Secure payment process explained</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
-                                        ⏱️ Regular Video
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="aspect-video bg-black rounded-lg overflow-hidden mb-3">
-                            <iframe
-                                src="https://www.youtube.com/embed/IaSRhF8sqTU?rel=0&modestbranding=1"
-                                title="How to Make Payments - Mount Tutorial"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                                loading="lazy"
-                            ></iframe>
-                        </div>
-                        
-                        <button
-                            onClick={() => {
-                                window.open('https://youtu.be/IaSRhF8sqTU', '_blank', 'noopener,noreferrer');
-                            }}
-                            className="w-full py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
-                        >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                            </svg>
-                            Watch on YouTube
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Helpful Tips */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mt-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <span className="text-blue-600 text-xl">🎯</span>
-                    <h4 className="font-bold text-blue-800">Need More Help?</h4>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
-                        onClick={() => setSelectedOption('support')}
-                        className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors text-left"
-                    >
-                        <div className="flex items-center gap-2">
-                            <span className="text-blue-600">📞</span>
-                            <span className="font-medium text-blue-800 text-sm">Contact Support</span>
-                        </div>
-                        <p className="text-blue-600 text-xs mt-1">Get direct help from our team</p>
-                    </button>
-                    <button
-                        onClick={() => setSelectedOption('faq')}
-                        className="p-3 bg-white border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors text-left"
-                    >
-                        <div className="flex items-center gap-2">
-                            <span className="text-blue-600">❓</span>
-                            <span className="font-medium text-blue-800 text-sm">Read FAQs</span>
-                        </div>
-                        <p className="text-blue-600 text-xs mt-1">Common questions answered</p>
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
+                );
 
             default:
                 return (
@@ -521,7 +521,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                         <span className="text-green-600">📱</span>
                                         <span className="text-sm text-gray-700">Phone:</span>
                                     </div>
-                                    <code className="text-green-600 text-sm font-bold">0707 311 8697</code>
+                                    <code className="text-green-600 text-sm font-bold">0813 9672 432</code>
                                 </div>
                             </div>
                         </div>

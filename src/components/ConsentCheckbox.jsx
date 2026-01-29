@@ -37,13 +37,13 @@ const ConsentCheckbox = ({ onAccept, initialAccepted = false }) => {
                             >
                                 Terms and Conditions
                             </button>
-                            {' '}and{' '}
+                            {' '},{' '}
                             <button
                                 type="button"
                                 onClick={() => setShowPrivacy(true)}
                                 className="text-naijaGreen hover:underline font-semibold"
                             >
-                                Privacy Policy
+                                Privacy Policy and Cookies Policy
                             </button>
                         </span>
                         <p className="text-gray-600 text-xs sm:text-sm mt-1">

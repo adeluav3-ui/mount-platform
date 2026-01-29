@@ -18,10 +18,11 @@ export default function Step3Wait({ selectedCompany, tempSelectedCompany }) {
                 Job Sent to {company.company_name}!
             </h2>
             <p className="text-lg text-gray-700">
-                Please wait 3–5 minutes while they review your job and set the exact price.
+                Please wait 15–30 minutes while they review your job and set the exact price.
             </p>
             <p className="text-sm text-gray-500 mt-4">
                 You will be notified when they respond.
+                Please ensure all job payments are made through Mount to stay protected.
             </p>
         </div>
     )
