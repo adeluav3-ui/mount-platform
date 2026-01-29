@@ -271,7 +271,7 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                 {/* Footer Info */}
                                 <div className="border-t pt-4 text-xs text-gray-600">
                                     <p>
-                                        <strong>Effective Date:</strong> 28-01-26<br />
+                                        <strong>Effective Date:</strong> 01-02-26<br />
                                         <strong>Last Updated:</strong> 29-01-2026<br />
                                         <strong>Compliance:</strong> Nigeria Data Protection Act (NDPA) 2023
                                     </p>

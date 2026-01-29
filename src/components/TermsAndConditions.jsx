@@ -1,4 +1,4 @@
-// src/components/TermsAndConditions.jsx - MOBILE OPTIMIZED
+// src/components/TermsAndConditions.jsx - UPDATED WITH COMPREHENSIVE TERMS
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -38,10 +38,10 @@ const TermsAndConditions = ({ isOpen, onAccept, onClose }) => {
                                 <div className="flex justify-between items-center">
                                     <div>
                                         <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                                            Terms and Conditions
+                                            TERMS AND CONDITIONS FOR MOUNT LTD
                                         </h2>
                                         <p className="text-white/90 text-xs sm:text-sm mt-0.5">
-                                            Please read and accept to continue
+                                            Last Updated: 28-01-26
                                         </p>
                                     </div>
                                     <button
@@ -55,7 +55,7 @@ const TermsAndConditions = ({ isOpen, onAccept, onClose }) => {
 
                             {/* Content - Scrollable */}
                             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                                <div className="space-y-4 text-gray-700 text-sm sm:text-base">
+                                <div className="space-y-6 text-gray-700 text-sm sm:text-base">
                                     {/* Important Notice */}
                                     <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4">
                                         <div className="flex items-start">
@@ -64,108 +64,337 @@ const TermsAndConditions = ({ isOpen, onAccept, onClose }) => {
                                             </div>
                                             <div className="ml-3">
                                                 <h3 className="font-bold text-red-800 text-sm sm:text-base">
-                                                    Important Legal Notice
+                                                    LEGAL AGREEMENT
                                                 </h3>
                                                 <p className="text-red-700 text-xs sm:text-sm mt-0.5">
-                                                    By using our platform, you agree to these legally binding terms.
+                                                    By using our platform, you enter into a legally binding agreement with Mount Limited.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Section 1 */}
+                                    {/* Section 1: INTRODUCTION */}
                                     <div>
                                         <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
-                                            1. Payment Obligations
+                                            1. INTRODUCTION
                                         </h3>
                                         <div className="space-y-2">
                                             <p>
-                                                <strong>1.1 Deposit Payment:</strong> Upon accepting a quote, you agree to pay a 50% deposit. This deposit secures your booking and covers initial material costs.
+                                                These Terms and Conditions ("Terms") govern your access to and use of the Mount Ltd platform, website, mobile application, and related services (collectively, the "Platform").
                                             </p>
                                             <p>
-                                                <strong>1.2 Final Payment:</strong> You agree to pay the remaining 50% balance within <strong>24 hours</strong> of work completion notification.
+                                                Mount Limited ("Mount", "we", "our", or "us") is a technology-enabled marketplace that connects customers seeking services with independent, verified service providers. By accessing or using the Platform, you acknowledge that you have read, understood, and agreed to be bound by these Terms, our Privacy & Cookies Policy, and any other policies referenced herein.
                                             </p>
-                                            <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                                                <p className="font-bold text-red-600 text-sm sm:text-base mb-1">
-                                                    ⚠️ Legal Consequences:
-                                                </p>
-                                                <p className="text-xs sm:text-sm text-red-700 mb-1">
-                                                    Failure to pay the final balance constitutes breach of contract. We reserve the right to:
-                                                </p>
-                                                <ul className="list-disc pl-4 text-xs sm:text-sm space-y-0.5">
-                                                    <li>Initiate legal proceedings for recovery of owed amounts</li>
-                                                    <li>Permanent suspension from the platform</li>
-                                                    <li>Engage debt collection agencies at your expense</li>
+                                            <p>
+                                                These Terms constitute a legally binding agreement between you and Mount Limited. If you do not agree to any part of these Terms, you must not access or use the Platform.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 2: ACCEPTANCE OF TERMS */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            2. ACCEPTANCE OF TERMS
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <p>By creating an Account, submitting a service request, accepting a quote, or making any payment on the Platform, you confirm that:</p>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                <li>You are at least 18 years of age;</li>
+                                                <li>You have the legal capacity to enter into a binding contract; and</li>
+                                                <li>You agree to comply with these Terms and all applicable Nigerian laws and regulations.</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 3: NATURE OF THE AGREEMENT */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            3. NATURE OF THE AGREEMENT
+                                        </h3>
+                                        <p>
+                                            Mount provides a marketplace and facilitation service only. We do not perform, supervise, or control the services provided by Service Providers. Any service agreement entered into is strictly between the Customer and the Service Provider, subject to these Terms.
+                                        </p>
+                                    </div>
+
+                                    {/* Section 4: SCOPE OF SERVICES */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            4. SCOPE OF SERVICES
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <p>Mount operates a digital marketplace that enables Customers to:</p>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                <li>Request services from verified Service Providers;</li>
+                                                <li>Receive and compare quotes from Service Providers;</li>
+                                                <li>Make payments through the Platform in accordance with Mount's payment structure; and</li>
+                                                <li>Access dispute resolution support where necessary.</li>
+                                            </ul>
+                                            <p>
+                                                Mount does not itself provide the services listed on the Platform. All services are performed solely by independent Service Providers.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 5: PLATFORM ROLE AND DISCLAIMER */}
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 sm:p-4">
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            5. PLATFORM ROLE AND DISCLAIMER
+                                        </h3>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">a. Marketplace Role</h4>
+                                                <p>Mount acts solely as an intermediary platform facilitating interactions between Customers and Service Providers. Mount is not a party to any service agreement entered into between a Customer and a Service Provider.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">b. No Employment or Agency Relationship</h4>
+                                                <p>Nothing in these Terms shall be construed as creating an employment relationship, a partnership, a joint venture, or an agency relationship between Mount and any Service Provider.</p>
+                                                <p className="mt-1">Service Providers operate as independent contractors and are solely responsible for the services they provide.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">c. No Guarantee of Outcomes</h4>
+                                                <p>While Mount takes reasonable steps to verify Service Providers, we do not guarantee:</p>
+                                                <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                                                    <li>The quality, suitability, legality, or completion of any service;</li>
+                                                    <li>That services will meet a Customer's expectations; or</li>
+                                                    <li>That a Service Provider will be available at any specific time.</li>
                                                 </ul>
                                             </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">d. Service Listings and Quotes</h4>
+                                                <p>All service descriptions, quotes, timelines, and deliverables are provided by Service Providers. Mount does not warrant the accuracy or completeness of such information.</p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Section 2 */}
+                                    {/* Section 6: MODIFICATION OR SUSPENSION OF PLATFORM */}
                                     <div>
                                         <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
-                                            2. Service Provider Relationship
+                                            6. MODIFICATION OR SUSPENSION OF PLATFORM
                                         </h3>
                                         <div className="space-y-2">
-                                            <p>
-                                                <strong>2.1 Platform Role:</strong> We act as a marketplace connecting you with verified service providers. We are not party to the service agreement between you and the provider.
-                                            </p>
-                                            <p>
-                                                <strong>2.2 Quality Assurance:</strong> While we verify service providers, we do not guarantee specific outcomes. Disputes regarding work quality should be resolved through our dispute resolution process before final payment.
-                                            </p>
+                                            <p>Mount reserves the right to:</p>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                <li>Modify, update, suspend, or discontinue any aspect of the Platform at any time;</li>
+                                                <li>Restrict access to certain features or services without prior notice where required for security, legal, or operational reasons.</li>
+                                            </ul>
+                                            <p>Such actions shall not give rise to any liability on the part of Mount.</p>
                                         </div>
                                     </div>
 
-                                    {/* Section 3 */}
+                                    {/* Section 7: PROMOTIONAL OFFERS */}
                                     <div>
                                         <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
-                                            3. Dispute Resolution
+                                            7. PROMOTIONAL OFFERS
                                         </h3>
-                                        <div className="space-y-2">
-                                            <p>
-                                                <strong>3.1 Platform Mediation:</strong> All payment disputes must first be submitted through our platform's dispute resolution system.
-                                            </p>
-                                            <p>
-                                                <strong>3.2 Legal Jurisdiction:</strong> Any legal proceedings shall be governed by the laws of Nigeria and subject to the jurisdiction of Nigerian courts.
-                                            </p>
-                                        </div>
+                                        <p>
+                                            Mount may, at its discretion, offer promotional benefits, including but not limited to: service fee waivers, discounted Platform Fees, or limited-time offers for new or existing users.
+                                        </p>
+                                        <p className="mt-2">
+                                            Promotional offers are subject to specific terms and may be withdrawn or modified at any time without notice.
+                                        </p>
                                     </div>
 
-                                    {/* Section 4 */}
+                                    {/* Section 8: ACCOUNT REGISTRATION */}
                                     <div>
                                         <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
-                                            4. Platform Usage
+                                            8. ACCOUNT REGISTRATION
                                         </h3>
                                         <div className="space-y-2">
-                                            <p>
-                                                <strong>4.1 Account Responsibility:</strong> You are responsible for all activities under your account.
-                                            </p>
-                                            <p>
-                                                <strong>4.2 Service Fees:</strong> You agree to pay applicable platform service fees as displayed during checkout.
-                                            </p>
-                                            <p>
-                                                <strong>4.3 Promotion Period:</strong> New customers receive a 3-month service fee waiver starting from their first job.
-                                            </p>
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">a. Account Creation</h4>
+                                                <p>To access and use the Platform, you must create an Account by providing accurate, complete, and up-to-date information as requested by Mount.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">b. Single Account Policy</h4>
+                                                <p>Each user is permitted to maintain only one Account unless otherwise approved by Mount in writing. Duplicate or fraudulent accounts may be suspended or terminated without notice.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">c. Account Accuracy</h4>
+                                                <p>You are solely responsible for ensuring that all information provided during registration remains accurate and current. Mount shall not be liable for any loss arising from inaccurate or outdated information supplied by you.</p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Section 5 - Data Protection */}
+                                    {/* Section 9: ACCOUNT SECURITY */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            9. ACCOUNT SECURITY
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">a. User Responsibility</h4>
+                                                <p>You are responsible for safeguarding your login credentials and for all activities conducted through your Account.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">b. Unauthorized Access</h4>
+                                                <p>You must notify Mount immediately upon becoming aware of any unauthorized use of your Account or suspected security breach. Mount shall not be liable for losses arising from unauthorized access caused by your negligence.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 10: SUSPENSION OR RESTRICTION, TERMINATION AND BREACH */}
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            10. SUSPENSION, RESTRICTION, TERMINATION AND BREACH
+                                        </h3>
+                                        <p>
+                                            Mount reserves the right, at its sole discretion, to suspend, restrict, or terminate your Account and access to the Platform, with or without notice, where:
+                                        </p>
+                                        <ul className="list-disc pl-4 mt-2 space-y-1">
+                                            <li>You breach any provision of these Terms or related policies;</li>
+                                            <li>You fail to meet payment obligations or engage in payment disputes in bad faith;</li>
+                                            <li>You provide false, misleading, or incomplete information;</li>
+                                            <li>There is suspected fraud, abuse, unlawful activity, or security risk;</li>
+                                            <li>Your continued use of the Platform may expose Mount or other users to legal, financial, or reputational risk.</li>
+                                        </ul>
+                                        <p className="mt-2">
+                                            Termination or suspension shall not affect Mount's right to recover outstanding fees, enforce payment obligations, or pursue legal remedies available under applicable law.
+                                        </p>
+                                    </div>
+
+                                    {/* Section 11: YOUR RESPONSIBILITIES */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            11. YOUR RESPONSIBILITIES
+                                        </h3>
+                                        <p>By using our services, you agree to:</p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            <li>Adhere to the Terms and Conditions of Mount and its subsidiaries;</li>
+                                            <li>Provide accurate and up-to-date information about you and your business where necessary;</li>
+                                            <li>Comply with all applicable laws and regulations, including those related to data privacy and consumer protection;</li>
+                                            <li>Safeguard your login credentials and account information.</li>
+                                        </ul>
+                                    </div>
+
+                                    {/* Section 12: DATA PRIVACY */}
                                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
                                         <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
-                                            5. Data Protection (NDPC 2023)
+                                            12. DATA PRIVACY
                                         </h3>
                                         <div className="space-y-2">
-                                            <p className="text-xs sm:text-sm text-blue-700 mb-1">
-                                                By using our platform, you acknowledge and consent to:
+                                            <p>
+                                                We will collect and process personal data in accordance with applicable privacy laws and our Privacy & Cookies Policy. Any information that you or other users provide to Us is subject to our Privacy & Cookies Policy, which governs our collection and use of your information.
                                             </p>
-                                            <ul className="list-disc pl-4 text-xs sm:text-sm space-y-0.5">
-                                                <li>Collection and processing of personal data including government-issued ID for verification</li>
-                                                <li>Data processing in compliance with Nigeria Data Protection Act 2023</li>
-                                                <li>Receiving communications related to your account and services</li>
-                                                <li>Our Privacy Policy which governs data protection practices</li>
-                                            </ul>
-                                            <p className="text-xs sm:text-sm text-blue-700 mt-1">
-                                                For details on data protection, please read our <span className="font-bold">Privacy Policy</span>.
+                                            <p>
+                                                You understand that through your use of the Services you consent to the collection and use (as outlined in the Privacy & Cookies Policy) of this information, including the transfer of this information to the Federal Republic of Nigeria or other countries for storage, processing and use by Us.
+                                            </p>
+                                            <p>
+                                                As part of providing you with the Services, we may need to provide you with certain communications, such as service announcements and administrative messages. These communications are considered part of the Services, which you may not be able to opt-out from receiving.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 13: SERVICE PROVIDER VERIFICATION */}
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            13. SERVICE PROVIDER VERIFICATION
+                                        </h3>
+                                        <div className="space-y-2">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">a. Enhanced Verification</h4>
+                                                <p>Service Providers may be subject to enhanced verification, including but not limited to:</p>
+                                                <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                                                    <li>Submission of professional credentials or certifications;</li>
+                                                    <li>Proof of business registration (where applicable);</li>
+                                                    <li>Bank account verification for payment purposes.</li>
+                                                </ul>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">b. Ongoing Compliance</h4>
+                                                <p>
+                                                    Mount reserves the right to re-verify Service Providers periodically or request additional documentation at any time. Failure to comply may result in suspension or removal from the Platform.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Section 14: LIMITATION OF LIABILITY */}
+                                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 sm:p-4">
+                                        <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">
+                                            14. LIMITATION OF LIABILITY
+                                        </h3>
+                                        <p className="text-sm italic mb-2">
+                                            Please read this section carefully as it limits the liability of Mount Ltd, its directors, officers, employees, agents, affiliates, partners, and licensors.
+                                        </p>
+
+                                        <div className="space-y-3">
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">a. Services Provided on an "AS-IS" and "AS-AVAILABLE" Basis</h4>
+                                                <p>Your access to and use of the Platform is at your own risk. The Platform is provided on an "AS-IS" and "AS-AVAILABLE" basis without warranties of any kind.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">b. Third-Party Services and Service Providers</h4>
+                                                <p>Mount does not perform, control, supervise, or guarantee the services provided by Service Providers. Mount shall not be liable for acts, omissions, or disputes arising between Customers and Service Providers.</p>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="font-semibold text-gray-700 mb-1">c. Limitation of Liability</h4>
+                                                <p>
+                                                    To the maximum extent permitted by law, Mount's aggregate liability shall not exceed the total Platform fees actually paid by you in respect of the transaction giving rise to the claim, or ₦100,000 (One Hundred Thousand Naira), whichever is lower.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Sections 15-19 (Concise) */}
+                                    <div className="space-y-3">
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">15. PAYMENT PROCESSING</h3>
+                                            <p>All payments must be completed using approved payment methods. You authorize Mount to process payments in accordance with these Terms.</p>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">16. NO CIRCUMVENTION</h3>
+                                            <p>Users shall not attempt to bypass the Platform's payment system. Any such attempt may result in immediate Account suspension or termination.</p>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">17. CHANGES TO TERMS</h3>
+                                            <p>We reserve the right to update these Terms at any time. Your continued use constitutes acceptance of revised terms.</p>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">18. FORCE MAJEURE</h3>
+                                            <p>Mount shall not be liable for failures arising from events beyond its reasonable control including natural disasters, government actions, or system failures.</p>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">19. SEVERABILITY</h3>
+                                            <p>If any provision is held invalid, the remaining provisions continue in full force and effect.</p>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">20. WAIVER</h3>
+                                            <p>Failure to enforce any right does not constitute a waiver unless stated in writing.</p>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">21. CONTACT INFORMATION</h3>
+                                            <p>For questions or concerns, contact us at <strong>mountservicesltd@gmail.com</strong>.</p>
+                                        </div>
+
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">22. ENTIRE AGREEMENT</h3>
+                                            <p>
+                                                These Terms, together with the Privacy & Cookies Policy, constitute the entire agreement between you and Mount Ltd and supersede all prior or contemporaneous agreements.
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 sm:p-4">
+                                            <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">23. ACCEPTANCE</h3>
+                                            <p>
+                                                By accessing or using the Platform, you acknowledge that you have read, understood, and agreed to be bound by these Terms and Conditions.
+                                            </p>
+                                            <p className="mt-2 font-semibold">
+                                                If you do not agree with any part of these Terms, you must refrain from using the Platform.
                                             </p>
                                         </div>
                                     </div>
@@ -181,17 +410,18 @@ const TermsAndConditions = ({ isOpen, onAccept, onClose }) => {
                                             />
                                             <div>
                                                 <span className="font-bold text-gray-800 text-sm sm:text-base">
-                                                    I HAVE READ AND UNDERSTAND THESE TERMS
+                                                    I HAVE READ AND UNDERSTAND ALL TERMS AND CONDITIONS
                                                 </span>
                                                 <p className="text-gray-600 mt-1 text-xs sm:text-sm">
-                                                    I acknowledge that:
+                                                    I acknowledge and confirm that:
                                                 </p>
                                                 <ul className="list-disc pl-4 mt-0.5 space-y-0.5 text-xs sm:text-sm">
-                                                    <li>I am legally bound by these terms</li>
-                                                    <li>Failure to pay final balance has legal consequences</li>
-                                                    <li>I am at least 18 years old</li>
-                                                    <li>All information provided is accurate</li>
-                                                    <li>I have read and agree to the Privacy Policy</li>
+                                                    <li>I am at least 18 years old with legal capacity to contract</li>
+                                                    <li>I have read and agree to all 23 sections of these Terms</li>
+                                                    <li>I understand Mount acts only as a marketplace platform</li>
+                                                    <li>I accept the liability limitations and dispute resolution process</li>
+                                                    <li>All information I have provided is accurate and complete</li>
+                                                    <li>I have read and agree to the Privacy & Cookies Policy</li>
                                                 </ul>
                                             </div>
                                         </label>
@@ -217,7 +447,7 @@ const TermsAndConditions = ({ isOpen, onAccept, onClose }) => {
                                     </button>
                                 </div>
                                 <p className="text-center text-gray-500 text-xs sm:text-sm mt-3">
-                                    By accepting, you enter into a legally binding agreement.
+                                    By accepting, you enter into a legally binding agreement with Mount Limited.
                                 </p>
                             </div>
                         </motion.div>
