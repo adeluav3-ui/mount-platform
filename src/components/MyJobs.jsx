@@ -271,6 +271,104 @@ export default function MyJobs({ onHasNewQuotes }) {
         }
     };
 
+    // PAY ONSITE FEE - Customer confirms they've paid the onsite fee
+    const handlePayOnsiteFee = async (jobId, feeAmount, companyName) => {
+        const confirmMessage = `Confirm that you've paid ₦${Number(feeAmount).toLocaleString()} to ${companyName}?\n\n` +
+            `After confirming:\n` +
+            `1. Company will be notified of your payment\n` +
+            `2. Company will visit your location for assessment\n` +
+            `3. Company will then provide a quote\n\n` +
+            `Click OK only if you've made the bank transfer.`;
+
+        if (!window.confirm(confirmMessage)) return;
+
+        setIsProcessing(jobId);
+
+        try {
+            // Update job to mark onsite fee as paid
+            const { error: updateError } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'onsite_fee_paid',
+                    onsite_fee_paid: true,
+                    onsite_fee_paid_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+
+            if (updateError) throw updateError;
+
+            // Notify the company
+            const job = jobs.find(j => j.id === jobId);
+            if (job && job.company_id) {
+                await supabase.from('notifications').insert({
+                    user_id: job.company_id,
+                    job_id: jobId,
+                    type: 'onsite_fee_paid',
+                    title: 'Onsite Fee Paid ✅',
+                    message: `Customer has confirmed payment of ₦${Number(feeAmount).toLocaleString()} for onsite check. You can now visit their location.`,
+                    metadata: {
+                        fee_amount: feeAmount,
+                        paid_at: new Date().toISOString()
+                    },
+                    read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            alert(`✅ Payment confirmed! ${companyName} has been notified and will visit your location soon.`);
+            loadJobs();
+
+        } catch (error) {
+            console.error('Error confirming onsite fee payment:', error);
+            alert('Failed to confirm payment. Please try again.');
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
+    // DECLINE ONSITE FEE - Customer doesn't want to pay
+    const handleDeclineOnsiteFee = async (jobId, companyName) => {
+        if (!window.confirm(`Decline the onsite check fee from ${companyName}?\n\nThis job will be cancelled.`)) return;
+
+        setIsProcessing(jobId);
+
+        try {
+            // Update job status
+            const { error } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'declined',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+
+            if (error) throw error;
+
+            // Notify company
+            const job = jobs.find(j => j.id === jobId);
+            if (job && job.company_id) {
+                await supabase.from('notifications').insert({
+                    user_id: job.company_id,
+                    job_id: jobId,
+                    type: 'onsite_fee_declined',
+                    title: 'Onsite Fee Declined',
+                    message: `Customer declined to pay the onsite check fee for job #${jobId}. Job has been cancelled.`,
+                    read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            alert('Onsite check declined. Job has been cancelled.');
+            loadJobs();
+        } catch (error) {
+            console.error('Error declining onsite fee:', error);
+            alert('Failed to decline onsite check. Please try again.');
+        } finally {
+            setIsProcessing(null);
+        }
+    };
+
     // DECLINE QUOTE - Notify company
     const handleDeclineQuote = async (jobId, companyName) => {
         if (!window.confirm(`Are you sure you want to decline the quote from ${companyName}?`)) return
@@ -585,6 +683,7 @@ Click OK to proceed to payment.`;
         if (status === 'work_rectified') return 'Issue Fixed - Review Work'
         if (status === 'declined_by_company') return 'Declined'
         if (status === 'declined') return 'Quote Declined'
+        if (status === 'onsite_fee_requested') return 'Onsite Check Fee Required'
         if (job.quoted_price && status === 'price_set') return 'Quote Available'
         return 'Awaiting Quotes'
     }
@@ -1259,12 +1358,117 @@ Click OK to proceed to payment.`;
                                         </div>
                                     )}
 
-                                    {/* NO QUOTE YET */}
-                                    {job.status === 'onsite_pending' && (
-                                        <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                            <p className="font-medium text-orange-700">
-                                                ⏳ Awaiting onsite check from {getCompanyName(job)}
-                                            </p>
+                                    {/* ONSITE FEE REQUESTED - Customer needs to pay fee */}
+                                    {job.status === 'onsite_fee_requested' && (
+                                        <div className="mb-6">
+                                            <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+                                                <div className="flex items-center mb-3">
+                                                    <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                    </svg>
+                                                    <p className="text-orange-700 font-medium">Onsite Check Fee Required</p>
+                                                </div>
+
+                                                <p className="text-orange-600 mb-4">
+                                                    {getCompanyName(job)} needs to visit your location for assessment.
+                                                    Please pay the onsite check fee to proceed.
+                                                </p>
+
+                                                {/* BANK DETAILS */}
+                                                <div className="bg-white p-4 rounded-lg border border-orange-300 mb-4">
+                                                    <h4 className="font-bold text-gray-800 mb-2">💳 Send Payment To:</h4>
+
+                                                    {job.onsite_fee_bank_details ? (
+                                                        (() => {
+                                                            let bankDetails;
+                                                            try {
+                                                                bankDetails = typeof job.onsite_fee_bank_details === 'string'
+                                                                    ? JSON.parse(job.onsite_fee_bank_details)
+                                                                    : job.onsite_fee_bank_details;
+                                                            } catch (e) {
+                                                                bankDetails = null;
+                                                            }
+
+                                                            return bankDetails ? (
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Bank:</span>
+                                                                        <span className="font-bold text-gray-800">{bankDetails.bank_name}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Account Number:</span>
+                                                                        <span className="font-bold text-gray-800">{bankDetails.account_number}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span className="text-gray-600">Account Name:</span>
+                                                                        <span className="font-bold text-gray-800">{bankDetails.account_name}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between border-t pt-2 mt-2">
+                                                                        <span className="text-gray-600 font-bold">Amount:</span>
+                                                                        <span className="text-xl font-bold text-orange-600">
+                                                                            ₦{Number(job.onsite_fee_amount || 0).toLocaleString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-gray-500">Bank details not available. Please contact the company.</p>
+                                                            )
+                                                        })()
+                                                    ) : (
+                                                        <p className="text-gray-500">Bank details not available. Please contact the company.</p>
+                                                    )}
+                                                </div>
+
+                                                {/* IMPORTANT WARNING */}
+                                                <div className="bg-red-50 border border-red-200 p-3 rounded-lg mb-4">
+                                                    <p className="text-red-700 text-sm font-bold">⚠️ IMPORTANT:</p>
+                                                    <p className="text-red-600 text-sm mt-1">
+                                                        • Send <strong>ONLY</strong> the onsite check fee ({job.onsite_fee_amount ? `₦${Number(job.onsite_fee_amount).toLocaleString()}` : 'the specified amount'})
+                                                    </p>
+                                                    <p className="text-red-600 text-sm mt-1">
+                                                        • <strong>DO NOT</strong> send job payment directly to this account
+                                                    </p>
+                                                    <p className="text-red-600 text-sm mt-1">
+                                                        • Job payments must be made through the app for escrow protection
+                                                    </p>
+                                                </div>
+
+                                                {/* PAYMENT ACTIONS */}
+                                                <div className="space-y-3">
+                                                    <button
+                                                        onClick={() => handlePayOnsiteFee(job.id, job.onsite_fee_amount, getCompanyName(job))}
+                                                        disabled={isProcessing === job.id}
+                                                        className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center"
+                                                    >
+                                                        {isProcessing === job.id ? (
+                                                            <>
+                                                                <svg className="animate-spin h-4 w-4 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                                </svg>
+                                                                Processing...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span className="mr-2">✅</span>
+                                                                I've Paid ₦{Number(job.onsite_fee_amount || 0).toLocaleString()}
+                                                            </>
+                                                        )}
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleDeclineOnsiteFee(job.id, getCompanyName(job))}
+                                                        disabled={isProcessing === job.id}
+                                                        className="w-full bg-white border-2 border-gray-400 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition disabled:opacity-50"
+                                                    >
+                                                        Decline Onsite Check
+                                                    </button>
+                                                </div>
+
+                                                <p className="text-orange-500 text-sm mt-3 text-center">
+                                                    After payment, company will visit your location and provide a quote.
+                                                </p>
+                                            </div>
                                         </div>
                                     )}
 

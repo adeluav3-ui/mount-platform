@@ -399,41 +399,98 @@ export default function JobsSection({
     }, [showJobs, supabase, user])
 
     const handleRequestOnsiteCheck = async (jobId) => {
-        if (!window.confirm("Request onsite check? This will notify the customer that you need to visit the location before giving a final quote.")) {
-            return
+        // First, get the company's bank details
+        const { data: companyData, error: companyError } = await supabase
+            .from('companies')
+            .select('bank_name, account_number, account_name')
+            .eq('id', user.id)
+            .single();
+
+        if (companyError || !companyData) {
+            alert('Please update your bank details in your profile before requesting onsite check.');
+            return;
+        }
+
+        // Ask for the onsite fee amount
+        const feeInput = prompt(
+            `Enter the onsite check fee amount (in Naira):\n\n` +
+            `This fee covers transportation and serves as commitment from the customer.\n\n` +
+            `Your bank details:\n` +
+            `Bank: ${companyData.bank_name}\n` +
+            `Account: ${companyData.account_number}\n` +
+            `Name: ${companyData.account_name}\n\n` +
+            `Enter amount (e.g., 5000):`
+        );
+
+        if (!feeInput) return;
+
+        const onsiteFee = parseFloat(feeInput);
+        if (isNaN(onsiteFee) || onsiteFee <= 0) {
+            alert('Please enter a valid amount.');
+            return;
+        }
+
+        if (!window.confirm(
+            `Request onsite check with fee of ₦${onsiteFee.toLocaleString()}?\n\n` +
+            `Customer will need to pay this amount directly to your bank account before you visit.`
+        )) {
+            return;
         }
 
         try {
+            // Update job with onsite fee details
             const { error } = await supabase
                 .from('jobs')
                 .update({
-                    status: 'onsite_pending',
+                    status: 'onsite_fee_requested', // NEW STATUS
+                    onsite_fee_requested: true,
+                    onsite_fee_amount: onsiteFee,
+                    onsite_fee_bank_details: JSON.stringify({
+                        bank_name: companyData.bank_name,
+                        account_number: companyData.account_number,
+                        account_name: companyData.account_name
+                    }),
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', jobId)
+                .eq('id', jobId);
 
-            if (error) throw error
+            if (error) throw error;
 
-            console.log('=== DEBUG: Creating onsite notification ===')
-            console.log('Job ID:', jobId)
-            console.log('Current user ID (company):', user.id)
+            console.log('=== DEBUG: Creating onsite fee notification ===');
+            console.log('Job ID:', jobId);
+            console.log('Onsite Fee:', onsiteFee);
 
             const { data: job } = await supabase
                 .from('jobs')
-                .select('customer_id')
+                .select('customer_id, category')
                 .eq('id', jobId)
-                .single()
+                .single();
 
-            console.log('Customer ID from job:', job?.customer_id)
+            console.log('Customer ID from job:', job?.customer_id);
 
-            await createCustomerNotification(jobId, 'onsite_requested')
+            // Create notification for customer
+            if (job?.customer_id) {
+                await supabase.from('notifications').insert({
+                    user_id: job.customer_id,
+                    job_id: jobId,
+                    type: 'onsite_fee_requested',
+                    title: 'Onsite Check Fee Requested',
+                    message: `Company has requested an onsite check. Please pay ₦${onsiteFee.toLocaleString()} to their bank account to proceed.`,
+                    read: false,
+                    created_at: new Date().toISOString(),
+                    metadata: {
+                        fee_amount: onsiteFee,
+                        bank_details: companyData
+                    }
+                });
+            }
 
-            alert('Onsite check requested! Customer has been notified.')
-            loadJobs()
+            alert(`✅ Onsite check fee requested!\n\nAmount: ₦${onsiteFee.toLocaleString()}\n\nCustomer has been notified to make payment.`);
+            loadJobs();
 
         } catch (error) {
-            console.error('Failed to request onsite check:', error)
-            alert('Error requesting onsite check. Please try again.')
+            console.error('Failed to request onsite check with fee:', error);
+            alert('Error requesting onsite check. Please try again.');
         }
     }
 
@@ -543,17 +600,20 @@ export default function JobsSection({
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4">
-                    <h3 className="text-xl font-bold text-naijaGreen mb-4">Request Onsite Check</h3>
+                    <h3 className="text-xl font-bold text-naijaGreen mb-4">Request Onsite Check with Fee</h3>
 
-                    <p className="text-gray-700 mb-6">
+                    <p className="text-gray-700 mb-4">
                         You're about to request an onsite check for:
                         <strong className="block mt-2 text-lg">{selectedJobForOnsite.sub_service || selectedJobForOnsite.category}</strong>
                     </p>
 
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                         <p className="text-sm text-yellow-800">
-                            <strong>Note:</strong> This will notify the customer that you need to visit their location
-                            to assess the job before providing a final quote.
+                            <strong>💰 Onsite Check Fee:</strong> You'll be prompted to enter a fee amount.
+                            This fee covers transportation and serves as customer commitment.
+                        </p>
+                        <p className="text-xs text-yellow-700 mt-2">
+                            Customer will pay this fee directly to your bank account before your visit.
                         </p>
                     </div>
 
@@ -575,7 +635,7 @@ export default function JobsSection({
                             }}
                             className="flex-1 bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors"
                         >
-                            Confirm Request
+                            Continue with Fee
                         </button>
                     </div>
                 </div>
@@ -728,7 +788,7 @@ export default function JobsSection({
                                                     </span>
                                                     <div className="flex-1">
                                                         <p className="text-gray-800 font-medium">{job.logistics_interstate_state}</p>
-                                                        <p className="text-xs text-gray-600 mt-1">
+                                                        <p className="text-xs atext-gray-600 mt-1">
                                                             State outside Ogun
                                                         </p>
                                                     </div>
@@ -820,23 +880,125 @@ export default function JobsSection({
                                 </span>
                             </div>
 
-                            {job.status === 'pending' && (
-                                <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedJobForOnsite(job)
-                                            setShowOnsiteModal(true)
-                                        }}
-                                        className="bg-orange-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-orange-700 transition-colors text-sm sm:text-base"
-                                    >
-                                        Request Onsite Check
-                                    </button>
-                                    <button
-                                        onClick={() => setJobToQuote(job)}
-                                        className="bg-naijaGreen text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors text-sm sm:text-base"
-                                    >
-                                        Send Quote Now
-                                    </button>
+                            {/* ONSITE FEE REQUESTED - Waiting for customer payment */}
+                            {job.status === 'onsite_fee_requested' && (
+                                <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">💰</span>
+                                        </div>
+                                        <div className="ml-3 flex-1">
+                                            <p className="font-bold text-orange-800 text-base sm:text-xl">Onsite Check Fee Requested</p>
+                                            <p className="text-orange-700 text-sm sm:text-base mt-1">
+                                                You've requested ₦{Number(job.onsite_fee_amount || 0).toLocaleString()} for onsite check.
+                                                Waiting for customer to make payment.
+                                            </p>
+
+                                            {job.onsite_fee_bank_details && (
+                                                <div className="mt-2 p-2 sm:p-3 bg-orange-100 border border-orange-300 rounded-lg">
+                                                    <p className="font-medium text-orange-800 text-xs sm:text-sm mb-1">Your Bank Details (Shared with customer):</p>
+                                                    {(() => {
+                                                        let bankDetails;
+                                                        try {
+                                                            bankDetails = typeof job.onsite_fee_bank_details === 'string'
+                                                                ? JSON.parse(job.onsite_fee_bank_details)
+                                                                : job.onsite_fee_bank_details;
+                                                        } catch (e) {
+                                                            bankDetails = null;
+                                                        }
+
+                                                        return bankDetails ? (
+                                                            <div className="text-orange-700 text-xs sm:text-sm space-y-1">
+                                                                <p><span className="font-medium">Bank:</span> {bankDetails.bank_name}</p>
+                                                                <p><span className="font-medium">Account:</span> {bankDetails.account_number}</p>
+                                                                <p><span className="font-medium">Name:</span> {bankDetails.account_name}</p>
+                                                            </div>
+                                                        ) : null
+                                                    })()}
+                                                </div>
+                                            )}
+
+                                            <div className="mt-3 bg-white p-3 sm:p-4 rounded-lg border border-orange-300">
+                                                <p className="font-medium text-gray-800 text-sm sm:text-base mb-1">Customer Contact:</p>
+                                                <p className="text-gray-700 text-sm">
+                                                    <span className="font-medium">Name:</span> {job.customer?.customer_name || 'Customer'}
+                                                </p>
+                                                <p className="text-gray-700 text-sm mt-1">
+                                                    <span className="font-medium">Phone:</span>
+                                                    <strong className="ml-2 text-orange-700">{job.customer?.phone || 'Check job details'}</strong>
+                                                </p>
+                                                <p className="text-gray-700 text-sm mt-1">
+                                                    <span className="font-medium">Location:</span> {job.location || 'Not specified'}
+                                                </p>
+                                            </div>
+
+                                            <p className="text-xs text-orange-600 mt-2">
+                                                Customer will confirm payment after transferring the fee. Once confirmed, you can visit their location.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ONSITE FEE PAID - Customer has paid, company can now visit */}
+                            {job.status === 'onsite_fee_paid' && (
+                                <div className="mt-4 p-3 sm:p-4 bg-green-50 border border-green-200 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">✅</span>
+                                        </div>
+                                        <div className="ml-3 flex-1">
+                                            <p className="font-bold text-green-800 text-base sm:text-xl">Onsite Fee Paid!</p>
+                                            <p className="text-green-700 text-sm sm:text-base mt-1">
+                                                Customer has paid ₦{Number(job.onsite_fee_amount || 0).toLocaleString()} for onsite check.
+                                                You can now visit their location for assessment.
+                                            </p>
+
+                                            <div className="mt-3 p-3 bg-green-100 border border-green-300 rounded-lg">
+                                                <p className="font-medium text-green-800 text-sm sm:text-base mb-1">Payment Confirmed:</p>
+                                                <div className="text-green-700 text-xs sm:text-sm space-y-1">
+                                                    <p>• Amount: ₦{Number(job.onsite_fee_amount || 0).toLocaleString()}</p>
+                                                    <p>• Paid at: {job.onsite_fee_paid_at ? new Date(job.onsite_fee_paid_at).toLocaleString() : 'Recently'}</p>
+                                                    <p>• This is for transportation and commitment fee</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3 bg-white p-3 sm:p-4 rounded-lg border border-green-300">
+                                                <p className="font-medium text-gray-800 text-sm sm:text-base mb-1">Visit Details:</p>
+                                                <div className="text-gray-700 text-sm space-y-1">
+                                                    <p><span className="font-medium">Customer:</span> {job.customer?.customer_name || 'Customer'}</p>
+                                                    <p><span className="font-medium">Phone:</span> <strong className="text-green-700">{job.customer?.phone || 'Check job details'}</strong></p>
+                                                    <p><span className="font-medium">Location:</span> {job.location || 'Not specified'}</p>
+                                                    <p><span className="font-medium">Address:</span> {job.exact_address || 'Not provided'}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                                                <button
+                                                    onClick={() => setJobToQuote(job)}
+                                                    className="flex-1 bg-naijaGreen text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-darkGreen transition-colors text-sm sm:text-base"
+                                                >
+                                                    Onsite Done - Send Quote
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        if (confirm('Have you visited the location? Click OK only after completing the onsite check.')) {
+                                                            // Optionally add notes or mark as visited
+                                                            alert('Great! Now send your quote using the button above.');
+                                                        }
+                                                    }}
+                                                    className="flex-1 border-2 border-green-600 text-green-600 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-green-50 transition-colors text-sm sm:text-base"
+                                                >
+                                                    Mark as Visited
+                                                </button>
+                                            </div>
+
+                                            <p className="text-xs text-green-600 mt-2">
+                                                After visiting, send your quote to the customer.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -844,7 +1006,7 @@ export default function JobsSection({
                                 <div className="mt-4 p-3 sm:p-4 bg-orange-50 border border-orange-200 rounded-xl">
                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         <div>
-                                            <p className="font-bold text-orange-800 text-sm sm:text-base">Onsite Check Requested</p>
+                                            <p className="font-bold text-orange-800 text-sm sm:text-base">Onsite Check Requested (Old Method)</p>
                                             <p className="text-orange-600 text-xs sm:text-sm mt-1">
                                                 Waiting for customer confirmation. Once onsite check is done, send your quote.
                                             </p>

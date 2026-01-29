@@ -45,6 +45,21 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
             const upfrontPayment = quotedPrice * 0.5;
             const platformFee = quotedPrice * 0.05;
 
+            // Get current job status before updating
+            const { data: currentJob, error: fetchError } = await supabase
+                .from('jobs')
+                .select('status, onsite_fee_paid, onsite_fee_amount')
+                .eq('id', actualJobId)
+                .single();
+
+            if (fetchError) {
+                console.error('Error fetching job status:', fetchError);
+            }
+
+            const hasOnsiteFeePaid = currentJob?.onsite_fee_paid || false;
+            const onsiteFeeAmount = currentJob?.onsite_fee_amount || 0;
+
+            // Update job with quote
             const { error: updateError } = await supabase
                 .from('jobs')
                 .update({
@@ -53,7 +68,7 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
                     final_payment: quotedPrice - upfrontPayment,
                     platform_fee: platformFee,
                     company_notes: notes || null,
-                    status: 'price_set',
+                    status: 'price_set', // Always set to price_set when quote is submitted
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', actualJobId)
@@ -65,11 +80,12 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
             }
 
             console.log('Quote updated successfully for job:', actualJobId);
+            console.log('Onsite fee status:', { hasOnsiteFeePaid, onsiteFeeAmount });
 
-            // Get complete job details for notification - FIXED: Include all needed fields
+            // Get complete job details for notification
             const { data: job, error: jobError } = await supabase
                 .from('jobs')
-                .select('customer_id, sub_service, category, custom_sub_description, quoted_price, id')
+                .select('customer_id, sub_service, category, custom_sub_description, quoted_price, id, onsite_fee_paid, onsite_fee_amount')
                 .eq('id', actualJobId)
                 .single();
 
@@ -82,8 +98,9 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
                 jobId: job.id,
                 sub_service: job.sub_service,
                 category: job.category,
-                description: job.description,
-                customer_id: job.customer_id
+                customer_id: job.customer_id,
+                onsite_fee_paid: job.onsite_fee_paid,
+                onsite_fee_amount: job.onsite_fee_amount
             });
 
             // Get company name for the message
@@ -93,7 +110,7 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
                 .eq('id', actualCompanyId)
                 .single();
 
-            // Create a descriptive job title with multiple fallbacks - IMPROVED LOGIC
+            // Create a descriptive job title with multiple fallbacks
             let jobTitle = '';
             if (job.sub_service && job.sub_service.trim() !== '') {
                 jobTitle = job.sub_service;
@@ -110,35 +127,47 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
                 jobTitle = jobTitle.substring(0, 30) + '...';
             }
 
-            console.log('Fetched job data for notification:', {
-                jobId: job.id,
-                sub_service: job.sub_service,
-                custom_sub_description: job.custom_sub_description,
-                category: job.category,
-                customer_id: job.customer_id,
-                // Check what we actually got
-                hasSubService: !!job.sub_service,
-                hasCustomSubDescription: !!job.custom_sub_description,
-                hasCategory: !!job.category
-            });
-
-            console.log('Generated jobTitle:', jobTitle);
-
             const companyName = company?.company_name || 'A company';
             const formattedPrice = quotedPrice.toLocaleString();
 
-            // Create notification with proper job title - FIXED MESSAGE
+            // Determine notification message based on onsite fee status
+            let notificationMessage = '';
+            let notificationTitle = '';
+
+            if (job.onsite_fee_paid && job.onsite_fee_amount > 0) {
+                // Onsite check was done with fee
+                notificationTitle = 'Quote Ready After Onsite Visit ✅';
+                notificationMessage = `${companyName} has visited your location and quoted ₦${formattedPrice} for your "${jobTitle}" job.`;
+
+                if (job.onsite_fee_amount > 0) {
+                    notificationMessage += ` The ₦${Number(job.onsite_fee_amount).toLocaleString()} onsite fee has been applied.`;
+                }
+            } else if (currentJob?.status === 'onsite_pending') {
+                // Old onsite pending method (no fee)
+                notificationTitle = 'Quote Ready After Assessment';
+                notificationMessage = `${companyName} has assessed your location and quoted ₦${formattedPrice} for your "${jobTitle}" job.`;
+            } else {
+                // Regular quote without onsite visit
+                notificationTitle = 'New Quote Received!';
+                notificationMessage = `${companyName} has quoted ₦${formattedPrice} for your "${jobTitle}" job.`;
+            }
+
+            console.log('Creating notification:', {
+                title: notificationTitle,
+                message: notificationMessage
+            });
+
+            // Create notification
             const notificationResult = await supabase
                 .from('notifications')
                 .insert({
                     user_id: job.customer_id,
                     job_id: actualJobId,
                     type: 'quote_received',
-                    title: 'New Quote Received!',
-                    message: `${companyName} has quoted ₦${formattedPrice} for your "${jobTitle}" job.`,
+                    title: notificationTitle,
+                    message: notificationMessage,
                     read: false,
                     created_at: new Date().toISOString()
-                    // REMOVED: metadata field
                 });
 
             if (notificationResult.error) {
@@ -146,9 +175,9 @@ const QuoteForm = ({ jobId, companyId, onQuoteSubmitted, onCancel }) => {
                 // Don't throw error - just log it, quote submission should still succeed
             } else {
                 console.log('Notification created successfully:', {
-                    message: `${companyName} has quoted ₦${formattedPrice} for your "${jobTitle}" job.`,
+                    message: notificationMessage,
                     customerId: job.customer_id,
-                    jobTitle: jobTitle
+                    onsiteFeeApplied: job.onsite_fee_paid
                 });
             }
 
