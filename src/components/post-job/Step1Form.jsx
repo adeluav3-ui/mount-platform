@@ -279,7 +279,7 @@ export default function Step1Form({
                 {/* EXACT ADDRESS */}
                 <div>
                     <label className="block text-sm font-medium mb-1">
-                        Your Exact Address <span className="text-red-500">*</span>
+                        Your Address <span className="text-red-500">*</span>
                     </label>
                     <textarea
                         rows={3}
