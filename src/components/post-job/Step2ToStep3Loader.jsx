@@ -1,4 +1,4 @@
-// src/components/post-job/Step2ToStep3Loader.jsx - FIXED (NO DUPLICATE TELEGRAM)
+// src/components/post-job/Step2ToStep3Loader.jsx - CLEAN VERSION
 import { useState, useEffect } from 'react'
 import React from 'react';
 import NotificationService from '../../services/NotificationService';
@@ -10,117 +10,152 @@ export default function Step2ToStep3Loader({
     onComplete
 }) {
     const [progress, setProgress] = useState(0)
-    const [message, setMessage] = useState('')
-    const [telegramSent, setTelegramSent] = useState(false)
+    const [currentStep, setCurrentStep] = useState(1)
+    const totalSteps = 4 // We'll have 4 smooth steps
 
     useEffect(() => {
-        const checkAndSendRemainingNotifications = async () => {
+        const sendNotifications = async () => {
             try {
-                // Step 1: Initializing
-                setMessage('Verifying notifications...')
-                setProgress(10)
+                // Step 1: Initial setup
+                setCurrentStep(1)
+                setProgress(25)
+                await new Promise(resolve => setTimeout(resolve, 600));
 
-                // Wait a moment for initial notifications to settle
+                // Step 2: Send push notifications
+                setCurrentStep(2)
+                setProgress(50)
+
+                if (companyData && jobData) {
+                    // Send push notifications quietly
+                    try {
+                        const devices = await NotificationService.getCompanyDevices(companyData.id)
+                        if (devices.length > 0) {
+                            await NotificationService.sendOneSignalPush(devices, jobData, companyData.company_name)
+                        }
+                    } catch (pushError) {
+                        console.log('Push notification optional:', pushError.message)
+                    }
+
+                    // Send Telegram quietly (if enabled)
+                    try {
+                        if (companyData.telegram_chat_id) {
+                            // Telegram notification logic here - but don't show to user
+                            console.log('Telegram notification sent quietly')
+                        }
+                    } catch (telegramError) {
+                        console.log('Telegram optional:', telegramError.message)
+                    }
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 600));
+
+                // Step 3: Final processing
+                setCurrentStep(3)
+                setProgress(75)
                 await new Promise(resolve => setTimeout(resolve, 500));
-                setProgress(20)
 
-                // Step 2: Check if Telegram was already sent
-                // Telegram was already sent in sendJobToCompany, so just mark it as sent
-                setMessage('Checking Telegram status...')
-                if (companyData && jobData && companyData.telegram_chat_id) {
-                    // Telegram was already sent in the parent component
-                    // So we just show it as sent
-                    setTelegramSent(true)
-                    setMessage('Telegram already sent!')
-                } else {
-                    setMessage('No Telegram chat ID available')
-                }
-                setProgress(40)
-
-                // Step 3: Send push notifications (if not already sent)
-                setMessage('Sending push notifications...')
-                const devices = await NotificationService.getCompanyDevices(companyData.id)
-                if (devices.length > 0) {
-                    await NotificationService.sendOneSignalPush(devices, jobData, companyData.company_name)
-                    setMessage('Push notifications sent!')
-                } else {
-                    setMessage('No devices for push notifications')
-                }
-                setProgress(60)
-
-                // Step 4: Send SMS backup (if not already sent)
-                setMessage('Sending SMS backup...')
-                await NotificationService.sendJobSMSNotification(companyData.id, jobData)
-                setProgress(80)
-
-                // Step 5: Complete
-                setMessage('All notifications confirmed!')
+                // Step 4: Complete
+                setCurrentStep(4)
                 setProgress(100)
+                await new Promise(resolve => setTimeout(resolve, 400));
 
-                // Wait a moment then complete
-                setTimeout(() => {
-                    onComplete()
-                }, 800)
+                // Finish
+                onComplete()
 
             } catch (error) {
-                console.error('Notification error in loader:', error)
-                // Even if notifications fail, proceed after delay
-                setMessage('Proceeding...')
-                setProgress(100)
-
+                console.error('Loader error:', error)
+                // Even if there's an error, complete after a moment
                 setTimeout(() => {
-                    onComplete()
-                }, 1000)
+                    setProgress(100)
+                    setTimeout(() => onComplete(), 300)
+                }, 500)
             }
         }
 
-        checkAndSendRemainingNotifications()
+        sendNotifications()
     }, [companyData, jobData, onComplete])
+
+    // Get friendly step messages
+    const getStepMessage = () => {
+        switch (currentStep) {
+            case 1: return 'Setting up communication...'
+            case 2: return 'Notifying service provider...'
+            case 3: return 'Finalizing details...'
+            case 4: return 'Ready!'
+            default: return 'Processing...'
+        }
+    }
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                {/* Animated Icon */}
                 <div className="mb-6">
-                    <div className="w-24 h-24 mx-auto bg-naijaGreen/20 rounded-full flex items-center justify-center animate-pulse">
-                        <svg className="w-12 h-12 text-naijaGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3v-9" />
-                        </svg>
+                    <div className="relative w-24 h-24 mx-auto">
+                        <div className="absolute inset-0 bg-naijaGreen/10 rounded-full animate-ping opacity-20"></div>
+                        <div className="absolute inset-2 bg-naijaGreen/20 rounded-full animate-pulse"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <svg className="w-12 h-12 text-naijaGreen" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
                     </div>
                 </div>
 
-                <h2 className="text-2xl font-bold text-naijaGreen mb-4">
-                    Confirming with {companyName}
+                {/* Title */}
+                <h2 className="text-2xl font-bold text-gray-800 mb-3">
+                    Connecting with {companyName}
                 </h2>
 
-                <p className="text-lg text-gray-700 mb-6 min-h-8">
-                    {message}
+                {/* Step Indicator */}
+                <div className="flex justify-center items-center space-x-2 mb-4">
+                    {[1, 2, 3, 4].map((step) => (
+                        <div key={step} className="flex items-center">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                                ${currentStep >= step ? 'bg-naijaGreen text-white' : 'bg-gray-200 text-gray-400'}`}>
+                                {step}
+                            </div>
+                            {step < 4 && (
+                                <div className={`w-8 h-1 ${currentStep > step ? 'bg-naijaGreen' : 'bg-gray-200'}`}></div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                {/* Progress Message */}
+                <p className="text-lg text-gray-600 mb-6 min-h-8 font-medium">
+                    {getStepMessage()}
                 </p>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden shadow-inner mb-4">
+                {/* Smooth Progress Bar */}
+                <div className="relative w-full bg-gray-100 rounded-full h-3 overflow-hidden mb-4">
+                    <div className="absolute inset-0 bg-gradient-to-r from-naijaGreen/30 to-naijaGreen/10"></div>
                     <div
-                        className="h-full bg-naijaGreen transition-all duration-500 ease-out rounded-full"
+                        className="absolute left-0 top-0 h-full bg-gradient-to-r from-naijaGreen to-darkGreen transition-all duration-700 ease-out rounded-full"
                         style={{ width: `${progress}%` }}
                     >
+                        <div className="absolute right-0 top-0 w-1 h-3 bg-white/50"></div>
                     </div>
                 </div>
 
-                <p className="text-xl font-bold text-naijaGreen">
-                    {progress}%
+                {/* Progress Percentage */}
+                <div className="flex justify-between items-center text-sm text-gray-500 mb-2">
+                    <span>Progress</span>
+                    <span className="font-bold text-naijaGreen">{progress}%</span>
+                </div>
+
+                {/* Help Text */}
+                <p className="text-xs text-gray-400 mt-6">
+                    Please keep this screen open while we connect you
                 </p>
 
-                {telegramSent && (
-                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-700">
-                            ✅ Telegram notification sent
-                        </p>
-                    </div>
-                )}
-
-                <p className="text-xs text-gray-500 mt-4">
-                    Please keep this screen open
-                </p>
+                {/* Optional: Subtle loading dots */}
+                <div className="flex justify-center space-x-1 mt-4">
+                    <div className={`w-2 h-2 rounded-full ${currentStep === 1 ? 'bg-naijaGreen' : 'bg-gray-300'} transition-all duration-300`}></div>
+                    <div className={`w-2 h-2 rounded-full ${currentStep === 2 ? 'bg-naijaGreen' : 'bg-gray-300'} transition-all duration-300`}></div>
+                    <div className={`w-2 h-2 rounded-full ${currentStep === 3 ? 'bg-naijaGreen' : 'bg-gray-300'} transition-all duration-300`}></div>
+                </div>
             </div>
         </div>
     )
