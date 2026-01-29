@@ -518,6 +518,87 @@ export default function JobsSection({
         }
     }
 
+    // Company confirms they received the onsite fee
+    const handleConfirmOnsiteFeeReceipt = async (jobId, feeAmount, customerName) => {
+        if (!window.confirm(
+            `Confirm that you've received ₦${Number(feeAmount).toLocaleString()} from ${customerName || 'the customer'}?\n\n` +
+            `This will:\n` +
+            `1. Mark payment as confirmed\n` +
+            `2. Notify customer\n` +
+            `3. Allow you to visit their location\n\n` +
+            `Only confirm if you've verified the payment in your bank account.`
+        )) return;
+
+        try {
+            // Update job status to onsite_fee_paid (company confirmed)
+            const { error: updateError } = await supabase
+                .from('jobs')
+                .update({
+                    status: 'onsite_fee_paid',
+                    onsite_fee_paid: true,
+                    onsite_fee_paid_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+
+            if (updateError) throw updateError;
+
+            // Notify customer that payment is confirmed
+            const job = jobs.find(j => j.id === jobId);
+            if (job?.customer_id) {
+                await supabase.from('notifications').insert({
+                    user_id: job.customer_id,
+                    job_id: jobId,
+                    type: 'onsite_fee_confirmed',
+                    title: 'Onsite Fee Confirmed ✅',
+                    message: `Company has confirmed receipt of your ₦${Number(feeAmount).toLocaleString()} payment. They will visit your location soon.`,
+                    read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            alert(`✅ Payment confirmed! Customer has been notified.\n\nYou can now visit their location.`);
+            loadJobs();
+
+        } catch (error) {
+            console.error('Error confirming onsite fee:', error);
+            alert('Failed to confirm payment. Please try again.');
+        }
+    };
+
+    // Company reports they haven't received the fee yet
+    const handleReportNoOnsiteFee = async (jobId, feeAmount, customerName) => {
+        const reason = prompt(
+            `Report that you haven't received ₦${Number(feeAmount).toLocaleString()} yet.\n\n` +
+            `Please provide details (optional):\n` +
+            `• Checked account? When?\n` +
+            `• Any issues with the transfer?\n` +
+            `• Instructions for customer?`
+        );
+
+        try {
+            // Notify customer
+            const job = jobs.find(j => j.id === jobId);
+            if (job?.customer_id) {
+                await supabase.from('notifications').insert({
+                    user_id: job.customer_id,
+                    job_id: jobId,
+                    type: 'onsite_fee_not_received',
+                    title: 'Payment Not Yet Received',
+                    message: `Company has not yet received your ₦${Number(feeAmount).toLocaleString()} payment.${reason ? `\n\nNote: ${reason.substring(0, 100)}` : ''}\n\nPlease check with your bank or try again.`,
+                    read: false,
+                    created_at: new Date().toISOString()
+                });
+            }
+
+            alert(`Customer notified that payment hasn't been received.${reason ? `\n\nYour note: ${reason}` : ''}`);
+
+        } catch (error) {
+            console.error('Error reporting no payment:', error);
+            alert('Failed to send notification. Please try again.');
+        }
+    };
+
     const createCustomerNotification = async (jobId, notificationType, companyName = '') => {
         try {
             const { data: job, error: jobError } = await supabase
@@ -979,6 +1060,80 @@ export default function JobsSection({
 
                                             <p className="text-xs text-orange-600 mt-2">
                                                 Customer will confirm payment after transferring the fee. Once confirmed, you can visit their location.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+
+                            {/* ONSITE FEE PENDING CONFIRMATION - Customer says they paid, waiting for company to confirm */}
+                            {job.status === 'onsite_fee_pending_confirmation' && (
+                                <div className="mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0 pt-1">
+                                            <span className="text-xl sm:text-2xl">⏳</span>
+                                        </div>
+                                        <div className="ml-3 flex-1">
+                                            <p className="font-bold text-blue-800 text-base sm:text-xl">Payment Claimed - Confirm Receipt</p>
+                                            <p className="text-blue-700 text-sm sm:text-base mt-1">
+                                                Customer claims to have paid ₦{Number(job.onsite_fee_amount || 0).toLocaleString()} for onsite check.
+                                                Please check your bank account and confirm receipt.
+                                            </p>
+
+                                            <div className="mt-3 p-3 bg-blue-100 border border-blue-300 rounded-lg">
+                                                <p className="font-medium text-blue-800 text-sm sm:text-base mb-1">Payment Details:</p>
+                                                <div className="text-blue-700 text-xs sm:text-sm space-y-1">
+                                                    <p>• Amount: ₦{Number(job.onsite_fee_amount || 0).toLocaleString()}</p>
+                                                    <p>• Claimed by customer: {new Date().toLocaleString()}</p>
+                                                    <p>• Check your {job.onsite_fee_bank_details ?
+                                                        (() => {
+                                                            try {
+                                                                const details = typeof job.onsite_fee_bank_details === 'string'
+                                                                    ? JSON.parse(job.onsite_fee_bank_details)
+                                                                    : job.onsite_fee_bank_details;
+                                                                return details.bank_name || 'bank';
+                                                            } catch {
+                                                                return 'bank';
+                                                            }
+                                                        })()
+                                                        : 'bank'} account
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3 bg-white p-3 sm:p-4 rounded-lg border border-blue-300">
+                                                <p className="font-medium text-gray-800 text-sm sm:text-base mb-1">Customer Contact:</p>
+                                                <p className="text-gray-700 text-sm">
+                                                    <span className="font-medium">Name:</span> {job.customer?.customer_name || 'Customer'}
+                                                </p>
+                                                <p className="text-gray-700 text-sm mt-1">
+                                                    <span className="font-medium">Phone:</span>
+                                                    <strong className="ml-2 text-blue-700">{job.customer?.phone || 'Check job details'}</strong>
+                                                </p>
+                                                <p className="text-gray-700 text-sm mt-1">
+                                                    <span className="font-medium">Location:</span> {job.location || 'Not specified'}
+                                                </p>
+                                            </div>
+
+                                            <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                                                <button
+                                                    onClick={() => handleConfirmOnsiteFeeReceipt(job.id, job.onsite_fee_amount, job.customer?.customer_name)}
+                                                    className="flex-1 bg-green-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-green-700 transition-colors text-sm sm:text-base"
+                                                >
+                                                    ✅ Confirm Payment Received
+                                                </button>
+
+                                                <button
+                                                    onClick={() => handleReportNoOnsiteFee(job.id, job.onsite_fee_amount, job.customer?.customer_name)}
+                                                    className="flex-1 bg-red-600 text-white px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-red-700 transition-colors text-sm sm:text-base"
+                                                >
+                                                    ❌ Not Received Yet
+                                                </button>
+                                            </div>
+
+                                            <p className="text-xs text-blue-600 mt-2">
+                                                Only confirm after checking your bank account and verifying the payment.
                                             </p>
                                         </div>
                                     </div>

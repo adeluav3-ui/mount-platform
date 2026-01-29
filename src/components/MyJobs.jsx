@@ -272,12 +272,14 @@ export default function MyJobs({ onHasNewQuotes }) {
     };
 
     // PAY ONSITE FEE - Customer confirms they've paid the onsite fee
+    // PAY ONSITE FEE - Customer confirms they've paid (STEP 1)
     const handlePayOnsiteFee = async (jobId, feeAmount, companyName) => {
         const confirmMessage = `Confirm that you've paid ₦${Number(feeAmount).toLocaleString()} to ${companyName}?\n\n` +
             `After confirming:\n` +
-            `1. Company will be notified of your payment\n` +
-            `2. Company will visit your location for assessment\n` +
-            `3. Company will then provide a quote\n\n` +
+            `1. ${companyName} will be notified of your payment\n` +
+            `2. They will confirm receipt on their dashboard\n` +
+            `3. Once confirmed, they will visit your location\n` +
+            `4. Then provide a quote\n\n` +
             `Click OK only if you've made the bank transfer.`;
 
         if (!window.confirm(confirmMessage)) return;
@@ -285,43 +287,44 @@ export default function MyJobs({ onHasNewQuotes }) {
         setIsProcessing(jobId);
 
         try {
-            // Update job to mark onsite fee as paid
+            // Update job to mark onsite fee as PENDING CONFIRMATION (not paid yet)
             const { error: updateError } = await supabase
                 .from('jobs')
                 .update({
-                    status: 'onsite_fee_paid',
-                    onsite_fee_paid: true,
-                    onsite_fee_paid_at: new Date().toISOString(),
+                    status: 'onsite_fee_pending_confirmation',  // NEW STATUS
+                    onsite_fee_paid: false,  // Still false until company confirms
+                    onsite_fee_paid_at: null,  // Not set yet
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', jobId);
 
             if (updateError) throw updateError;
 
-            // Notify the company
+            // Notify the company that customer claims to have paid
             const job = jobs.find(j => j.id === jobId);
             if (job && job.company_id) {
                 await supabase.from('notifications').insert({
                     user_id: job.company_id,
                     job_id: jobId,
-                    type: 'onsite_fee_paid',
-                    title: 'Onsite Fee Paid ✅',
-                    message: `Customer has confirmed payment of ₦${Number(feeAmount).toLocaleString()} for onsite check. You can now visit their location.`,
+                    type: 'onsite_fee_pending_confirmation',
+                    title: 'Onsite Fee Payment Claimed',
+                    message: `Customer claims to have paid ₦${Number(feeAmount).toLocaleString()} for onsite check. Please confirm receipt in your dashboard.`,
                     metadata: {
                         fee_amount: feeAmount,
-                        paid_at: new Date().toISOString()
+                        claimed_at: new Date().toISOString(),
+                        requires_action: true
                     },
                     read: false,
                     created_at: new Date().toISOString()
                 });
             }
 
-            alert(`✅ Payment confirmed! ${companyName} has been notified and will visit your location soon.`);
+            alert(`✅ Payment claimed! ${companyName} has been notified to confirm receipt.\n\nThey will confirm on their dashboard before visiting.`);
             loadJobs();
 
         } catch (error) {
-            console.error('Error confirming onsite fee payment:', error);
-            alert('Failed to confirm payment. Please try again.');
+            console.error('Error claiming onsite fee payment:', error);
+            alert('Failed to claim payment. Please try again.');
         } finally {
             setIsProcessing(null);
         }
@@ -683,6 +686,7 @@ Click OK to proceed to payment.`;
         if (status === 'work_rectified') return 'Issue Fixed - Review Work'
         if (status === 'declined_by_company') return 'Declined'
         if (status === 'declined') return 'Quote Declined'
+        if (status === 'onsite_fee_pending_confirmation') return 'Awaiting Company Confirmation'
         if (status === 'onsite_fee_requested') return 'Onsite Check Fee Required'
         if (job.quoted_price && status === 'price_set') return 'Quote Available'
         return 'Awaiting Quotes'
@@ -705,6 +709,7 @@ Click OK to proceed to payment.`;
         if (status === 'under_review') return 'bg-orange-100 text-orange-800 border border-orange-300'
         if (status === 'work_rectified') return 'bg-yellow-100 text-yellow-800 border border-yellow-300'
         if (status === 'declined') return 'bg-red-100 text-red-800 border border-red-300'
+        if (status === 'onsite_fee_pending_confirmation') return 'bg-blue-100 text-blue-800 border border-blue-300'
         if (job.quoted_price && status === 'price_set') return 'bg-green-100 text-green-800 border border-green-300'
         return 'bg-gray-100 text-gray-800'
     }
@@ -1467,6 +1472,41 @@ Click OK to proceed to payment.`;
 
                                                 <p className="text-orange-500 text-sm mt-3 text-center">
                                                     After payment, company will visit your location and provide a quote.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ONSITE FEE PENDING CONFIRMATION - Waiting for company to confirm */}
+                                    {job.status === 'onsite_fee_pending_confirmation' && (
+                                        <div className="mb-6">
+                                            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                                                <div className="flex items-center mb-3">
+                                                    <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <p className="text-blue-700 font-medium">Awaiting Company Confirmation</p>
+                                                </div>
+
+                                                <p className="text-blue-600 mb-4">
+                                                    You've confirmed payment of ₦{Number(job.onsite_fee_amount || 0).toLocaleString()}.
+                                                    {getCompanyName(job)} is checking their bank account and will confirm receipt soon.
+                                                </p>
+
+                                                <div className="bg-white p-4 rounded-lg border border-blue-300 mb-4">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="text-gray-600">Amount Paid:</span>
+                                                        <span className="text-xl font-bold text-blue-700">
+                                                            ₦{Number(job.onsite_fee_amount || 0).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-500">
+                                                        Once confirmed, {getCompanyName(job)} will visit your location.
+                                                    </p>
+                                                </div>
+
+                                                <p className="text-blue-500 text-sm text-center">
+                                                    Company has been notified. They will confirm receipt shortly.
                                                 </p>
                                             </div>
                                         </div>
