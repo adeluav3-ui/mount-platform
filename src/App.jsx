@@ -20,14 +20,13 @@ import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
-import LandingPage from './pages/LandingPage';
+import WelcomeScreen from './components/WelcomeScreen';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
   return (
     <Routes>
-      {/* Landing page is the homepage */}
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<WelcomeScreen />} />
 
       {/* Login/Signup screen */}
       <Route path="/login" element={<Login />} />
@@ -52,8 +51,6 @@ function ProtectedRoutes() {
 
   return (
     <Routes>
-      {/* Test route - optional */}
-      <Route path="/test-route" element={<div className="p-8 text-2xl">Test Route Works!</div>} />
 
       {/* Payment routes */}
       <Route path="/payment/pending" element={<PaymentPending />} />
