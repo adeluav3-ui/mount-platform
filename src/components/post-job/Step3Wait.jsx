@@ -18,7 +18,7 @@ export default function Step3Wait({ selectedCompany, tempSelectedCompany }) {
                 Job Sent to {company.company_name}!
             </h2>
             <p className="text-lg text-gray-700">
-                Please wait 15–30 minutes while they review your job and set the exact price.
+                The service provider will review your job and contact you within a day
             </p>
             <p className="text-sm text-gray-500 mt-4">
                 You will be notified when they respond.
