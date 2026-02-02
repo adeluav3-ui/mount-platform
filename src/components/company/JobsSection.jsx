@@ -59,6 +59,9 @@ export default function JobsSection({
     const [jobToQuote, setJobToQuote] = useState(null)
     const [showOnsiteModal, setShowOnsiteModal] = useState(false)
     const [selectedJobForOnsite, setSelectedJobForOnsite] = useState(null)
+    const [showDeclineModal, setShowDeclineModal] = useState(false)
+    const [selectedJobToDecline, setSelectedJobToDecline] = useState(null)
+    const [declineReason, setDeclineReason] = useState('')
 
     const loadJobs = async () => {
         setJobsLoading(true)
@@ -649,54 +652,12 @@ export default function JobsSection({
 
     const handleDeleteJob = async (jobId, e) => {
         e.stopPropagation()
-        if (!window.confirm("Are you sure you want to decline this job? The customer will see that you declined and may choose to post the job again.")) return
-
         const jobToDelete = jobs.find(job => job.id === jobId)
         if (!jobToDelete) return
 
-        setJobs(prev => prev.filter(job => job.id !== jobId))
-
-        try {
-            const { data: companyData, error: companyError } = await supabase
-                .from('companies')
-                .select('company_name')
-                .eq('id', user.id)
-                .single()
-
-            const companyName = companyData?.company_name || 'A company'
-
-            console.log('Updating job with:', {
-                jobId,
-                status: 'declined_by_company',
-                company_id: null,
-                companyName
-            });
-
-            const { error } = await supabase
-                .from('jobs')
-                .update({
-                    status: 'declined_by_company',
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', jobId)
-                .eq('company_id', user.id)
-
-            if (error) {
-                console.error('Update error details:', error);
-                throw error;
-            }
-
-            console.log('Job update successful');
-
-            await createCustomerNotification(jobId, 'job_declined', companyName)
-
-            alert('Job declined. The customer has been notified.')
-
-        } catch (err) {
-            console.error('Failed to decline job:', err)
-            setJobs(prev => [jobToDelete, ...prev.filter(job => job.id !== jobToDelete.id)])
-            alert("Error: Failed to decline the job. Please try again. Message: " + err.message)
-        }
+        // Show modal instead of immediate confirmation
+        setSelectedJobToDecline(jobToDelete)
+        setShowDeclineModal(true)
     }
 
     const OnsiteCheckModal = () => {
@@ -749,7 +710,132 @@ export default function JobsSection({
     }
 
     if (!showJobs) return null
+    const DeclineReasonModal = () => {
+        if (!showDeclineModal || !selectedJobToDecline) return null
 
+        const handleConfirmDecline = async () => {
+            if (!declineReason.trim()) {
+                alert('Please provide a reason for declining this job.')
+                return
+            }
+
+            const jobToDelete = selectedJobToDecline
+
+            // Remove from local state immediately
+            setJobs(prev => prev.filter(job => job.id !== jobToDelete.id))
+            setShowDeclineModal(false)
+            setSelectedJobToDecline(null)
+
+            try {
+                const { data: companyData, error: companyError } = await supabase
+                    .from('companies')
+                    .select('company_name')
+                    .eq('id', user.id)
+                    .single()
+
+                const companyName = companyData?.company_name || 'A company'
+
+                console.log('Updating job with decline reason:', {
+                    jobId: jobToDelete.id,
+                    status: 'declined_by_company',
+                    decline_reason: declineReason.trim(),
+                    companyName
+                });
+
+                // Update job with decline reason
+                const { error } = await supabase
+                    .from('jobs')
+                    .update({
+                        status: 'declined_by_company',
+                        decline_reason: declineReason.trim(),
+                        company_id: null, // IMPORTANT: Set to null so job can be reassigned
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', jobToDelete.id)
+                    .eq('company_id', user.id)
+
+                if (error) {
+                    console.error('Update error details:', error);
+                    throw error;
+                }
+
+                console.log('Job declined successfully with reason');
+
+                // Create notification for customer with the reason
+                await supabase.from('notifications').insert({
+                    user_id: jobToDelete.customer_id,
+                    job_id: jobToDelete.id,
+                    type: 'job_declined',
+                    title: 'Job Declined',
+                    message: `${companyName} has declined your "${jobToDelete.sub_service || jobToDelete.category}" job.\n\nReason: ${declineReason.trim()}`,
+                    metadata: {
+                        decline_reason: declineReason.trim(),
+                        company_name: companyName
+                    },
+                    read: false,
+                    created_at: new Date().toISOString()
+                })
+
+                alert('Job declined. The customer has been notified with your reason.')
+                setDeclineReason('') // Clear the reason
+
+            } catch (err) {
+                console.error('Failed to decline job:', err)
+                // Add back to local state if error
+                setJobs(prev => [jobToDelete, ...prev.filter(job => job.id !== jobToDelete.id)])
+                alert("Error: Failed to decline the job. Please try again. Message: " + err.message)
+            }
+        }
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full mx-4">
+                    <h3 className="text-xl font-bold text-red-600 mb-4">Decline Job</h3>
+
+                    <p className="text-gray-700 mb-4">
+                        You're about to decline:
+                        <strong className="block mt-2 text-lg">{selectedJobToDecline.sub_service || selectedJobToDecline.category}</strong>
+                    </p>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Reason for declining <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            value={declineReason}
+                            onChange={(e) => setDeclineReason(e.target.value)}
+                            placeholder="Please provide a reason (e.g., too far, not our specialty, etc.)"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 outline-none resize-none"
+                            rows={4}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            This reason will be shown to the customer.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                            onClick={() => {
+                                setShowDeclineModal(false)
+                                setSelectedJobToDecline(null)
+                                setDeclineReason('')
+                            }}
+                            className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleConfirmDecline}
+                            className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!declineReason.trim()}
+                        >
+                            Decline Job
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
     return (
         <div className="mt-12 bg-white rounded-3xl shadow-2xl p-4 sm:p-6 md:p-8">
             <button
@@ -763,6 +849,7 @@ export default function JobsSection({
             </button>
 
             <OnsiteCheckModal />
+            <DeclineReasonModal />
 
             {jobsLoading ? (
                 <div className="text-center py-12">
@@ -903,7 +990,9 @@ export default function JobsSection({
                                     )}
                                     <p className="text-gray-700 text-sm sm:text-base">
                                         <span className="font-bold">Customer Budget:</span>
-                                        <span className="text-naijaGreen font-bold ml-2">₦{Number(job.budget || 0).toLocaleString()}</span>
+                                        <span className="text-naijaGreen font-bold ml-2">
+                                            {job.budget === 'N/A' || !job.budget || job.budget === '0' ? 'Not specified' : `₦${Number(job.budget).toLocaleString()}`}
+                                        </span>
                                     </p>
                                     <p className="text-gray-700 text-sm sm:text-base break-words">
                                         <span className="font-bold">Description:</span> {job.description || 'No description provided'}

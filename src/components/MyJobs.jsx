@@ -684,7 +684,7 @@ Click OK to proceed to payment.`;
         if (status === 'work_disputed') return 'Issue Reported - Awaiting Fix'
         if (status === 'under_review') return 'Company Reviewing Issue'
         if (status === 'work_rectified') return 'Issue Fixed - Review Work'
-        if (status === 'declined_by_company') return 'Declined'
+        if (status === 'declined_by_company') return 'Declined by Company'
         if (status === 'declined') return 'Quote Declined'
         if (status === 'onsite_fee_pending_confirmation') return 'Awaiting Company Confirmation'
         if (status === 'onsite_fee_requested') return 'Onsite Check Fee Required'
@@ -1521,13 +1521,29 @@ Click OK to proceed to payment.`;
                                     )}
 
                                     {job.status === 'declined_by_company' && (
-                                        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                                            <p className="font-medium text-red-700">
-                                                ❌ Declined by {getCompanyName(job)}
-                                            </p>
-                                            <p className="text-sm text-red-600 mt-1">
-                                                You can post this job again to find another company.
-                                            </p>
+                                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                                            <div className="flex items-start">
+                                                <div className="flex-shrink-0">
+                                                    <span className="text-xl">❌</span>
+                                                </div>
+                                                <div className="ml-3 flex-1">
+                                                    <p className="font-bold text-red-700 text-lg">
+                                                        Declined by {getCompanyName(job)}
+                                                    </p>
+
+                                                    {/* Display decline reason if available */}
+                                                    {job.decline_reason && (
+                                                        <div className="mt-3 p-3 bg-red-100 border border-red-300 rounded-lg">
+                                                            <p className="font-medium text-red-800 text-sm mb-1">Reason provided:</p>
+                                                            <p className="text-red-700 whitespace-pre-wrap">{job.decline_reason}</p>
+                                                        </div>
+                                                    )}
+
+                                                    <p className="text-red-600 mt-3">
+                                                        You can post this job again to find another company.
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

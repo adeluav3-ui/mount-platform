@@ -64,11 +64,7 @@ export default function Step1Form({
         if (job.description?.trim().length < 10) {
             errors.push('Description should be at least 10 characters')
         }
-        if (!job.price || Number(job.price) <= 0) {
-            errors.push('Please enter a valid budget amount')
-        }
 
-        // NEW VALIDATION FOR LOGISTICS SERVICES
         // NEW VALIDATION FOR LOGISTICS SERVICES
         if (job.category === 'Logistics Services') {
             if (!job.logistics_type) {
@@ -120,6 +116,7 @@ export default function Step1Form({
         console.log('Selected category:', job.category)
         console.log('Selected sub-service:', job.sub_service)
         console.log('Category has subservices?', categoryHasSubservices(job.category))
+        console.log('Budget:', job.price || 'N/A') // Add this line
 
         const { data, error } = await supabase
             .from('companies')
@@ -150,16 +147,22 @@ export default function Step1Form({
             })
         })
 
+        // Create jobWithDefaults for filtering
+        const jobWithDefaults = {
+            ...job,
+            price: job.price || 'N/A'
+        };
+
         // SIMPLE FILTERING: Show companies that offer this main category
         // FILTERING: Show companies that offer this main category
         const matches = data.filter(c => {
-            const offersCategory = c.services?.includes(job.category)
+            const offersCategory = c.services?.includes(jobWithDefaults.category) // Use jobWithDefaults
             if (!offersCategory) return false
 
-            console.log(`Company ${c.company_name}: offers ${job.category}?`, offersCategory)
+            console.log(`Company ${c.company_name}: offers ${jobWithDefaults.category}?`, offersCategory)
 
             // 3. SPECIAL FILTERING FOR LOGISTICS SERVICES
-            if (job.category === 'Logistics Services') {
+            if (jobWithDefaults.category === 'Logistics Services') { // Use jobWithDefaults
                 console.log(`[LOGISTICS FILTER] Checking ${c.company_name} for logistics...`);
 
                 // SPECIAL CASE: Yharah logistics only serves Abeokuta
@@ -167,12 +170,12 @@ export default function Step1Form({
                     console.log(`[LOGISTICS FILTER] This is Yharah - checking service area...`);
 
                     // Yharah only serves Abeokuta for intrastate
-                    if (job.logistics_destination_type === 'intrastate') {
-                        const destination = job.logistics_destination_location;
+                    if (jobWithDefaults.logistics_destination_type === 'intrastate') { // Use jobWithDefaults
+                        const destination = jobWithDefaults.logistics_destination_location; // Use jobWithDefaults
                         const servesAbeokuta = destination === 'Abeokuta';
                         console.log(`[LOGISTICS FILTER] Yharah serves ${destination}?`, servesAbeokuta);
                         return servesAbeokuta;
-                    } else if (job.logistics_destination_type === 'interstate') {
+                    } else if (jobWithDefaults.logistics_destination_type === 'interstate') { // Use jobWithDefaults
                         // Yharah doesn't do interstate at all
                         console.log(`[LOGISTICS FILTER] Yharah doesn't do interstate`);
                         return false;
@@ -196,7 +199,7 @@ export default function Step1Form({
         })
 
         if (matches.length === 0) {
-            alert(`No companies found for "${job.category}" service. Please try another category.`)
+            alert(`No companies found for "${jobWithDefaults.category}" service. Please try another category.`) // Use jobWithDefaults
             return
         }
 
@@ -312,7 +315,7 @@ export default function Step1Form({
 
                 {/* PRICE */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">Your Budget (₦)</label>
+                    <label className="block text-sm font-medium mb-1">Your Budget (₦) <span className="text-gray-400">(optional)</span></label>
                     <input
                         type="number"
                         value={job.price}
@@ -323,7 +326,6 @@ export default function Step1Form({
                         step="100"
                     />
                 </div>
-
                 {/* PHOTO UPLOAD */}
                 <div>
                     <label className="block text-sm font-medium mb-1">Add Photos (optional)</label>
