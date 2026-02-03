@@ -61,7 +61,6 @@ export default function JobsSection({
     const [selectedJobForOnsite, setSelectedJobForOnsite] = useState(null)
     const [showDeclineModal, setShowDeclineModal] = useState(false)
     const [selectedJobToDecline, setSelectedJobToDecline] = useState(null)
-    const [declineReason, setDeclineReason] = useState('')
 
     const loadJobs = async () => {
         setJobsLoading(true)
@@ -713,8 +712,11 @@ export default function JobsSection({
     const DeclineReasonModal = () => {
         if (!showDeclineModal || !selectedJobToDecline) return null
 
+        // Move the state INSIDE the modal component
+        const [localDeclineReason, setLocalDeclineReason] = useState('')
+
         const handleConfirmDecline = async () => {
-            if (!declineReason.trim()) {
+            if (!localDeclineReason.trim()) {
                 alert('Please provide a reason for declining this job.')
                 return
             }
@@ -738,7 +740,7 @@ export default function JobsSection({
                 console.log('Updating job with decline reason:', {
                     jobId: jobToDelete.id,
                     status: 'declined_by_company',
-                    decline_reason: declineReason.trim(),
+                    decline_reason: localDeclineReason.trim(),
                     companyName
                 });
 
@@ -747,8 +749,8 @@ export default function JobsSection({
                     .from('jobs')
                     .update({
                         status: 'declined_by_company',
-                        decline_reason: declineReason.trim(),
-                        company_id: null, // IMPORTANT: Set to null so job can be reassigned
+                        decline_reason: localDeclineReason.trim(),
+                        company_id: null,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', jobToDelete.id)
@@ -767,9 +769,9 @@ export default function JobsSection({
                     job_id: jobToDelete.id,
                     type: 'job_declined',
                     title: 'Job Declined',
-                    message: `${companyName} has declined your "${jobToDelete.sub_service || jobToDelete.category}" job.\n\nReason: ${declineReason.trim()}`,
+                    message: `${companyName} has declined your "${jobToDelete.sub_service || jobToDelete.category}" job.\n\nReason: ${localDeclineReason.trim()}`,
                     metadata: {
-                        decline_reason: declineReason.trim(),
+                        decline_reason: localDeclineReason.trim(),
                         company_name: companyName
                     },
                     read: false,
@@ -777,7 +779,7 @@ export default function JobsSection({
                 })
 
                 alert('Job declined. The customer has been notified with your reason.')
-                setDeclineReason('') // Clear the reason
+                setLocalDeclineReason('') // Clear the local state
 
             } catch (err) {
                 console.error('Failed to decline job:', err)
@@ -802,11 +804,12 @@ export default function JobsSection({
                             Reason for declining <span className="text-red-500">*</span>
                         </label>
                         <textarea
-                            value={declineReason}
-                            onChange={(e) => setDeclineReason(e.target.value)}
+                            value={localDeclineReason}
+                            onChange={(e) => setLocalDeclineReason(e.target.value)}
                             placeholder="Please provide a reason (e.g., too far, not our specialty, etc.)"
                             className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 outline-none resize-none"
                             rows={4}
+                            autoFocus // This helps with mobile keyboard
                         />
                         <p className="text-xs text-gray-500 mt-1">
                             This reason will be shown to the customer.
@@ -818,7 +821,7 @@ export default function JobsSection({
                             onClick={() => {
                                 setShowDeclineModal(false)
                                 setSelectedJobToDecline(null)
-                                setDeclineReason('')
+                                setLocalDeclineReason('')
                             }}
                             className="flex-1 border border-gray-300 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-50 transition-colors"
                         >
@@ -827,7 +830,7 @@ export default function JobsSection({
                         <button
                             onClick={handleConfirmDecline}
                             className="flex-1 bg-red-600 text-white py-3 rounded-lg font-bold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!declineReason.trim()}
+                            disabled={!localDeclineReason.trim()}
                         >
                             Decline Job
                         </button>
