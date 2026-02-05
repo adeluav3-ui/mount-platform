@@ -93,9 +93,18 @@ const JobManagement = () => {
     const statusCounts = useMemo(() => ({
         all: jobs.length,
         pending: jobs.filter(j => j.status === 'pending').length,
+        onsite_fee_requested: jobs.filter(j => j.status === 'onsite_fee_requested').length,
+        onsite_fee_pending_confirmation: jobs.filter(j => j.status === 'onsite_fee_pending_confirmation').length,
+        onsite_fee_paid: jobs.filter(j => j.status === 'onsite_fee_paid').length,
         price_set: jobs.filter(j => j.status === 'price_set').length,
         deposit_paid: jobs.filter(j => j.status === 'deposit_paid').length,
-        work_in_progress: jobs.filter(j => j.status === 'work_in_progress').length,
+        work_ongoing: jobs.filter(j => j.status === 'work_ongoing').length,
+        intermediate_paid: jobs.filter(j => j.status === 'intermediate_paid').length,
+        work_completed: jobs.filter(j => j.status === 'work_completed').length,
+        work_disputed: jobs.filter(j => j.status === 'work_disputed').length,
+        work_rectified: jobs.filter(j => j.status === 'work_rectified').length,
+        ready_for_final_payment: jobs.filter(j => j.status === 'ready_for_final_payment').length,
+        awaiting_final_payment: jobs.filter(j => j.status === 'awaiting_final_payment').length,
         completed: jobs.filter(j => j.status === 'completed').length,
         declined_by_company: jobs.filter(j => j.status === 'declined_by_company').length,
         declined_by_customer: jobs.filter(j => j.status === 'declined_by_customer').length,
@@ -152,13 +161,63 @@ const JobManagement = () => {
         }
     };
 
+    const updateOnsiteFee = async (jobId, newAmount) => {
+        try {
+            const { error } = await supabase
+                .from('jobs')
+                .update({
+                    onsite_fee_amount: newAmount,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+
+            if (error) throw error;
+
+            // Update local state
+            setJobs(prev => prev.map(job =>
+                job.id === jobId
+                    ? { ...job, onsite_fee_amount: newAmount, updated_at: new Date().toISOString() }
+                    : job
+            ));
+
+            alert(`Onsite fee updated to ₦${Number(newAmount).toLocaleString()}!`);
+        } catch (error) {
+            console.error('Error updating onsite fee:', error);
+            alert('Failed to update onsite fee');
+        }
+    };
+
     const getStatusColor = (status) => {
         const colors = {
+            // Basic states
             pending: 'bg-yellow-100 text-yellow-800',
+
+            // Onsite fee flow
+            onsite_fee_requested: 'bg-orange-100 text-orange-800',
+            onsite_fee_pending_confirmation: 'bg-blue-100 text-blue-800',
+            onsite_fee_paid: 'bg-green-100 text-green-800',
+
+            // Quote and payment flow
             price_set: 'bg-blue-100 text-blue-800',
             deposit_paid: 'bg-purple-100 text-purple-800',
-            work_in_progress: 'bg-indigo-100 text-indigo-800',
+
+            // Work progress with intermediate payments
+            work_ongoing: 'bg-indigo-100 text-indigo-800',
+            intermediate_paid: 'bg-purple-100 text-purple-800',
+            work_completed: 'bg-orange-100 text-orange-800',
+
+            // Dispute flow
+            work_disputed: 'bg-red-100 text-red-800',
+            work_rectified: 'bg-yellow-100 text-yellow-800',
+
+            // Final payment flow
+            ready_for_final_payment: 'bg-purple-100 text-purple-800',
+            awaiting_final_payment: 'bg-purple-100 text-purple-800',
+
+            // Completion
             completed: 'bg-green-100 text-green-800',
+
+            // Declined
             declined_by_company: 'bg-red-100 text-red-800',
             declined_by_customer: 'bg-red-100 text-red-800',
         };
@@ -365,7 +424,59 @@ const JobManagement = () => {
                                             </div>
                                         </div>
                                     </div>
+                                    {/* Onsite Fee Information - Show if applicable */}
+                                    {(job.onsite_fee_requested || job.onsite_fee_amount) && (
+                                        <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                            <h4 className="font-medium text-orange-800 mb-2">Onsite Fee Information</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                                <div>
+                                                    <p className="text-sm text-orange-600">Fee Amount</p>
+                                                    <p className="font-bold text-lg">{formatCurrency(job.onsite_fee_amount || 0)}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-orange-600">Fee Status</p>
+                                                    <p className="font-medium">
+                                                        {job.onsite_fee_paid ? '✅ Paid' : '⏳ Pending'}
+                                                        {job.onsite_fee_paid_at && (
+                                                            <span className="text-xs text-gray-500 block">
+                                                                Paid on: {formatDate(job.onsite_fee_paid_at)}
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-orange-600">Requested</p>
+                                                    <p className="font-medium">{job.onsite_fee_requested ? 'Yes' : 'No'}</p>
+                                                </div>
+                                            </div>
 
+                                            {/* Bank Details if available */}
+                                            {job.onsite_fee_bank_details && (
+                                                <div className="mt-3 pt-3 border-t border-orange-300">
+                                                    <p className="text-sm text-orange-600 mb-1">Bank Details Provided:</p>
+                                                    <div className="text-sm bg-white p-2 rounded border">
+                                                        {(() => {
+                                                            try {
+                                                                const bankDetails = typeof job.onsite_fee_bank_details === 'string'
+                                                                    ? JSON.parse(job.onsite_fee_bank_details)
+                                                                    : job.onsite_fee_bank_details;
+
+                                                                return (
+                                                                    <div className="space-y-1">
+                                                                        <p><span className="font-medium">Bank:</span> {bankDetails.bank_name}</p>
+                                                                        <p><span className="font-medium">Account:</span> {bankDetails.account_number}</p>
+                                                                        <p><span className="font-medium">Name:</span> {bankDetails.account_name}</p>
+                                                                    </div>
+                                                                );
+                                                            } catch (e) {
+                                                                return <p className="text-gray-500">Unable to parse bank details</p>;
+                                                            }
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     {/* Action Buttons */}
                                     <div className="lg:w-48 flex flex-col space-y-3">
                                         <div>
@@ -378,10 +489,33 @@ const JobManagement = () => {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
                                             >
                                                 <option value="pending">Pending</option>
+
+                                                {/* Onsite fee flow */}
+                                                <option value="onsite_fee_requested">Onsite Fee Requested</option>
+                                                <option value="onsite_fee_pending_confirmation">Onsite Fee Pending Confirmation</option>
+                                                <option value="onsite_fee_paid">Onsite Fee Paid</option>
+
+                                                {/* Quote and payment flow */}
                                                 <option value="price_set">Price Set</option>
                                                 <option value="deposit_paid">Deposit Paid</option>
-                                                <option value="work_in_progress">Work in Progress</option>
+
+                                                {/* Work progress with intermediate payments */}
+                                                <option value="work_ongoing">Work Ongoing</option>
+                                                <option value="intermediate_paid">Intermediate Paid</option>
+                                                <option value="work_completed">Work Completed</option>
+
+                                                {/* Dispute flow */}
+                                                <option value="work_disputed">Work Disputed</option>
+                                                <option value="work_rectified">Work Rectified</option>
+
+                                                {/* Final payment flow */}
+                                                <option value="ready_for_final_payment">Ready for Final Payment</option>
+                                                <option value="awaiting_final_payment">Awaiting Final Payment</option>
+
+                                                {/* Completion */}
                                                 <option value="completed">Completed</option>
+
+                                                {/* Declined */}
                                                 <option value="declined_by_company">Declined by Company</option>
                                                 <option value="declined_by_customer">Declined by Customer</option>
                                             </select>
@@ -454,6 +588,33 @@ Updated: ${new Date(job.updated_at || job.created_at).toLocaleString()}
                                         >
                                             Quick Actions
                                         </button>
+                                        {(job.onsite_fee_requested || job.onsite_fee_amount) && (
+                                            <button
+                                                onClick={() => {
+                                                    const newAmount = prompt(
+                                                        `Edit Onsite Fee Amount for ${job.id.substring(0, 8)}...\n\n` +
+                                                        `Current amount: ₦${Number(job.onsite_fee_amount || 0).toLocaleString()}\n\n` +
+                                                        `Enter new amount (in Naira):`,
+                                                        job.onsite_fee_amount || ''
+                                                    );
+
+                                                    if (newAmount !== null) {
+                                                        const amount = parseFloat(newAmount);
+                                                        if (!isNaN(amount) && amount >= 0) {
+                                                            if (confirm(`Update onsite fee to ₦${amount.toLocaleString()}?`)) {
+                                                                updateOnsiteFee(job.id, amount);
+                                                            }
+                                                        } else {
+                                                            alert('Please enter a valid amount.');
+                                                        }
+                                                    }
+                                                }}
+                                                className="w-full px-3 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors"
+                                            >
+                                                ✏️ Edit Onsite Fee
+                                            </button>
+                                        )}
+
                                     </div>
                                 </div>
                             </div>
