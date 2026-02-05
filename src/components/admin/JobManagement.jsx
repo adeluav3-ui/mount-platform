@@ -137,24 +137,60 @@ const JobManagement = () => {
 
     const updateJobStatus = async (jobId, newStatus) => {
         try {
+            // Determine if we need to clear onsite fee data
+            const job = jobs.find(j => j.id === jobId);
+            const isOnsiteFeeStatus = [
+                'onsite_fee_requested',
+                'onsite_fee_pending_confirmation',
+                'onsite_fee_paid'
+            ].includes(job?.status);
+
+            const isMovingAwayFromOnsiteFee = isOnsiteFeeStatus && ![
+                'onsite_fee_requested',
+                'onsite_fee_pending_confirmation',
+                'onsite_fee_paid'
+            ].includes(newStatus);
+
+            // Prepare update data
+            const updateData = {
+                status: newStatus,
+                updated_at: new Date().toISOString()
+            };
+
+            // Clear onsite fee data if moving away from onsite fee status
+            if (isMovingAwayFromOnsiteFee) {
+                updateData.onsite_fee_requested = false;
+                updateData.onsite_fee_amount = null;
+                updateData.onsite_fee_bank_details = null;
+                updateData.onsite_fee_paid = false;
+                updateData.onsite_fee_paid_at = null;
+            }
+
+            // Also clear decline reason if moving away from declined status
+            if (job?.status === 'declined_by_company' && newStatus !== 'declined_by_company') {
+                updateData.decline_reason = null;
+            }
+
             const { error } = await supabase
                 .from('jobs')
-                .update({
-                    status: newStatus,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', jobId);
 
             if (error) throw error;
 
-            // Update local state
-            setJobs(prev => prev.map(job =>
-                job.id === jobId
-                    ? { ...job, status: newStatus, updated_at: new Date().toISOString() }
-                    : job
+            // Update local state with ALL changes
+            setJobs(prev => prev.map(j =>
+                j.id === jobId
+                    ? {
+                        ...j,
+                        ...updateData,  // Spread all update data
+                        updated_at: new Date().toISOString()
+                    }
+                    : j
             ));
 
             alert('Job status updated successfully!');
+
         } catch (error) {
             console.error('Error updating job:', error);
             alert('Failed to update job status');
