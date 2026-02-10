@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /services
+Allow: /services/
+Allow: /locations/
+Allow: /how-it-works
+
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /profile
+Disallow: /profile/
+Disallow: /api
+Disallow: /api/
+
+Sitemap: https://mountltd.com/sitemap.xml
+
+Crawl-delay: 2
