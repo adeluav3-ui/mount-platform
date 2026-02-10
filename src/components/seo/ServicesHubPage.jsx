@@ -190,26 +190,6 @@ export default function ServicesHubPage() {
                         </div>
                     </div>
                 </section>
-
-                {/* Stats Banner */}
-                <div className="bg-white border-y border-gray-100 py-6">
-                    <div className="container mx-auto px-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            {[
-                                { number: '500+', label: 'Verified Professionals' },
-                                { number: '10+', label: 'Service Categories' },
-                                { number: '98%', label: 'Customer Satisfaction' },
-                                { number: '24/7', label: 'Support Available' }
-                            ].map((stat, index) => (
-                                <div key={index} className="text-center">
-                                    <div className="text-2xl md:text-3xl font-bold text-naijaGreen mb-1">{stat.number}</div>
-                                    <div className="text-sm text-gray-600">{stat.label}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
                 {/* Services Grid - Responsive Columns */}
                 <section className="py-12 md:py-16">
                     <div className="container mx-auto px-4">
