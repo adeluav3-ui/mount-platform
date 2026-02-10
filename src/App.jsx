@@ -21,7 +21,7 @@ import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
-import { ServicesHubPage } from './components/seo/ServicesHubPage';
+import ServicesHubPage from './components/seo/ServicesHubPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
