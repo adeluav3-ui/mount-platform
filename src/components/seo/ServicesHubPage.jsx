@@ -1,10 +1,12 @@
 // src/components/seo/ServicesHubPage.jsx - MOBILE OPTIMIZED
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SimpleHelmet from './SimpleHelmet';
 import logo from '../../assets/logo.png';
 
 export default function ServicesHubPage() {
+
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const services = [
         {
             slug: 'electrician',
