@@ -39,7 +39,7 @@ const HomeOverviewPage = () => {
         { name: 'For Customers', href: '/for-customers' },
         { name: 'For Providers', href: '/for-providers' },
         { name: 'Ogun State', href: '/locations/ogun' },
-        { name: 'Contact', href: '/contact' }
+        { name: 'Contact Us', href: '/contact' }
     ];
 
     return (
