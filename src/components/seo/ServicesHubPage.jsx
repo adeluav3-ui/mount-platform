@@ -2,6 +2,7 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import SimpleHelmet from './SimpleHelmet';
 
 export default function ServicesHubPage() {
     const services = [
@@ -69,31 +70,11 @@ export default function ServicesHubPage() {
 
     return (
         <>
-            <Helmet>
-                <title>Home Services in Ogun State | Electricians, Plumbers, Cleaners & More | Mount</title>
-                <meta
-                    name="description"
-                    content="Find verified home service professionals in Ogun State. Book electricians, plumbers, cleaners, painters, AC repair, and more with secure payments and quality guarantees."
-                />
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <link rel="canonical" href="https://mountltd.com/services" />
-                <script type="application/ld+json">
-                    {JSON.stringify({
-                        "@context": "https://schema.org",
-                        "@type": "ItemList",
-                        "itemListElement": services.map((service, index) => ({
-                            "@type": "ListItem",
-                            "position": index + 1,
-                            "item": {
-                                "@type": "Service",
-                                "name": service.name,
-                                "url": `https://mountltd.com/services/${service.slug}`,
-                                "description": service.description
-                            }
-                        }))
-                    })}
-                </script>
-            </Helmet>
+            <SimpleHelmet
+                title="Home Services in Ogun State | Electricians, Plumbers, Cleaners & More | Mount"
+                description="Find verified home service professionals in Ogun State. Book electricians, plumbers, cleaners, painters, AC repair, and more with secure payments and quality guarantees."
+                canonical="https://mountltd.com/services"
+            />
 
             {/* Mobile-Optimized Layout */}
             <div className="min-h-screen bg-white">
