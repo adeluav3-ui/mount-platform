@@ -4,7 +4,6 @@ import { useParams, Link } from 'react-router-dom';
 import SimpleHelmet from './SimpleHelmet';
 import logo from '../../assets/logo.png';
 import { trackSEOButtonClick, trackSEOClick } from '../../utils/ga4';
-import SchemaMarkup from '../seo/SchemaMarkup';
 
 // Service data - same as in ServicesHubPage for consistency
 const servicesData = {
@@ -210,11 +209,6 @@ const servicesData = {
     }
 };
 
-<SchemaMarkup
-    type="service"
-    serviceSlug={serviceSlug}
-    serviceData={serviceData}
-/>
 
 export default function ServicePage() {
     const { serviceSlug } = useParams();
