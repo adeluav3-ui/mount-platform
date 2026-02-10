@@ -32,18 +32,16 @@ function PublicRoutes() {
   return (
     <Routes>
       <Route path="/" element={<WelcomeScreen />} />
-
-      {/* Login/Signup screen */}
       <Route path="/login" element={<Login />} />
 
-      {/* NEW SEO PAGES - START */}
+      {/* SEO PAGES */}
       <Route path="/services" element={<ServicesHubPage />} />
       <Route path="/services/:serviceSlug" element={<ServicePage />} />
       <Route path="/locations/ogun" element={<LocationsHubPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
-      {/* NEW SEO PAGES - END */}
+      <Route path="/for-customers" element={<ForCustomersPage />} />
+      <Route path="/for-providers" element={<ForProvidersPage />} />
 
-      {/* Catch-all redirect to landing page */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
