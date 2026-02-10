@@ -26,6 +26,8 @@ import ServicePage from './components/seo/ServicePage';
 import ScrollToTop from './components/ScrollToTop';
 import LocationsHubPage from './components/seo/LocationsHubPage';
 import HowItWorksPage from './components/seo/HowItWorksPage';
+import ForCustomersPage from './components/seo/ForCustomersPage';
+import ForProvidersPage from './components/seo/ForProvidersPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
