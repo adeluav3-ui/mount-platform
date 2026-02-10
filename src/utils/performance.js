@@ -21,73 +21,9 @@ export const initPerformanceTracking = () => {
 
                     trackEvent('Performance', 'PageLoad', pageUrl, Math.round(loadTime));
                     console.log('📊 Page Load Time:', Math.round(loadTime), 'ms');
-
-                    // Track Core Web Vitals-like metrics
-                    trackFPAndFCP();
-                    trackLCP();
-                    trackCLS();
                 }
             }, 1000);
         });
-    }
-};
-
-// Track First Paint and First Contentful Paint
-const trackFPAndFCP = () => {
-    if ('performance' in window) {
-        const paintEntries = performance.getEntriesByType('paint');
-        paintEntries.forEach(entry => {
-            if (entry.name === 'first-paint') {
-                trackEvent('Performance', 'FirstPaint', window.location.pathname, Math.round(entry.startTime));
-            }
-            if (entry.name === 'first-contentful-paint') {
-                trackEvent('Performance', 'FirstContentfulPaint', window.location.pathname, Math.round(entry.startTime));
-            }
-        });
-    }
-};
-
-// Track Largest Contentful Paint (simplified)
-const trackLCP = () => {
-    if ('PerformanceObserver' in window) {
-        try {
-            const observer = new PerformanceObserver((entryList) => {
-                const entries = entryList.getEntries();
-                const lastEntry = entries[entries.length - 1];
-
-                trackEvent('Performance', 'LargestContentfulPaint', window.location.pathname, Math.round(lastEntry.renderTime || lastEntry.loadTime));
-            });
-
-            observer.observe({ type: 'largest-contentful-paint', buffered: true });
-        } catch (e) {
-            console.log('LCP tracking not supported:', e);
-        }
-    }
-};
-
-// Track Cumulative Layout Shift (simplified)
-const trackCLS = () => {
-    if ('PerformanceObserver' in window) {
-        try {
-            let clsValue = 0;
-
-            const observer = new PerformanceObserver((entryList) => {
-                for (const entry of entryList.getEntries()) {
-                    if (!entry.hadRecentInput) {
-                        clsValue += entry.value;
-                    }
-                }
-
-                // Report CLS when page is hidden (user navigating away)
-                if (document.visibilityState === 'hidden') {
-                    trackEvent('Performance', 'CumulativeLayoutShift', window.location.pathname, clsValue);
-                }
-            });
-
-            observer.observe({ type: 'layout-shift', buffered: true });
-        } catch (e) {
-            console.log('CLS tracking not supported:', e);
-        }
     }
 };
 

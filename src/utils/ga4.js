@@ -1,38 +1,23 @@
-// src/utils/ga4.js
-import ReactGA from 'react-ga4';
-
-// Initialize GA4 with your Firebase Measurement ID
-const initializeGA4 = () => {
-    const measurementId = 'G-26F05C9YMS'; // Your Firebase GA4 ID
-
-    if (process.env.NODE_ENV === 'production') {
-        ReactGA.initialize(measurementId, {
-            gaOptions: {
-                siteSpeedSampleRate: 100 // Track all page views for speed insights
-            }
-        });
-        console.log('✅ GA4 initialized with Firebase ID');
-    } else {
-        console.log('🛠️ GA4 not initialized in development mode');
-    }
-};
+// src/utils/ga4.js - UPDATED VERSION WITHOUT REACT-GA4
 
 // Track page views
 export const trackPageView = (path) => {
-    if (process.env.NODE_ENV === 'production') {
-        ReactGA.send({ hitType: 'pageview', page: path });
+    if (process.env.NODE_ENV === 'production' && window.gtag) {
+        window.gtag('config', 'G-26F05C9YMS', {
+            page_path: path,
+            page_title: document.title
+        });
         console.log('📊 GA4 Pageview:', path);
     }
 };
 
 // Track events (signups, job posts, etc.)
 export const trackEvent = (category, action, label = '', value = 0) => {
-    if (process.env.NODE_ENV === 'production') {
-        ReactGA.event({
-            category,
-            action,
-            label,
-            value
+    if (process.env.NODE_ENV === 'production' && window.gtag) {
+        window.gtag('event', action, {
+            event_category: category,
+            event_label: label,
+            value: value
         });
         console.log('🎯 GA4 Event:', { category, action, label, value });
     }
@@ -40,15 +25,15 @@ export const trackEvent = (category, action, label = '', value = 0) => {
 
 // Track exceptions/errors
 export const trackError = (description, fatal = false) => {
-    if (process.env.NODE_ENV === 'production') {
-        ReactGA.event({
-            category: 'Error',
-            action: 'Exception',
-            label: description,
-            nonInteraction: true
+    if (process.env.NODE_ENV === 'production' && window.gtag) {
+        window.gtag('event', 'exception', {
+            description: description,
+            fatal: fatal
         });
     }
 };
+
+// ✅ SEO-SPECIFIC EVENT TRACKING
 
 // Track clicks from SEO pages to app
 export const trackSEOClick = (sourcePage, buttonType) => {
@@ -77,4 +62,8 @@ export const trackScrollDepth = (depth, pageUrl) => {
     }
 };
 
-export default initializeGA4;
+// Remove the old initializeGA4 function since we're using gtag.js in index.html
+// Just export an empty initialization for compatibility
+export const initializeGA4 = () => {
+    console.log('✅ GA4 initialized via gtag.js in index.html');
+};
