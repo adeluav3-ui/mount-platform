@@ -96,72 +96,7 @@ function registerServiceWorkers() {
 }
 
 // Register Service Workers on app start
-registerServiceWorkers();
-// Add this NEW function to trigger mobile subscription
-function triggerMobileSubscription() {
-  // Check if we're on a mobile device
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  if (!isMobile) {
-    console.log('📱 Not a mobile device, skipping auto-subscription');
-    return;
-  }
-
-  console.log('📱 Mobile device detected, attempting subscription...');
-
-  // Wait for OneSignal to be ready
-  const checkInterval = setInterval(() => {
-    if (window._OneSignal) {
-      clearInterval(checkInterval);
-
-      // Wait a bit more for everything to stabilize
-      setTimeout(async () => {
-        try {
-          console.log('📱 OneSignal ready on mobile, checking subscription...');
-
-          // Check current state
-          const playerId = await window._OneSignal.User.PushSubscription.id;
-          const optedIn = await window._OneSignal.User.PushSubscription.optedIn;
-
-          console.log(`📱 Mobile status - Player ID: ${playerId}, Opted In: ${optedIn}`);
-
-          // If not subscribed, trigger subscription
-          if (!playerId || !optedIn) {
-            console.log('📱 No subscription found, triggering...');
-
-            // Method 1: Try slidedown
-            if (window._OneSignal.Slidedown && window._OneSignal.Slidedown.promptPush) {
-              window._OneSignal.Slidedown.promptPush();
-              console.log('📱 Triggered slidedown prompt');
-            }
-            // Method 2: Direct registration
-            else if (window._OneSignal.registerForPushNotifications) {
-              await window._OneSignal.registerForPushNotifications();
-              console.log('📱 Called registerForPushNotifications');
-            }
-
-            // Check again after 3 seconds
-            setTimeout(async () => {
-              const newPlayerId = await window._OneSignal.User.PushSubscription.id;
-              const newOptedIn = await window._OneSignal.User.PushSubscription.optedIn;
-              console.log(`📱 After attempt - Player ID: ${newPlayerId}, Opted In: ${newOptedIn}`);
-
-              if (newPlayerId) {
-                console.log('🎉 Mobile subscription successful!');
-                alert('✅ Mobile push notifications are now enabled!');
-              }
-            }, 3000);
-          } else {
-            console.log('📱 Already subscribed on mobile');
-          }
-        } catch (error) {
-          console.error('📱 Mobile subscription error:', error);
-        }
-      }, 2000);
-    }
-  }, 500);
-}
-triggerMobileSubscription();
+registerServiceWorkers(); n
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <SupabaseProvider>

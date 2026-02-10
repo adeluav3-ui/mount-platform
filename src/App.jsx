@@ -23,9 +23,6 @@ import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
 import ServicesHubPage from './components/seo/ServicesHubPage';
 
-// NEW: Import SEO Pages
-import ServicesHubPage from './components/seo/ServicesHubPage'; // Add this import
-
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
   return (
