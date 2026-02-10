@@ -117,7 +117,14 @@ function AppRouter() {
   }
 
   // Determine if current route is public
-  const isPublicRoute = ['/', '/login', '/services'].includes(location.pathname); // Added '/services'
+  // Determine if current route is public
+  const isPublicRoute =
+    location.pathname === '/' ||
+    location.pathname === '/login' ||
+    location.pathname.startsWith('/services') || // Allow all /services/* pages
+    location.pathname === '/how-it-works' || // We'll add these later
+    location.pathname === '/for-customers' ||
+    location.pathname === '/for-providers';
 
   // If no user and not on a public route, show login screen
   if (!user && !isPublicRoute) {
