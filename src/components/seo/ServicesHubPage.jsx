@@ -292,4 +292,3 @@ export default function ServicesHubPage() {
         </>
     );
 }
-export { ServicesHubPage as default };
