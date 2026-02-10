@@ -6,7 +6,7 @@ import logo from '../../assets/logo.png';
 
 export default function HowItWorksPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('customer'); // 'customer' or 'provider'
+    const [activeTab, setActiveTab] = useState('customer');
 
     const stepsForCustomers = [
         {
@@ -140,62 +140,62 @@ export default function HowItWorksPage() {
             />
 
             <div className="min-h-screen bg-white">
-                {/* Header */}
+                {/* Header - Mobile Optimized */}
                 <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-lg">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between py-5">
-                            <Link to="/" className="flex items-center space-x-4 group">
-                                <img src={logo} alt="Mount" className="h-12 w-auto" />
+                        <div className="flex items-center justify-between py-4 md:py-5">
+                            <Link to="/" className="flex items-center space-x-2 md:space-x-4 group">
+                                <img src={logo} alt="Mount" className="h-10 md:h-12 w-auto" />
                                 <div className="hidden lg:block">
                                     <div className="font-bold text-2xl text-gray-800">Mount</div>
                                     <div className="text-xs text-gray-500">TRUSTED HOME SERVICES</div>
                                 </div>
                             </Link>
 
-                            <nav className="hidden lg:flex items-center space-x-10">
-                                <Link to="/services" className="font-semibold text-gray-700 hover:text-naijaGreen transition">
+                            <nav className="hidden lg:flex items-center space-x-8 md:space-x-10">
+                                <Link to="/services" className="font-semibold text-gray-700 hover:text-naijaGreen transition text-sm md:text-base">
                                     Services
                                 </Link>
-                                <Link to="/locations/ogun" className="font-semibold text-gray-700 hover:text-naijaGreen transition">
+                                <Link to="/locations/ogun" className="font-semibold text-gray-700 hover:text-naijaGreen transition text-sm md:text-base">
                                     Ogun State
                                 </Link>
-                                <Link to="/how-it-works" className="font-semibold text-naijaGreen transition">
+                                <Link to="/how-it-works" className="font-semibold text-naijaGreen transition text-sm md:text-base">
                                     How It Works
                                 </Link>
                             </nav>
 
                             <div className="hidden lg:block">
-                                <a href="/login" className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-6 py-3 rounded-lg font-bold hover:shadow-xl transition">
+                                <a href="/login" className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-5 md:px-6 py-2.5 md:py-3 rounded-lg font-bold hover:shadow-xl transition text-sm md:text-base">
                                     Get Started
                                 </a>
                             </div>
 
                             <button
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="lg:hidden flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 hover:bg-gray-100"
+                                className="lg:hidden flex flex-col items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gray-50 hover:bg-gray-100 transition"
                                 aria-label="Toggle menu"
                             >
-                                <span className={`w-6 h-0.5 bg-gray-700 transition ${isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
-                                <span className={`w-6 h-0.5 bg-gray-700 my-1.5 transition ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
-                                <span className={`w-6 h-0.5 bg-gray-700 transition ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
+                                <span className={`w-5 md:w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+                                <span className={`w-5 md:w-6 h-0.5 bg-gray-700 my-1 md:my-1.5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
+                                <span className={`w-5 md:w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
                             </button>
                         </div>
 
                         {/* Mobile Menu */}
-                        <div className={`lg:hidden overflow-hidden transition-all ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                            <div className="py-6 border-t border-gray-100">
-                                <nav className="flex flex-col space-y-4">
-                                    <Link to="/services" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50">
-                                        <span className="font-medium text-gray-700">Services</span>
+                        <div className={`lg:hidden overflow-hidden transition-all duration-300 ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="py-4 md:py-6 border-t border-gray-100">
+                                <nav className="flex flex-col space-y-3 md:space-y-4">
+                                    <Link to="/services" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center py-2.5 md:py-3 px-4 rounded-lg hover:bg-gray-50 transition">
+                                        <span className="font-medium text-gray-700 text-sm md:text-base">Services</span>
                                     </Link>
-                                    <Link to="/locations/ogun" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50">
-                                        <span className="font-medium text-gray-700">Ogun State</span>
+                                    <Link to="/locations/ogun" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center py-2.5 md:py-3 px-4 rounded-lg hover:bg-gray-50 transition">
+                                        <span className="font-medium text-gray-700 text-sm md:text-base">Ogun State</span>
                                     </Link>
-                                    <Link to="/how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50">
-                                        <span className="font-medium text-gray-700">How It Works</span>
+                                    <Link to="/how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center py-2.5 md:py-3 px-4 rounded-lg hover:bg-gray-50 transition">
+                                        <span className="font-medium text-gray-700 text-sm md:text-base">How It Works</span>
                                     </Link>
-                                    <div className="pt-4 mt-4 border-t border-gray-100">
-                                        <a href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center">
+                                    <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-gray-100">
+                                        <a href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-2.5 md:py-3 px-4 rounded-lg font-bold text-center text-sm md:text-base hover:shadow-lg transition">
                                             Get Started Free
                                         </a>
                                     </div>
@@ -205,29 +205,29 @@ export default function HowItWorksPage() {
                     </div>
                 </header>
 
-                {/* Hero Section */}
-                <section className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-12 md:py-16">
+                {/* Hero Section - Mobile Optimized */}
+                <section className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-8 md:py-12 lg:py-16">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto text-center">
-                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 md:mb-6 leading-tight">
                                 How Mount Works
                             </h1>
-                            <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
+                            <p className="text-base sm:text-lg md:text-xl mb-6 md:mb-8 max-w-3xl mx-auto opacity-90 px-2">
                                 Nigeria's trusted home services marketplace. Simple, secure, and designed for your peace of mind.
                             </p>
 
-                            {/* Tab Navigation */}
-                            <div className="flex justify-center mb-8">
+                            {/* Tab Navigation - Mobile Optimized */}
+                            <div className="flex justify-center mb-6 md:mb-8">
                                 <div className="inline-flex rounded-lg bg-white/10 backdrop-blur-sm p-1">
                                     <button
                                         onClick={() => setActiveTab('customer')}
-                                        className={`px-6 py-3 rounded-lg font-bold transition ${activeTab === 'customer' ? 'bg-white text-naijaGreen' : 'text-white hover:bg-white/10'}`}
+                                        className={`px-4 py-2 md:px-6 md:py-3 rounded-lg font-bold transition text-sm md:text-base ${activeTab === 'customer' ? 'bg-white text-naijaGreen' : 'text-white hover:bg-white/10'}`}
                                     >
                                         For Customers
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('provider')}
-                                        className={`px-6 py-3 rounded-lg font-bold transition ${activeTab === 'provider' ? 'bg-white text-naijaGreen' : 'text-white hover:bg-white/10'}`}
+                                        className={`px-4 py-2 md:px-6 md:py-3 rounded-lg font-bold transition text-sm md:text-base ${activeTab === 'provider' ? 'bg-white text-naijaGreen' : 'text-white hover:bg-white/10'}`}
                                     >
                                         For Providers
                                     </button>
@@ -237,29 +237,29 @@ export default function HowItWorksPage() {
                     </div>
                 </section>
 
-                {/* Steps Section */}
-                <section className="py-12 md:py-16 bg-white">
+                {/* Steps Section - Mobile Optimized */}
+                <section className="py-8 md:py-12 lg:py-16 bg-white">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-12 text-center">
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-8 md:mb-12 text-center px-2">
                                 {activeTab === 'customer' ? 'How to Book a Service' : 'How to Grow Your Business'}
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
                                 {(activeTab === 'customer' ? stepsForCustomers : stepsForProviders).map((step, index) => (
                                     <div key={index} className="relative">
-                                        {/* Step Number */}
-                                        <div className="absolute -top-4 -left-4 w-12 h-12 bg-naijaGreen text-white rounded-full flex items-center justify-center font-bold text-xl z-10">
+                                        {/* Step Number - Responsive */}
+                                        <div className="absolute -top-3 -left-3 w-10 h-10 md:w-12 md:h-12 bg-naijaGreen text-white rounded-full flex items-center justify-center font-bold text-lg md:text-xl z-10">
                                             {step.number}
                                         </div>
 
-                                        {/* Step Card */}
-                                        <div className="bg-white border border-gray-200 rounded-2xl p-6 pt-10 hover:shadow-xl transition-shadow duration-300 h-full">
-                                            <div className="text-4xl mb-4">{step.icon}</div>
-                                            <h3 className="text-xl font-bold text-gray-800 mb-3">{step.title}</h3>
-                                            <p className="text-gray-600 mb-4">{step.description}</p>
-                                            <div className="mt-4 pt-4 border-t border-gray-100">
-                                                <p className="text-gray-500 text-sm">{step.details}</p>
+                                        {/* Step Card - Responsive */}
+                                        <div className="bg-white border border-gray-200 rounded-2xl p-4 md:p-6 pt-8 md:pt-10 hover:shadow-xl transition-shadow duration-300 h-full">
+                                            <div className="text-3xl md:text-4xl mb-3 md:mb-4">{step.icon}</div>
+                                            <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 md:mb-3 leading-tight">{step.title}</h3>
+                                            <p className="text-gray-600 text-sm md:text-base mb-3 md:mb-4 leading-relaxed">{step.description}</p>
+                                            <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-gray-100">
+                                                <p className="text-gray-500 text-xs md:text-sm leading-relaxed">{step.details}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -269,20 +269,20 @@ export default function HowItWorksPage() {
                     </div>
                 </section>
 
-                {/* Features Section */}
-                <section className="py-12 md:py-16 bg-gray-50">
+                {/* Features Section - Mobile Optimized */}
+                <section className="py-8 md:py-12 lg:py-16 bg-gray-50">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-12 text-center">
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-8 md:mb-12 text-center px-2">
                                 Why Mount is Different
                             </h2>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                                 {features.map((feature, index) => (
-                                    <div key={index} className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition">
-                                        <div className="text-3xl mb-4">{feature.icon}</div>
-                                        <h3 className="text-xl font-bold text-gray-800 mb-3">{feature.title}</h3>
-                                        <p className="text-gray-600">{feature.description}</p>
+                                    <div key={index} className="bg-white rounded-2xl p-4 md:p-6 border border-gray-200 hover:shadow-lg transition">
+                                        <div className="text-2xl md:text-3xl mb-3 md:mb-4">{feature.icon}</div>
+                                        <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-2 md:mb-3">{feature.title}</h3>
+                                        <p className="text-gray-600 text-sm md:text-base">{feature.description}</p>
                                     </div>
                                 ))}
                             </div>
@@ -290,24 +290,24 @@ export default function HowItWorksPage() {
                     </div>
                 </section>
 
-                {/* Comparison Section */}
-                <section className="py-12 md:py-16 bg-white">
+                {/* Comparison Section - Mobile Optimized */}
+                <section className="py-8 md:py-12 lg:py-16 bg-white">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-6 md:mb-8 text-center px-2">
                                 Traditional vs. Mount
                             </h2>
 
-                            <div className="overflow-hidden rounded-2xl border border-gray-200">
-                                <table className="w-full">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="py-4 px-6 text-left font-bold text-gray-800">Aspect</th>
-                                            <th className="py-4 px-6 text-left font-bold text-gray-800">Traditional Method</th>
-                                            <th className="py-4 px-6 text-left font-bold text-naijaGreen">Mount Platform</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
+                            <div className="overflow-x-auto rounded-2xl border border-gray-200">
+                                <div className="min-w-full">
+                                    <div className="bg-gray-50">
+                                        <div className="grid grid-cols-3">
+                                            <div className="py-3 md:py-4 px-3 md:px-6 text-left font-bold text-gray-800 text-sm md:text-base">Aspect</div>
+                                            <div className="py-3 md:py-4 px-3 md:px-6 text-left font-bold text-gray-800 text-sm md:text-base">Traditional Method</div>
+                                            <div className="py-3 md:py-4 px-3 md:px-6 text-left font-bold text-naijaGreen text-sm md:text-base">Mount Platform</div>
+                                        </div>
+                                    </div>
+                                    <div className="divide-y divide-gray-200">
                                         {[
                                             { aspect: 'Finding Providers', traditional: 'Word of mouth, guesswork', mount: 'Verified professionals, reviews' },
                                             { aspect: 'Pricing', traditional: 'Unclear, often negotiable', mount: 'Transparent quotes upfront' },
@@ -316,49 +316,49 @@ export default function HowItWorksPage() {
                                             { aspect: 'Communication', traditional: 'Phone calls, no tracking', mount: 'In-app messaging, progress updates' },
                                             { aspect: 'Dispute Resolution', traditional: 'Difficult, no mediator', mount: 'Platform mediation, fair resolution' }
                                         ].map((row, index) => (
-                                            <tr key={index} className="hover:bg-gray-50">
-                                                <td className="py-4 px-6 font-medium text-gray-800">{row.aspect}</td>
-                                                <td className="py-4 px-6 text-gray-600">
+                                            <div key={index} className="grid grid-cols-3 hover:bg-gray-50">
+                                                <div className="py-3 md:py-4 px-3 md:px-6 font-medium text-gray-800 text-sm md:text-base">{row.aspect}</div>
+                                                <div className="py-3 md:py-4 px-3 md:px-6 text-gray-600 text-sm md:text-base">
                                                     <div className="flex items-center">
-                                                        <span className="text-red-500 mr-2">❌</span>
+                                                        <span className="text-red-500 mr-2 text-sm">❌</span>
                                                         {row.traditional}
                                                     </div>
-                                                </td>
-                                                <td className="py-4 px-6 text-gray-600">
+                                                </div>
+                                                <div className="py-3 md:py-4 px-3 md:px-6 text-gray-600 text-sm md:text-base">
                                                     <div className="flex items-center">
-                                                        <span className="text-green-500 mr-2">✅</span>
+                                                        <span className="text-green-500 mr-2 text-sm">✅</span>
                                                         {row.mount}
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* CTA Section */}
-                <section className="py-12 md:py-16 bg-gradient-to-r from-naijaGreen/10 to-darkGreen/10">
+                {/* CTA Section - Mobile Optimized */}
+                <section className="py-8 md:py-12 lg:py-16 bg-gradient-to-r from-naijaGreen/10 to-darkGreen/10">
                     <div className="container mx-auto px-4">
                         <div className="max-w-4xl mx-auto text-center">
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-4 md:mb-6 px-2">
                                 Ready to Experience the Difference?
                             </h2>
-                            <p className="text-gray-600 mb-8 text-lg">
+                            <p className="text-gray-600 mb-6 md:mb-8 text-base md:text-lg px-2">
                                 Join thousands of Nigerians who trust Mount for secure, reliable home services.
                             </p>
-                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
                                 <a
                                     href="/login"
-                                    className="bg-naijaGreen text-white px-8 py-3 rounded-lg font-bold hover:bg-darkGreen transition text-lg"
+                                    className="bg-naijaGreen text-white px-6 md:px-8 py-2.5 md:py-3 rounded-lg font-bold hover:bg-darkGreen transition text-base md:text-lg"
                                 >
                                     Get Started Free
                                 </a>
                                 <a
                                     href="/services"
-                                    className="border-2 border-naijaGreen text-naijaGreen px-8 py-3 rounded-lg font-bold hover:bg-naijaGreen hover:text-white transition text-lg"
+                                    className="border-2 border-naijaGreen text-naijaGreen px-6 md:px-8 py-2.5 md:py-3 rounded-lg font-bold hover:bg-naijaGreen hover:text-white transition text-base md:text-lg"
                                 >
                                     Browse Services
                                 </a>
@@ -367,15 +367,15 @@ export default function HowItWorksPage() {
                     </div>
                 </section>
 
-                {/* FAQ Section */}
-                <section className="py-12 md:py-16 bg-white">
+                {/* FAQ Section - Mobile Optimized */}
+                <section className="py-8 md:py-12 lg:py-16 bg-white">
                     <div className="container mx-auto px-4">
                         <div className="max-w-4xl mx-auto">
-                            <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">
+                            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-800 mb-6 md:mb-8 text-center px-2">
                                 Frequently Asked Questions
                             </h2>
 
-                            <div className="space-y-4">
+                            <div className="space-y-3 md:space-y-4">
                                 {[
                                     {
                                         q: 'Are all providers verified?',
@@ -394,9 +394,9 @@ export default function HowItWorksPage() {
                                         a: 'For customers, we charge a small service fee (based on job amount) for the platform, secure payments, and quality guarantee. For providers, we charge a 5% commission on completed jobs.'
                                     }
                                 ].map((faq, index) => (
-                                    <div key={index} className="border border-gray-200 rounded-2xl p-6">
-                                        <h3 className="font-bold text-gray-800 mb-2 text-lg">{faq.q}</h3>
-                                        <p className="text-gray-600">{faq.a}</p>
+                                    <div key={index} className="border border-gray-200 rounded-2xl p-4 md:p-6">
+                                        <h3 className="font-bold text-gray-800 mb-2 text-base md:text-lg">{faq.q}</h3>
+                                        <p className="text-gray-600 text-sm md:text-base">{faq.a}</p>
                                     </div>
                                 ))}
                             </div>
@@ -404,51 +404,51 @@ export default function HowItWorksPage() {
                     </div>
                 </section>
 
-                {/* Footer */}
-                <footer className="bg-gray-900 text-white py-12">
+                {/* Footer - Mobile Optimized */}
+                <footer className="bg-gray-900 text-white py-8 md:py-12">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
-                            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
-                                <div className="mb-6 md:mb-0">
-                                    <div className="flex items-center space-x-3 mb-4">
-                                        <img src={logo} alt="Mount" className="h-12 w-auto bg-white p-2 rounded-lg" />
+                            <div className="flex flex-col md:flex-row md:items-start md:justify-between mb-6 md:mb-8 gap-6 md:gap-0">
+                                <div className="mb-4 md:mb-0">
+                                    <div className="flex items-center space-x-3 mb-3 md:mb-4">
+                                        <img src={logo} alt="Mount" className="h-10 md:h-12 w-auto bg-white p-1.5 md:p-2 rounded-lg" />
                                         <div>
-                                            <div className="font-bold text-xl">Mount</div>
-                                            <div className="text-gray-400 text-sm">Nigeria's Trusted Home Services</div>
+                                            <div className="font-bold text-lg md:text-xl">Mount</div>
+                                            <div className="text-gray-400 text-xs md:text-sm">Nigeria's Trusted Home Services</div>
                                         </div>
                                     </div>
-                                    <p className="text-gray-400 max-w-md">
+                                    <p className="text-gray-400 max-w-md text-sm md:text-base">
                                         Connecting verified service professionals with homeowners through secure payments and quality guarantees.
                                     </p>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
                                     <div>
-                                        <h4 className="font-bold mb-4">Learn More</h4>
-                                        <ul className="space-y-2">
-                                            <li><Link to="/how-it-works" className="text-gray-400 hover:text-white transition">How It Works</Link></li>
-                                            <li><Link to="/locations/ogun" className="text-gray-400 hover:text-white transition">Ogun State</Link></li>
-                                            <li><Link to="/services" className="text-gray-400 hover:text-white transition">All Services</Link></li>
+                                        <h4 className="font-bold mb-3 md:mb-4 text-sm md:text-base">Learn More</h4>
+                                        <ul className="space-y-1.5 md:space-y-2">
+                                            <li><Link to="/how-it-works" className="text-gray-400 hover:text-white transition text-xs md:text-sm">How It Works</Link></li>
+                                            <li><Link to="/locations/ogun" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Ogun State</Link></li>
+                                            <li><Link to="/services" className="text-gray-400 hover:text-white transition text-xs md:text-sm">All Services</Link></li>
                                         </ul>
                                     </div>
                                     <div>
-                                        <h4 className="font-bold mb-4">For You</h4>
-                                        <ul className="space-y-2">
-                                            <li><Link to="/for-customers" className="text-gray-400 hover:text-white transition">For Customers</Link></li>
-                                            <li><Link to="/for-providers" className="text-gray-400 hover:text-white transition">For Providers</Link></li>
-                                            <li><a href="/login" className="text-gray-400 hover:text-white transition">Get Started</a></li>
+                                        <h4 className="font-bold mb-3 md:mb-4 text-sm md:text-base">For You</h4>
+                                        <ul className="space-y-1.5 md:space-y-2">
+                                            <li><Link to="/for-customers" className="text-gray-400 hover:text-white transition text-xs md:text-sm">For Customers</Link></li>
+                                            <li><Link to="/for-providers" className="text-gray-400 hover:text-white transition text-xs md:text-sm">For Providers</Link></li>
+                                            <li><a href="/login" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Get Started</a></li>
                                         </ul>
                                     </div>
                                     <div>
-                                        <h4 className="font-bold mb-4">Support</h4>
-                                        <ul className="space-y-2">
-                                            <li><a href="/contact" className="text-gray-400 hover:text-white transition">Contact Us</a></li>
-                                            <li><a href="/help" className="text-gray-400 hover:text-white transition">Help Center</a></li>
-                                            <li><a href="/privacy" className="text-gray-400 hover:text-white transition">Privacy Policy</a></li>
+                                        <h4 className="font-bold mb-3 md:mb-4 text-sm md:text-base">Support</h4>
+                                        <ul className="space-y-1.5 md:space-y-2">
+                                            <li><a href="/contact" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Contact Us</a></li>
+                                            <li><a href="/help" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Help Center</a></li>
+                                            <li><a href="/privacy" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Privacy Policy</a></li>
                                         </ul>
                                     </div>
                                 </div>
                             </div>
-                            <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+                            <div className="border-t border-gray-800 pt-6 md:pt-8 text-center text-gray-400 text-xs md:text-sm">
                                 <p>© {new Date().getFullYear()} Mount. All rights reserved.</p>
                             </div>
                         </div>
