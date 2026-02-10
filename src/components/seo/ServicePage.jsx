@@ -4,7 +4,6 @@ import { useParams, Link } from 'react-router-dom';
 import SimpleHelmet from './SimpleHelmet';
 import logo from '../../assets/logo.png';
 import { trackSEOButtonClick, trackSEOClick } from '../../utils/ga4';
-import { useScrollTracking } from '../../hooks/useScrollTracking';
 import SchemaMarkup from '../seo/SchemaMarkup';
 
 // Service data - same as in ServicesHubPage for consistency
@@ -213,6 +212,8 @@ const servicesData = {
 
 <SchemaMarkup
     type="service"
+    serviceSlug={serviceSlug}
+    serviceData={serviceData}
 />
 
 export default function ServicePage() {
@@ -241,6 +242,7 @@ export default function ServicePage() {
     }
 
 
+
     const handleFindProClick = () => {
         const serviceName = serviceData.name; // e.g., "Electrician"
         trackSEOButtonClick(`Find ${serviceName} Pro`, `/services/${serviceSlug}`);
@@ -253,7 +255,6 @@ export default function ServicePage() {
         });
     };
 
-    useScrollTracking(window.location.pathname);
     return (
         <>
             <SimpleHelmet
