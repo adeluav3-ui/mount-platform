@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SimpleHelmet from './SimpleHelmet';
 import logo from '../../assets/logo.png';
+import { trackSEOButtonClick, trackSEOClick } from '../../utils/ga4';
+import { useScrollTracking } from '../../hooks/useScrollTracking';
+import SchemaMarkup from '../seo/SchemaMarkup';
 
 export default function HowItWorksPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -130,6 +133,15 @@ export default function HowItWorksPage() {
             description: 'Our team is here to help throughout the entire process.'
         }
     ];
+
+    <SchemaMarkup type="howto" />
+
+    const handleGetStartedClick = () => {
+        trackSEOButtonClick('Get Started Guide', '/how-it-works');
+        trackSEOClick('how-it-works', 'get-started-guide');
+        navigate('/login', { state: { from: 'seo-how-it-works' } });
+    };
+    useScrollTracking(window.location.pathname);
 
     return (
         <>

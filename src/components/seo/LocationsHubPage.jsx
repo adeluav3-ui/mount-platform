@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SimpleHelmet from './SimpleHelmet';
 import logo from '../../assets/logo.png';
+import { trackSEOButtonClick, trackSEOClick } from '../../utils/ga4';
+import { useScrollTracking } from '../../hooks/useScrollTracking';
 
 export default function LocationsHubPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -25,6 +27,14 @@ export default function LocationsHubPage() {
         { service: 'Logistics', slug: 'logistics-ogun', icon: '🚚' },
         { service: 'Hair Styling', slug: 'hair-styling-ogun', icon: '💇' }
     ];
+
+    const handleExploreServicesClick = () => {
+        trackSEOButtonClick('Explore Services in Ogun', '/locations/ogun');
+        trackSEOClick('locations-ogun', 'explore-services');
+        navigate('/services');
+    };
+
+    useScrollTracking(window.location.pathname);
 
     return (
         <>

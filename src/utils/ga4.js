@@ -1,0 +1,80 @@
+// src/utils/ga4.js
+import ReactGA from 'react-ga4';
+
+// Initialize GA4 with your Firebase Measurement ID
+const initializeGA4 = () => {
+    const measurementId = 'G-26F05C9YMS'; // Your Firebase GA4 ID
+
+    if (process.env.NODE_ENV === 'production') {
+        ReactGA.initialize(measurementId, {
+            gaOptions: {
+                siteSpeedSampleRate: 100 // Track all page views for speed insights
+            }
+        });
+        console.log('✅ GA4 initialized with Firebase ID');
+    } else {
+        console.log('🛠️ GA4 not initialized in development mode');
+    }
+};
+
+// Track page views
+export const trackPageView = (path) => {
+    if (process.env.NODE_ENV === 'production') {
+        ReactGA.send({ hitType: 'pageview', page: path });
+        console.log('📊 GA4 Pageview:', path);
+    }
+};
+
+// Track events (signups, job posts, etc.)
+export const trackEvent = (category, action, label = '', value = 0) => {
+    if (process.env.NODE_ENV === 'production') {
+        ReactGA.event({
+            category,
+            action,
+            label,
+            value
+        });
+        console.log('🎯 GA4 Event:', { category, action, label, value });
+    }
+};
+
+// Track exceptions/errors
+export const trackError = (description, fatal = false) => {
+    if (process.env.NODE_ENV === 'production') {
+        ReactGA.event({
+            category: 'Error',
+            action: 'Exception',
+            label: description,
+            nonInteraction: true
+        });
+    }
+};
+
+// Track clicks from SEO pages to app
+export const trackSEOClick = (sourcePage, buttonType) => {
+    trackEvent('SEO Navigation', 'Click to App', `${sourcePage} - ${buttonType}`);
+};
+
+// Track signup from SEO traffic
+export const trackSEOSignup = (userType, sourcePage) => {
+    trackEvent('SEO Conversion', 'Signup', `${userType} from ${sourcePage}`, 1);
+};
+
+// Track job post start from SEO
+export const trackSEOJobStart = (serviceType, sourcePage) => {
+    trackEvent('SEO Conversion', 'Job Post Started', `${serviceType} from ${sourcePage}`);
+};
+
+// Track button clicks on SEO pages
+export const trackSEOButtonClick = (buttonText, pageUrl) => {
+    trackEvent('SEO Engagement', 'Button Click', `${buttonText} on ${pageUrl}`);
+};
+
+// Track scroll depth on SEO pages
+export const trackScrollDepth = (depth, pageUrl) => {
+    if (depth === 25 || depth === 50 || depth === 75 || depth === 90) {
+        trackEvent('SEO Engagement', 'Scroll Depth', `${depth}% on ${pageUrl}`);
+    }
+};
+
+export default initializeGA4;

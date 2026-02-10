@@ -3,6 +3,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import SimpleHelmet from './SimpleHelmet';
 import logo from '../../assets/logo.png';
+import { trackSEOButtonClick, trackSEOClick } from '../../utils/ga4';
+import { useScrollTracking } from '../../hooks/useScrollTracking';
+import SchemaMarkup from '../seo/SchemaMarkup';
 
 export default function ServicesHubPage() {
 
@@ -70,6 +73,15 @@ export default function ServicesHubPage() {
         },
     ];
 
+    <SchemaMarkup type="platform" />
+
+    const handleGetStartedClick = () => {
+        trackSEOButtonClick('Get Started', '/services');
+        trackSEOClick('services-hub', 'get-started');
+        // Your existing navigation code here
+        navigate('/login', { state: { from: 'seo-services-hub' } });
+    };
+    useScrollTracking(window.location.pathname);
     return (
         <>
             <SimpleHelmet

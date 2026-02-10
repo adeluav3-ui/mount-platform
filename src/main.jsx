@@ -5,8 +5,24 @@ import App from './App.jsx'
 import { SupabaseProvider } from './context/SupabaseContext.jsx'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import initializeGA4 from './utils/ga4';
+import { initPerformanceTracking } from './utils/performance';
 
 console.log('=== MOUNT PLATFORM STARTING ===')
+
+// Initialize GA4
+initializeGA4();
+
+initPerformanceTracking();
+
+// Also add page load tracking
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    if (window.trackPageLoad) {
+      window.trackPageLoad();
+    }
+  }, 1000);
+});
 
 // Enhanced Service Worker Registration
 function registerServiceWorkers() {
@@ -97,6 +113,7 @@ function registerServiceWorkers() {
 
 // Register Service Workers on app start
 registerServiceWorkers();
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <SupabaseProvider>
