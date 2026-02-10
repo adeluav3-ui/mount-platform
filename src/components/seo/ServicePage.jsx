@@ -213,7 +213,6 @@ const servicesData = {
 
 <SchemaMarkup
     type="service"
-    serviceSlug={serviceSlug}
     serviceData={serviceData}
 />
 
