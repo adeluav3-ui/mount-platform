@@ -93,4 +93,19 @@
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
+
+  <!-- Add these to your existing sitemap -->
+<url>
+  <loc>https://mountltd.com/home</loc>
+  <lastmod>2026-02-10</lastmod>
+  <changefreq>weekly</changefreq>
+  <priority>0.9</priority>
+</url>
+
+<url>
+  <loc>https://mountltd.com/contact</loc>
+  <lastmod>2026-02-10</lastmod>
+  <changefreq>monthly</changefreq>
+  <priority>0.6</priority>
+</url>
 </urlset>
