@@ -213,7 +213,6 @@ const servicesData = {
 
 <SchemaMarkup
     type="service"
-    serviceData={serviceData}
 />
 
 export default function ServicePage() {
