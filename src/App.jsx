@@ -21,6 +21,7 @@ import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
+import ServicesHubPage from './components/seo/ServicesHubPage';
 
 // NEW: Import SEO Pages
 import ServicesHubPage from './components/seo/ServicesHubPage'; // Add this import
