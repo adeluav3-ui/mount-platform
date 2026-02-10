@@ -28,6 +28,7 @@ import LocationsHubPage from './components/seo/LocationsHubPage';
 import HowItWorksPage from './components/seo/HowItWorksPage';
 import ForCustomersPage from './components/seo/ForCustomersPage';
 import ForProvidersPage from './components/seo/ForProvidersPage';
+import HomeOverviewPage from './components/seo/HomeOverviewPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -43,6 +44,7 @@ function PublicRoutes() {
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/for-customers" element={<ForCustomersPage />} />
       <Route path="/for-providers" element={<ForProvidersPage />} />
+      <Route path="/home" element={<HomeOverviewPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
