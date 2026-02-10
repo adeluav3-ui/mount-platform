@@ -80,18 +80,21 @@ export default defineConfig({
                     }
                 ]
             },
-            // CRITICAL FIX: Disable auto service worker registration
-            injectRegister: null, // This prevents VitePWA from registering its own service worker
+            injectRegister: null,
             devOptions: {
                 enabled: false
             }
         })
     ],
+    optimizeDeps: {
+        include: ['react-helmet-async'] // ADD THIS
+    },
     build: {
         rollupOptions: {
             input: {
                 main: './index.html'
-            }
+            },
+            external: [] // MAKE SURE THIS IS EMPTY or doesn't include react-helmet-async
         },
         sourcemap: true
     },
