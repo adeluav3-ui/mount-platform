@@ -29,6 +29,7 @@ import HowItWorksPage from './components/seo/HowItWorksPage';
 import ForCustomersPage from './components/seo/ForCustomersPage';
 import ForProvidersPage from './components/seo/ForProvidersPage';
 import HomeOverviewPage from './components/seo/HomeOverviewPage';
+import ContactPage from './components/seo/ContactPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -45,6 +46,7 @@ function PublicRoutes() {
       <Route path="/for-customers" element={<ForCustomersPage />} />
       <Route path="/for-providers" element={<ForProvidersPage />} />
       <Route path="/home" element={<HomeOverviewPage />} />
+      <Route path="/contact" element={<ContactPage />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -124,15 +126,16 @@ function AppRouter() {
   }
 
   // Determine if current route is public
-  // Determine if current route is public
   const isPublicRoute =
     location.pathname === '/' ||
     location.pathname === '/login' ||
-    location.pathname.startsWith('/services') || // Allow all /services/* pages
-    location.pathname === '/how-it-works' || // We'll add these later
+    location.pathname.startsWith('/services') ||
+    location.pathname === '/how-it-works' ||
     location.pathname === '/for-customers' ||
-    location.pathname.startsWith('/locations') ||
-    location.pathname === '/for-providers';
+    location.pathname === '/for-providers' ||
+    location.pathname === '/home' || // ✅ ADD THIS
+    location.pathname === '/contact' || // ✅ ADD THIS
+    location.pathname.startsWith('/locations');
 
   // If no user and not on a public route, show login screen
   if (!user && !isPublicRoute) {
