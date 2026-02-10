@@ -22,6 +22,7 @@ import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
 import ServicesHubPage from './components/seo/ServicesHubPage';
+import ServicePage from './components/seo/ServicePage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -34,6 +35,7 @@ function PublicRoutes() {
 
       {/* NEW SEO PAGES - START */}
       <Route path="/services" element={<ServicesHubPage />} />
+      <Route path="/services/:serviceSlug" element={<ServicePage />} />
       {/* NEW SEO PAGES - END */}
 
       {/* Catch-all redirect to landing page */}
