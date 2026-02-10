@@ -24,20 +24,6 @@ const servicesData = {
             'Transparent pricing upfront',
             'Work guaranteed for 90 days',
             'Real-time job tracking'
-        ],
-        faqs: [
-            {
-                question: 'How much does electrical work cost?',
-                answer: 'Costs vary based on the job complexity. Simple repairs start from ₦5,000, while installations can range from ₦15,000 to ₦100,000+. Get free quotes from verified electricians on Mount.'
-            },
-            {
-                question: 'Are your electricians certified?',
-                answer: 'Yes! All electricians on Mount are certified and verified. We check their qualifications, insurance, and previous work history before approving them.'
-            },
-            {
-                question: 'What areas in Ogun State do you cover?',
-                answer: 'We cover all major areas including Abeokuta, Sango-Ota, Ijebu-Ode, Sagamu, Ifo, and surrounding locations.'
-            }
         ]
     },
     plumber: {
@@ -58,19 +44,168 @@ const servicesData = {
             'Permanent solutions, not quick fixes',
             'Clean work areas maintained',
             'Follow-up support included'
-        ],
-        faqs: [
-            {
-                question: 'How quickly can a plumber arrive?',
-                answer: 'Most plumbers can arrive within 2-4 hours during business hours. Emergency services available for urgent issues.'
-            },
-            {
-                question: 'Do you offer plumbing installation services?',
-                answer: 'Yes! Our plumbers handle complete installations including bathrooms, kitchens, and outdoor plumbing systems.'
-            }
         ]
     },
-    // We'll add more services later, starting with these two
+    cleaning: {
+        name: 'Cleaning',
+        icon: '🧹',
+        description: 'Home cleaning, office cleaning, deep cleaning, and post-construction cleaning.',
+        longDescription: 'Get professional cleaning services in Ogun State with Mount. Our verified cleaners provide thorough, reliable cleaning using quality equipment and eco-friendly products when requested.',
+        problems: [
+            'Limited time for thorough cleaning',
+            'Hard-to-reach areas accumulating dust',
+            'Post-construction or renovation mess',
+            'Office spaces needing regular maintenance',
+            'Specialized cleaning requirements'
+        ],
+        solutions: [
+            'Trained and vetted cleaning professionals',
+            'Comprehensive cleaning equipment',
+            'Customizable cleaning packages',
+            'Eco-friendly cleaning options',
+            'Satisfaction guaranteed'
+        ]
+    },
+    painting: {
+        name: 'Painting',
+        icon: '🎨',
+        description: 'Interior and exterior painting, wall finishing, and decorative painting services.',
+        longDescription: 'Transform your spaces with professional painting services in Ogun State. Mount connects you with skilled painters who deliver flawless finishes for homes, offices, and commercial spaces.',
+        problems: [
+            'Faded or peeling paint',
+            'Uneven wall surfaces',
+            'Mold or moisture damage',
+            'Desire for color updates',
+            'Commercial painting needs'
+        ],
+        solutions: [
+            'Expert color consultation',
+            'Quality paint materials',
+            'Surface preparation included',
+            'Clean work areas',
+            'Durable, long-lasting finishes'
+        ]
+    },
+    'ac-repair': {
+        name: 'AC Repair',
+        icon: '❄️',
+        description: 'AC installation, maintenance, gas refilling, and repair services.',
+        longDescription: 'Beat the heat with reliable AC services in Ogun State. Mount connects you with certified technicians for installation, repair, and maintenance of all AC types.',
+        problems: [
+            'AC not cooling properly',
+            'Strange noises or leaks',
+            'High electricity bills',
+            'Regular maintenance needed',
+            'New AC installation'
+        ],
+        solutions: [
+            'Certified AC technicians',
+            'Genuine spare parts',
+            'Preventive maintenance plans',
+            'Energy efficiency optimization',
+            'Emergency repair services'
+        ]
+    },
+    carpenter: {
+        name: 'Carpenter',
+        icon: '🪚',
+        description: 'Furniture making, repairs, wood installations, and custom carpentry work.',
+        longDescription: 'Get expert carpentry services in Ogun State through Mount. Our verified carpenters handle everything from custom furniture to structural woodwork with precision and skill.',
+        problems: [
+            'Damaged furniture needing repair',
+            'Custom furniture requirements',
+            'Door and window installations',
+            'Wooden flooring installation',
+            'Cabinet and storage solutions'
+        ],
+        solutions: [
+            'Skilled craftsmen with years of experience',
+            'Quality wood materials',
+            'Custom design consultations',
+            'Precise measurements and fittings',
+            'Durable construction'
+        ]
+    },
+    'pest-control': {
+        name: 'Pest Control',
+        icon: '🐜',
+        description: 'Fumigation, rodent control, insect elimination, and preventive pest management.',
+        longDescription: 'Protect your property with professional pest control services in Ogun State. Mount connects you with licensed pest control experts using safe, effective methods.',
+        problems: [
+            'Rodent infestations',
+            'Insect problems (cockroaches, bed bugs)',
+            'Termite damage prevention',
+            'Mosquito control needs',
+            'Regular preventive maintenance'
+        ],
+        solutions: [
+            'Licensed pest control professionals',
+            'Safe, approved chemicals',
+            'Comprehensive inspection',
+            'Follow-up treatments included',
+            'Preventive maintenance plans'
+        ]
+    },
+    roofing: {
+        name: 'Roofing',
+        icon: '🏠',
+        description: 'Roof repair, installation, leak fixing, and roof maintenance services.',
+        longDescription: 'Secure your property with professional roofing services in Ogun State. Mount connects you with experienced roofers for repairs, installations, and maintenance.',
+        problems: [
+            'Roof leaks during rain',
+            'Damaged or missing roof tiles',
+            'Old roof needing replacement',
+            'Gutter cleaning and repair',
+            'Roof insulation needs'
+        ],
+        solutions: [
+            'Experienced roofing specialists',
+            'Quality roofing materials',
+            'Weather-proof installations',
+            'Safety equipment and protocols',
+            'Long-term warranty options'
+        ]
+    },
+    logistics: {
+        name: 'Logistics',
+        icon: '🚚',
+        description: 'Pickup and delivery services within and outside Ogun State.',
+        longDescription: 'Reliable logistics and delivery services in Ogun State and beyond. Mount connects you with verified logistics providers for safe, timely deliveries.',
+        problems: [
+            'Package pickup and delivery needs',
+            'Interstate transport requirements',
+            'Fragile or valuable items',
+            'Time-sensitive deliveries',
+            'Bulk item transportation'
+        ],
+        solutions: [
+            'Verified logistics partners',
+            'Real-time tracking',
+            'Safe handling of goods',
+            'Insurance options available',
+            'Flexible scheduling'
+        ]
+    },
+    'hair-styling': {
+        name: 'Hair Styling',
+        icon: '💇',
+        description: 'Professional hairstyling, haircuts, braiding, and salon services at home.',
+        longDescription: 'Get salon-quality hair services at home in Ogun State. Mount connects you with professional hairstylists for cuts, styling, braiding, and treatments.',
+        problems: [
+            'Need for professional hair services at home',
+            'Special occasion styling',
+            'Hair treatment and conditioning',
+            'Braiding and weaving services',
+            'Regular maintenance cuts'
+        ],
+        solutions: [
+            'Professional licensed hairstylists',
+            'Mobile salon equipment',
+            'Quality hair products',
+            'Consultation and style advice',
+            'Hygienic practices'
+        ]
+    }
 };
 
 export default function ServicePage() {
@@ -238,7 +373,7 @@ export default function ServicePage() {
                                         </li>
                                         <li className="flex items-center">
                                             <span className="text-green-300 mr-3">✓</span>
-                                            <span>Secure escrow payments</span>
+                                            <span>Secure payments</span>
                                         </li>
                                         <li className="flex items-center">
                                             <span className="text-green-300 mr-3">✓</span>
@@ -298,7 +433,7 @@ export default function ServicePage() {
                                 <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">About Our {service.name} Services</h2>
                                 <p className="text-gray-600 mb-6">{service.longDescription}</p>
                                 <p className="text-gray-600">
-                                    With Mount, you get more than just a service provider. You get a trusted partner who guarantees quality work, transparent pricing, and ongoing support. Our escrow payment system ensures your money is protected until you're satisfied with the work.
+                                    With Mount, you get more than just a service provider. You get a trusted partner who guarantees quality work, transparent pricing, and ongoing support.
                                 </p>
                             </div>
                         </div>
