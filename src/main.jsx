@@ -96,7 +96,7 @@ function registerServiceWorkers() {
 }
 
 // Register Service Workers on app start
-registerServiceWorkers(); n
+registerServiceWorkers();
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <SupabaseProvider>
