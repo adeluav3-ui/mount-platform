@@ -79,109 +79,213 @@ export default function ServicesHubPage() {
             {/* Mobile-Optimized Layout */}
             <div className="min-h-screen bg-white">
 
-                {/* Modern Header with Logo */}
-                <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
+                {/* Modern Professional Header */}
+                <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-lg">
                     <div className="container mx-auto px-4">
-                        <div className="flex items-center justify-between py-4">
-                            {/* Logo */}
-                            <Link to="/" className="flex items-center space-x-3">
-                                <img
-                                    src={logo}
-                                    alt="Mount - Nigeria's Trusted Home Services Marketplace"
-                                    className="h-10 w-auto md:h-12"
-                                />
-                                <div className="hidden md:block">
-                                    <div className="font-bold text-xl text-gray-800">Mount</div>
-                                    <div className="text-xs text-gray-500">Trusted Home Services</div>
+                        <div className="flex items-center justify-between py-5">
+                            {/* Logo - Modern Design */}
+                            <Link to="/" className="flex items-center space-x-4 group">
+                                <div className="relative">
+                                    <img
+                                        src={logo}
+                                        alt="Mount - Nigeria's Trusted Home Services Marketplace"
+                                        className="h-12 w-auto transition-transform duration-300 group-hover:scale-105"
+                                    />
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-naijaGreen/20 to-darkGreen/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                </div>
+                                <div className="hidden lg:block">
+                                    <div className="font-bold text-2xl text-gray-800 tracking-tight">Mount</div>
+                                    <div className="text-xs text-gray-500 font-medium tracking-wide">TRUSTED HOME SERVICES</div>
                                 </div>
                             </Link>
 
-                            {/* Navigation */}
-                            <nav className="hidden md:flex items-center space-x-8">
-                                <Link to="/services" className="font-medium text-gray-700 hover:text-naijaGreen transition">
+                            {/* Desktop Navigation - Modern */}
+                            <nav className="hidden lg:flex items-center space-x-10">
+                                <Link
+                                    to="/services"
+                                    className="font-semibold text-gray-700 hover:text-naijaGreen transition-colors duration-200 relative group"
+                                >
                                     Services
+                                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-naijaGreen group-hover:w-full transition-all duration-300"></span>
                                 </Link>
-                                <Link to="/how-it-works" className="font-medium text-gray-700 hover:text-naijaGreen transition">
+                                <Link
+                                    to="/how-it-works"
+                                    className="font-semibold text-gray-700 hover:text-naijaGreen transition-colors duration-200 relative group"
+                                >
                                     How It Works
+                                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-naijaGreen group-hover:w-full transition-all duration-300"></span>
                                 </Link>
-                                <Link to="/for-customers" className="font-medium text-gray-700 hover:text-naijaGreen transition">
+                                <Link
+                                    to="/for-customers"
+                                    className="font-semibold text-gray-700 hover:text-naijaGreen transition-colors duration-200 relative group"
+                                >
                                     For Customers
+                                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-naijaGreen group-hover:w-full transition-all duration-300"></span>
                                 </Link>
-                                <Link to="/for-providers" className="font-medium text-gray-700 hover:text-naijaGreen transition">
+                                <Link
+                                    to="/for-providers"
+                                    className="font-semibold text-gray-700 hover:text-naijaGreen transition-colors duration-200 relative group"
+                                >
                                     For Providers
+                                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-naijaGreen group-hover:w-full transition-all duration-300"></span>
                                 </Link>
                             </nav>
 
-                            {/* Mobile Menu Button */}
-                            <button className="md:hidden text-gray-600">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-                                </svg>
+                            {/* CTA Button for Desktop */}
+                            <div className="hidden lg:block">
+                                <a
+                                    href="/login"
+                                    className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-6 py-3 rounded-lg font-bold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+                                >
+                                    Get Started
+                                </a>
+                            </div>
+
+                            {/* Mobile Menu Button - Modern & Functional */}
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="lg:hidden flex flex-col items-center justify-center w-12 h-12 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                                aria-label="Toggle menu"
+                            >
+                                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? 'rotate-45 translate-y-1.5' : ''}`}></span>
+                                <span className={`w-6 h-0.5 bg-gray-700 my-1.5 transition-all duration-300 ${isMobileMenuOpen ? 'opacity-0' : ''}`}></span>
+                                <span className={`w-6 h-0.5 bg-gray-700 transition-all duration-300 ${isMobileMenuOpen ? '-rotate-45 -translate-y-1.5' : ''}`}></span>
                             </button>
+                        </div>
+
+                        {/* Mobile Menu Dropdown - Modern & Animated */}
+                        <div className={`lg:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className="py-6 border-t border-gray-100">
+                                <nav className="flex flex-col space-y-4">
+                                    <Link
+                                        to="/services"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <span className="font-medium text-gray-700">Services</span>
+                                    </Link>
+                                    <Link
+                                        to="/how-it-works"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="font-medium text-gray-700">How It Works</span>
+                                    </Link>
+                                    <Link
+                                        to="/for-customers"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span className="font-medium text-gray-700">For Customers</span>
+                                    </Link>
+                                    <Link
+                                        to="/for-providers"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="flex items-center py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                                    >
+                                        <svg className="w-5 h-5 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
+                                        <span className="font-medium text-gray-700">For Providers</span>
+                                    </Link>
+
+                                    {/* Mobile CTA Button */}
+                                    <div className="pt-4 mt-4 border-t border-gray-100">
+                                        <a
+                                            href="/login"
+                                            onClick={() => setIsMobileMenuOpen(false)}
+                                            className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center hover:shadow-lg transition-shadow"
+                                        >
+                                            Get Started Free
+                                        </a>
+                                    </div>
+                                </nav>
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Hero Section - Responsive */}
-                <section className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white">
-                    <div className="container mx-auto px-4 py-12 md:py-16">
+                {/* Hero Section - Updated for Better Mobile View */}
+                <section className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white relative overflow-hidden">
+                    {/* Background Pattern */}
+                    <div className="absolute inset-0 opacity-10">
+                        <div className="absolute inset-0" style={{
+                            backgroundImage: `radial-gradient(circle at 25px 25px, white 2%, transparent 0%), radial-gradient(circle at 75px 75px, white 2%, transparent 0%)`,
+                            backgroundSize: '100px 100px'
+                        }}></div>
+                    </div>
+
+                    <div className="container mx-auto px-4 py-16 md:py-24 relative">
                         <div className="max-w-6xl mx-auto">
-                            {/* Logo in Hero for Mobile */}
-                            <div className="mb-8 md:hidden flex justify-center">
+                            {/* Mobile Logo in Hero - Centered */}
+                            <div className="mb-10 md:hidden flex flex-col items-center">
                                 <img
                                     src={logo}
                                     alt="Mount"
-                                    className="h-16 w-auto bg-white p-3 rounded-2xl shadow-lg"
+                                    className="h-20 w-auto bg-white p-4 rounded-2xl shadow-2xl mb-4"
                                 />
+                                <div className="text-center">
+                                    <div className="font-bold text-2xl">Mount</div>
+                                    <div className="text-sm opacity-80">Trusted Home Services</div>
+                                </div>
                             </div>
 
-                            {/* Mobile: Stack, Desktop: Side-by-side */}
                             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-                                <div className="lg:w-2/3 mb-8 lg:mb-0">
-                                    <div className="mb-4">
-                                        <span className="inline-block bg-white/20 backdrop-blur-sm text-white px-4 py-1 rounded-full text-sm font-medium mb-3">
-                                            Nigeria's Trusted Home Services Marketplace
+                                <div className="lg:w-2/3 mb-10 lg:mb-0">
+                                    <div className="mb-6">
+                                        <span className="inline-block bg-white/20 backdrop-blur-sm text-white px-5 py-2 rounded-full text-sm font-semibold tracking-wide">
+                                            NIGERIA'S TRUSTED HOME SERVICES MARKETPLACE
                                         </span>
                                     </div>
-                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 md:mb-6 leading-tight">
-                                        Home Services in Ogun State
+                                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 md:mb-8 leading-tight">
+                                        Professional Home Services<br className="hidden sm:block" /> in Ogun State
                                     </h1>
-                                    <p className="text-lg sm:text-xl md:text-2xl mb-8 max-w-3xl opacity-95 leading-relaxed">
-                                        Find verified professionals for all your home service needs. Book with confidence using Mount's secure payment system.
+                                    <p className="text-xl sm:text-2xl md:text-3xl mb-10 max-w-3xl opacity-95 leading-relaxed">
+                                        Verified professionals. Secure payments. Quality guaranteed.
                                     </p>
-                                    <div className="flex flex-col sm:flex-row gap-4">
+                                    <div className="flex flex-col sm:flex-row gap-5">
                                         <a
                                             href="/#postJob"
-                                            className="inline-flex items-center justify-center bg-white text-naijaGreen px-6 py-3 rounded-xl font-bold hover:bg-gray-100 transition text-center text-base shadow-lg hover:shadow-xl"
+                                            className="inline-flex items-center justify-center bg-white text-naijaGreen px-8 py-4 rounded-xl font-bold hover:bg-gray-50 transition-all duration-300 text-center text-lg shadow-2xl hover:shadow-3xl hover:-translate-y-1"
                                         >
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                             </svg>
                                             Book a Service Now
                                         </a>
                                         <a
                                             href="/how-it-works"
-                                            className="inline-flex items-center justify-center border-2 border-white text-white px-6 py-3 rounded-xl font-bold hover:bg-white hover:text-naijaGreen transition text-center text-base"
+                                            className="inline-flex items-center justify-center border-2 border-white/50 text-white px-8 py-4 rounded-xl font-bold hover:bg-white hover:text-naijaGreen transition-all duration-300 text-center text-lg backdrop-blur-sm"
                                         >
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                             How It Works
                                         </a>
                                     </div>
                                 </div>
+
+                                {/* Desktop Logo Card - More Professional */}
                                 <div className="lg:w-1/3 lg:pl-12">
-                                    {/* Desktop Logo */}
-                                    <div className="hidden lg:block bg-white p-6 rounded-2xl shadow-2xl">
+                                    <div className="hidden lg:block bg-white/10 backdrop-blur-lg border border-white/20 rounded-2xl p-8 shadow-2xl">
                                         <img
                                             src={logo}
                                             alt="Mount"
-                                            className="h-24 w-auto mx-auto mb-4"
+                                            className="h-28 w-auto mx-auto mb-6"
                                         />
                                         <div className="text-center">
-                                            <h3 className="font-bold text-gray-800 text-xl mb-2">Mount</h3>
-                                            <p className="text-gray-600 text-sm">
-                                                Nigeria's #1 home services marketplace
+                                            <h3 className="font-bold text-white text-2xl mb-3">Mount Platform</h3>
+                                            <p className="text-white/80 text-base">
+                                                Nigeria's #1 home services marketplace with escrow protection and quality guarantees.
                                             </p>
                                         </div>
                                     </div>
@@ -281,8 +385,8 @@ export default function ServicesHubPage() {
                                     },
                                     {
                                         icon: '🔒',
-                                        title: 'Secure Escrow Payments',
-                                        description: 'Your payment is held securely until work is completed to your satisfaction.',
+                                        title: 'Secure Payments',
+                                        description: 'Payment structure is secured and tracked while work is completed to your satisfaction.',
                                         color: 'text-blue-600'
                                     },
                                     {
