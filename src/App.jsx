@@ -1,4 +1,4 @@
-// src/App.jsx - RESTRUCTURED WITH PROPER AUTH FLOW
+// src/App.jsx - UPDATED WITH SEO PAGES
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SupabaseProvider, useSupabase } from './context/SupabaseContext';
@@ -22,6 +22,9 @@ import ReviewSubmission from './components/review/ReviewSubmission';
 import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
 
+// NEW: Import SEO Pages
+import ServicesHubPage from './components/seo/ServicesHubPage'; // Add this import
+
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
   return (
@@ -30,6 +33,10 @@ function PublicRoutes() {
 
       {/* Login/Signup screen */}
       <Route path="/login" element={<Login />} />
+
+      {/* NEW SEO PAGES - START */}
+      <Route path="/services" element={<ServicesHubPage />} />
+      {/* NEW SEO PAGES - END */}
 
       {/* Catch-all redirect to landing page */}
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -51,7 +58,6 @@ function ProtectedRoutes() {
 
   return (
     <Routes>
-
       {/* Payment routes */}
       <Route path="/payment/pending" element={<PaymentPending />} />
       <Route path="/payment/bank-transfer/:jobId" element={<BankTransferPayment />} />
@@ -111,7 +117,7 @@ function AppRouter() {
   }
 
   // Determine if current route is public
-  const isPublicRoute = ['/', '/login'].includes(location.pathname);
+  const isPublicRoute = ['/', '/login', '/services'].includes(location.pathname); // Added '/services'
 
   // If no user and not on a public route, show login screen
   if (!user && !isPublicRoute) {
