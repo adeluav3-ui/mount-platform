@@ -24,6 +24,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ServicesHubPage from './components/seo/ServicesHubPage';
 import ServicePage from './components/seo/ServicePage';
 import ScrollToTop from './components/ScrollToTop';
+import LocationsHubPage from './components/seo/LocationsHubPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -37,6 +38,7 @@ function PublicRoutes() {
       {/* NEW SEO PAGES - START */}
       <Route path="/services" element={<ServicesHubPage />} />
       <Route path="/services/:serviceSlug" element={<ServicePage />} />
+      <Route path="/locations/ogun" element={<LocationsHubPage />} />
       {/* NEW SEO PAGES - END */}
 
       {/* Catch-all redirect to landing page */}
@@ -125,6 +127,7 @@ function AppRouter() {
     location.pathname.startsWith('/services') || // Allow all /services/* pages
     location.pathname === '/how-it-works' || // We'll add these later
     location.pathname === '/for-customers' ||
+    location.pathname.startsWith('/locations') ||
     location.pathname === '/for-providers';
 
   // If no user and not on a public route, show login screen
