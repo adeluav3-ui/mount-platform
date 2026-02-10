@@ -23,6 +23,7 @@ import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
 import ServicesHubPage from './components/seo/ServicesHubPage';
 import ServicePage from './components/seo/ServicePage';
+import ScrollToTop from './components/ScrollToTop';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -179,6 +180,7 @@ export default function App() {
     >
       <SupabaseProvider>
         <SettingsProvider>
+          <ScrollToTop />
           <AppRouter />
         </SettingsProvider>
       </SupabaseProvider>
