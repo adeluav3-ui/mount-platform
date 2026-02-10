@@ -25,6 +25,7 @@ import ServicesHubPage from './components/seo/ServicesHubPage';
 import ServicePage from './components/seo/ServicePage';
 import ScrollToTop from './components/ScrollToTop';
 import LocationsHubPage from './components/seo/LocationsHubPage';
+import HowItWorksPage from './components/seo/HowItWorksPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -39,6 +40,7 @@ function PublicRoutes() {
       <Route path="/services" element={<ServicesHubPage />} />
       <Route path="/services/:serviceSlug" element={<ServicePage />} />
       <Route path="/locations/ogun" element={<LocationsHubPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
       {/* NEW SEO PAGES - END */}
 
       {/* Catch-all redirect to landing page */}
