@@ -378,7 +378,7 @@ const TermsAndConditions = ({ isOpen, onAccept, onClose }) => {
 
                                         <div>
                                             <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-1">21. CONTACT INFORMATION</h3>
-                                            <p>For questions or concerns, contact us at <strong>mountservicesltd@gmail.com</strong>.</p>
+                                            <p>For questions or concerns, contact us at <strong>info@mountltd.com</strong>.</p>
                                         </div>
 
                                         <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">

@@ -27,8 +27,8 @@ const ContactPage = () => {
                             <div className="space-y-6">
                                 <div>
                                     <h3 className="font-bold text-gray-900 mb-2">Email</h3>
-                                    <a href="mailto:mountservicesltd@gmail.com" className="text-naijaGreen hover:text-darkGreen">
-                                        mountservicesltd@gmail.com
+                                    <a href="mailto:info@mountltd.com" className="text-naijaGreen hover:text-darkGreen">
+                                        info@mountltd.com
                                     </a>
                                 </div>
 

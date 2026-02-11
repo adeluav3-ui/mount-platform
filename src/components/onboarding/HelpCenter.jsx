@@ -89,12 +89,12 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                 <div className="space-y-3">
                                     <div className="bg-white p-3 rounded-lg border break-words">
                                         <code className="text-gray-800 text-sm sm:text-base font-mono break-all">
-                                            mountservicesltd@gmail.com
+                                            info@mountltd.com
                                         </code>
                                     </div>
                                     <button
                                         onClick={() => {
-                                            window.location.href = 'mailto:mountservicesltd@gmail.com?subject=Mount Platform Support';
+                                            window.location.href = 'mailto:info@mountltd.com?subject=Mount Platform Support';
                                         }}
                                         className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center justify-center gap-2"
                                     >
@@ -514,7 +514,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                         <span className="text-blue-600">📧</span>
                                         <span className="text-sm text-gray-700">Email:</span>
                                     </div>
-                                    <code className="text-blue-600 text-sm font-medium">mountservicesltd@gmail.com</code>
+                                    <code className="text-blue-600 text-sm font-medium">info@mountltd.com</code>
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">

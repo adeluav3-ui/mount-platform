@@ -62,7 +62,7 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                     <h3 className="font-bold text-gray-800 text-base sm:text-lg mb-2">2. Data Controller</h3>
                                     <p>
                                         <strong>Company:</strong> Mount Limited<br />
-                                        <strong>Email:</strong> mountservicesltd@gmail.com
+                                        <strong>Email:</strong> info@mountltd.com
                                     </p>
                                 </div>
 
@@ -247,7 +247,7 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                         including cookie data where applicable.
                                     </p>
                                     <p className="mt-1">
-                                        Requests can be made via: <strong>mountservicesltd@gmail.com</strong>
+                                        Requests can be made via: <strong>info@mountltd.com</strong>
                                     </p>
                                 </div>
 
@@ -288,7 +288,7 @@ const PrivacyPolicy = ({ isOpen, onClose }) => {
                                     Close Privacy & Cookies Policy
                                 </button>
                                 <p className="text-center text-gray-500 text-xs sm:text-sm mt-3">
-                                    Contact: mountservicesltd@gmail.com
+                                    Contact: info@mountltd.com
                                 </p>
                             </div>
                         </motion.div>

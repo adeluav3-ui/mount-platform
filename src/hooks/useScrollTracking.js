@@ -1,9 +1,12 @@
-// src/hooks/useScrollTracking.js
+// src/hooks/useScrollTracking.js - FIXED VERSION
 import { useEffect } from 'react';
 import { trackScrollDepth } from '../utils/ga4';
 
 export const useScrollTracking = (pageUrl) => {
     useEffect(() => {
+        // Early return inside useEffect is fine
+        if (!pageUrl) return;
+
         let tracked25 = false, tracked50 = false, tracked75 = false, tracked90 = false;
 
         const handleScroll = () => {
@@ -33,5 +36,5 @@ export const useScrollTracking = (pageUrl) => {
 
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [pageUrl]);
+    }, [pageUrl]); // ✅ pageUrl is in dependency array
 };

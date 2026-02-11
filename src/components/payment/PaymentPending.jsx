@@ -331,7 +331,7 @@ const PaymentPending = () => {
                 {/* Support Info */}
                 <div className="text-center text-sm text-gray-500">
                     <p>⏰ Verification time: 5-15 minutes </p>
-                    <p>📞 Need help? Call: 08139672432 | Email: mountservicesltd@gmail.com</p>
+                    <p>📞 Need help? Call: 08139672432 | Email: info@mountltd.com</p>
                     <p className="mt-2 font-medium">Keep your reference code: <code className="bg-gray-100 px-2 py-1 rounded">{reference}</code></p>
                 </div>
             </div>
