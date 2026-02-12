@@ -233,3 +233,12 @@ html {
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
+
+@layer utilities {
+  @media (max-width: 640px) {
+    .policy-description {
+      font-size: 0.75rem;
+      line-height: 1.25;
+    }
+  }
+}

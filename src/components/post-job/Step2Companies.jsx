@@ -492,18 +492,6 @@ export default function Step2Companies({
     return (
         <div className="mt-8 space-y-8 w-full">
 
-            {/* ADD THIS TEMPORARY DEBUG DIV */}
-            <div className="bg-gray-100 p-4 rounded-lg mb-4 text-xs">
-                <p className="font-bold">DEBUG: Companies with policies:</p>
-                {companies.map(c => (
-                    <div key={c.id} className="mt-2 border-t border-gray-300 pt-2">
-                        <p>Company: {c.company_name}</p>
-                        <p>Has policies: {c.company_policies ? '✅ YES' : '❌ NO'}</p>
-                        <p>Policies: {JSON.stringify(c.company_policies)}</p>
-                    </div>
-                ))}
-            </div>
-
             {/* BACK BUTTON */}
             <button
                 onClick={() => setStep(1)}
@@ -593,29 +581,58 @@ export default function Step2Companies({
                                             {/* Company Name */}
                                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{c.company_name}</h3>
 
-                                            {/* COMPANY POLICY BANNERS - Show all policies if company has any */}
+                                            {/* COMPANY POLICY BANNERS - Mobile Optimized */}
                                             {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
-                                                <div className="mt-4 space-y-2">
+                                                <div className="mt-3 space-y-2">
                                                     {c.company_policies.map((policy, index) => (
                                                         <div
                                                             key={index}
                                                             className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-3"
                                                         >
                                                             <div className="flex items-start gap-2">
-                                                                <span className="text-blue-600 text-lg">
+                                                                {/* Icon - Slightly smaller on mobile */}
+                                                                <span className="text-blue-600 text-base sm:text-lg flex-shrink-0 mt-0.5">
                                                                     {policy.icon || '📋'}
                                                                 </span>
-                                                                <div className="flex-1">
-                                                                    <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+
+                                                                {/* Content - Full width on mobile */}
+                                                                <div className="flex-1 min-w-0">
+                                                                    {/* Title - Smaller on mobile */}
+                                                                    <p className="text-xs font-bold text-blue-800 uppercase tracking-wide break-words">
                                                                         {policy.title || 'Company Policy'}
                                                                     </p>
-                                                                    <p className="text-sm font-medium text-blue-700 mt-1">
+
+                                                                    {/* Description - Better line height and word breaking for mobile */}
+                                                                    <p className="text-xs sm:text-sm font-medium text-blue-700 mt-1 leading-relaxed break-words">
                                                                         {policy.description}
                                                                     </p>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     ))}
+
+                                                    {/* SPECIAL NOTE: For Yharah - Mobile optimized */}
+                                                    {c.company_name?.toLowerCase().includes('yharah') && job.logistics_destination_location && (
+                                                        <div className="mt-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-200">
+                                                            <div className="flex items-start gap-1.5">
+                                                                <span className="text-gray-500 text-sm">📍</span>
+                                                                <div>
+                                                                    <p className="text-gray-700">
+                                                                        Your destination: <span className="font-bold">{job.logistics_destination_location}</span>
+                                                                    </p>
+                                                                    {job.logistics_destination_location === 'Abeokuta' ? (
+                                                                        <p className="text-green-600 font-medium mt-1 flex items-center gap-1">
+                                                                            <span>✅</span> This company services your area
+                                                                        </p>
+                                                                    ) : (
+                                                                        <p className="text-orange-600 mt-1">
+                                                                            ⚠️ This company only services Abeokuta
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
 
