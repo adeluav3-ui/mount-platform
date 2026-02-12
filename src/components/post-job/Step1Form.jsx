@@ -128,7 +128,8 @@ export default function Step1Form({
         phone,
         logistics_service_type,
         logistics_served_locations,
-        logistics_interstate_states
+        logistics_interstate_states,
+        company_policies
     `)
             .eq('approved', true)
 
