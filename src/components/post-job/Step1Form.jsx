@@ -121,17 +121,32 @@ export default function Step1Form({
         const { data, error } = await supabase
             .from('companies')
             .select(`
-        *,
-        average_rating,
-        total_reviews,
-        subcategory_prices,
+        id,
+        company_name,
+        email,
         phone,
+        address,
+        picture_url,
+        portfolio_pictures,
+        services,
+        subcategory_prices,
         logistics_service_type,
         logistics_served_locations,
         logistics_interstate_states,
-        company_policies
+        average_rating,
+        total_reviews,
+        approved,
+        company_policies,
+        created_at,
+        updated_at
     `)
             .eq('approved', true)
+
+        console.log('🔥 COMPANY DATA WITH POLICIES:', data.map(c => ({
+            name: c.company_name,
+            policies: c.company_policies,
+            has_policies: !!c.company_policies
+        })));
 
         if (error) {
             alert('Failed to load companies: ' + error.message)
