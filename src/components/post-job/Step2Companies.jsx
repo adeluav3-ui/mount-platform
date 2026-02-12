@@ -581,8 +581,31 @@ export default function Step2Companies({
                                             {/* Company Name */}
                                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{c.company_name}</h3>
 
-                                            {/* Address - NOW UNDER COMPANY NAME */}
-                                            <p className="text-gray-600 text-xs sm:text-sm mt-2">{c.address}</p>
+                                            {/* COMPANY POLICY BANNERS - Show all policies if company has any */}
+                                            {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
+                                                <div className="mt-4 space-y-2">
+                                                    {c.company_policies.map((policy, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-3"
+                                                        >
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-blue-600 text-lg">
+                                                                    {policy.icon || '📋'}
+                                                                </span>
+                                                                <div className="flex-1">
+                                                                    <p className="text-xs font-bold text-blue-800 uppercase tracking-wide">
+                                                                        {policy.title || 'Company Policy'}
+                                                                    </p>
+                                                                    <p className="text-sm font-medium text-blue-700 mt-1">
+                                                                        {policy.description}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {/* Portfolio Pictures Preview */}
                                             {c.portfolio_pictures && c.portfolio_pictures.length > 0 && (

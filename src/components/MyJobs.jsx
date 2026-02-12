@@ -188,7 +188,12 @@ export default function MyJobs({ onHasNewQuotes }) {
 
             // Fetch company names
             const companyIds = [...new Set(
-                jobsList.map(job => job.company_id).filter(id => id)
+                jobsList.map(job => {
+                    // Include both company_id and declined_by_company_id
+                    if (job.company_id) return job.company_id
+                    if (job.declined_by_company_id) return job.declined_by_company_id
+                    return null
+                }).filter(id => id)
             )]
 
             if (companyIds.length > 0) {
@@ -223,10 +228,13 @@ export default function MyJobs({ onHasNewQuotes }) {
         }
     }
 
-    // Get company name
+    // Get company name - check both company_id and declined_by_company_id
     const getCompanyName = (job) => {
-        if (!job.company_id) return 'Waiting for company assignment'
-        return companyNames[job.company_id] || 'Company'
+        if (!job.company_id && !job.declined_by_company_id) return 'Waiting for company assignment'
+
+        // For declined jobs, use declined_by_company_id
+        const companyId = job.declined_by_company_id || job.company_id
+        return companyNames[companyId] || 'Company'
     }
 
     // ACCEPT QUOTE - Redirect to payment page

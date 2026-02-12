@@ -716,7 +716,7 @@ export default function JobsSection({
         const [localDeclineReason, setLocalDeclineReason] = useState('')
 
         const handleConfirmDecline = async () => {
-            if (!localDeclineReason.trim()) {
+            if (!declineReason.trim()) {
                 alert('Please provide a reason for declining this job.')
                 return
             }
@@ -740,17 +740,20 @@ export default function JobsSection({
                 console.log('Updating job with decline reason:', {
                     jobId: jobToDelete.id,
                     status: 'declined_by_company',
-                    decline_reason: localDeclineReason.trim(),
+                    decline_reason: declineReason.trim(),
+                    declined_by_company_id: user.id, // Store who declined
+                    company_id: null, // Clear for reassignment
                     companyName
                 });
 
-                // Update job with decline reason
+                // Update job with decline reason, store who declined, but clear company_id for reassignment
                 const { error } = await supabase
                     .from('jobs')
                     .update({
                         status: 'declined_by_company',
-                        decline_reason: localDeclineReason.trim(),
-                        company_id: null,
+                        decline_reason: declineReason.trim(),
+                        declined_by_company_id: user.id, // Store which company declined
+                        company_id: null, // Clear for reassignment
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', jobToDelete.id)
@@ -769,17 +772,18 @@ export default function JobsSection({
                     job_id: jobToDelete.id,
                     type: 'job_declined',
                     title: 'Job Declined',
-                    message: `${companyName} has declined your "${jobToDelete.sub_service || jobToDelete.category}" job.\n\nReason: ${localDeclineReason.trim()}`,
+                    message: `${companyName} has declined your "${jobToDelete.sub_service || jobToDelete.category}" job.\n\nReason: ${declineReason.trim()}`,
                     metadata: {
-                        decline_reason: localDeclineReason.trim(),
-                        company_name: companyName
+                        decline_reason: declineReason.trim(),
+                        company_name: companyName,
+                        declined_by_company_id: user.id
                     },
                     read: false,
                     created_at: new Date().toISOString()
                 })
 
                 alert('Job declined. The customer has been notified with your reason.')
-                setLocalDeclineReason('') // Clear the local state
+                setDeclineReason('') // Clear the reason
 
             } catch (err) {
                 console.error('Failed to decline job:', err)

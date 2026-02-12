@@ -30,7 +30,15 @@ const JobManagement = () => {
 
             // Get unique customer and company IDs
             const customerIds = [...new Set(jobsData.map(j => j.customer_id).filter(Boolean))];
-            const companyIds = [...new Set(jobsData.map(j => j.company_id).filter(Boolean))];
+            // In fetchJobs function, update the companyIds collection:
+            const companyIds = [...new Set(
+                jobsData.map(j => {
+                    // Include both current company and declined company
+                    if (j.company_id) return j.company_id;
+                    if (j.declined_by_company_id) return j.declined_by_company_id;
+                    return null;
+                }).filter(Boolean)
+            )];
 
             // Fetch customer names
             let customersMap = {};
@@ -63,6 +71,7 @@ const JobManagement = () => {
             }
 
             // Enrich jobs with names
+            // After fetching companiesMap, enrich jobs with both current and declined company info:
             const enrichedJobs = jobsData.map(job => ({
                 ...job,
                 customer: customersMap[job.customer_id] || {
@@ -75,9 +84,9 @@ const JobManagement = () => {
                     phone: 'N/A',
                     email: 'N/A',
                     approved: false
-                }
+                },
+                declined_by_company: companiesMap[job.declined_by_company_id] || null // Add this line
             }));
-
             setJobs(enrichedJobs);
             setCustomerNames(customersMap);
             setCompanyNames(companiesMap);
@@ -128,7 +137,9 @@ const JobManagement = () => {
                 job.sub_service?.toLowerCase().includes(searchLower) ||
                 job.description?.toLowerCase().includes(searchLower) ||
                 job.customer?.customer_name?.toLowerCase().includes(searchLower) ||
-                job.company?.company_name?.toLowerCase().includes(searchLower)
+                job.company?.company_name?.toLowerCase().includes(searchLower) ||
+                job.declined_by_company?.company_name?.toLowerCase().includes(searchLower) ||
+                job.decline_reason?.toLowerCase().includes(searchLower)
             );
         }
 
@@ -415,27 +426,79 @@ const JobManagement = () => {
                                                 </div>
 
                                                 <div className="bg-gray-50 p-3 rounded-lg">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                                    {/* Current/Assigned Company */}
+                                                    <div className="flex items-center gap-2 mb-3">
                                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${job.company.approved ? 'bg-blue-100' : 'bg-yellow-100'}`}>
                                                             <span className={`font-bold ${job.company.approved ? 'text-blue-600' : 'text-yellow-600'}`}>B</span>
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm text-gray-500">Service Company</p>
-                                                            <p className="font-medium">{job.company.company_name}</p>
+                                                            <p className="text-sm text-gray-500">Assigned Company</p>
+                                                            <p className="font-medium">
+                                                                {job.company_id ? job.company.company_name : 'Not Assigned'}
+                                                                {!job.company_id && job.status === 'declined_by_company' && (
+                                                                    <span className="ml-2 text-xs text-red-600">(Declined)</span>
+                                                                )}
+                                                            </p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-sm text-gray-600 mt-2 space-y-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-gray-400">📞</span>
-                                                            <span>{job.company.phone}</span>
-                                                        </div>
-                                                        {job.company.approved && (
-                                                            <div className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
-                                                                <span>✓</span>
-                                                                <span>Verified</span>
+
+                                                    {/* Declined Company Info - Show if job was declined */}
+                                                    {job.status === 'declined_by_company' && job.declined_by_company && (
+                                                        <div className="mt-3 pt-3 border-t border-red-200">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                                                    <span className="text-red-600 font-bold">⚠️</span>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm text-red-600 font-medium">Declined By</p>
+                                                                    <p className="font-medium text-red-700">
+                                                                        {job.declined_by_company.company_name || 'Unknown Company'}
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                        )}
-                                                    </div>
+
+                                                            {/* Show Decline Reason */}
+                                                            {job.decline_reason && (
+                                                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                                                                    <p className="text-xs text-red-500 font-medium mb-1">Reason for declining:</p>
+                                                                    <p className="text-sm text-red-700 whitespace-pre-wrap">{job.decline_reason}</p>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="text-sm text-gray-600 mt-2 space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-gray-400">📞</span>
+                                                                    <span>{job.declined_by_company.phone || 'N/A'}</span>
+                                                                </div>
+                                                                {job.declined_by_company.approved && (
+                                                                    <div className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
+                                                                        <span>✓</span>
+                                                                        <span>Verified</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Company Contact Info - Only show if company is assigned */}
+                                                    {job.company_id && (
+                                                        <div className="text-sm text-gray-600 mt-2 space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-gray-400">📞</span>
+                                                                <span>{job.company.phone}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-gray-400">✉️</span>
+                                                                <span className="truncate">{job.company.email}</span>
+                                                            </div>
+                                                            {job.company.approved && (
+                                                                <div className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
+                                                                    <span>✓</span>
+                                                                    <span>Verified</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
 
