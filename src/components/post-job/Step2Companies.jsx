@@ -492,6 +492,18 @@ export default function Step2Companies({
     return (
         <div className="mt-8 space-y-8 w-full">
 
+            {/* ADD THIS TEMPORARY DEBUG DIV */}
+            <div className="bg-gray-100 p-4 rounded-lg mb-4 text-xs">
+                <p className="font-bold">DEBUG: Companies with policies:</p>
+                {companies.map(c => (
+                    <div key={c.id} className="mt-2 border-t border-gray-300 pt-2">
+                        <p>Company: {c.company_name}</p>
+                        <p>Has policies: {c.company_policies ? '✅ YES' : '❌ NO'}</p>
+                        <p>Policies: {JSON.stringify(c.company_policies)}</p>
+                    </div>
+                ))}
+            </div>
+
             {/* BACK BUTTON */}
             <button
                 onClick={() => setStep(1)}

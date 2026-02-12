@@ -138,6 +138,14 @@ export default function Step1Form({
             return
         }
 
+        // ADD THIS DEBUG LOG
+        console.log('🔥 COMPANY DATA FROM DATABASE:', data.map(c => ({
+            name: c.company_name,
+            has_policies: !!c.company_policies,
+            policies: c.company_policies,
+            policies_length: Array.isArray(c.company_policies) ? c.company_policies.length : 'not an array'
+        })));
+
         console.log('=== DEBUG: ALL COMPANIES FROM DATABASE ===')
         data.forEach((company, index) => {
             console.log(`Company ${index + 1}:`, {
