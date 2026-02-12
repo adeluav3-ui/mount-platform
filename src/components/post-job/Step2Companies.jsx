@@ -581,26 +581,31 @@ export default function Step2Companies({
                                             {/* Company Name */}
                                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{c.company_name}</h3>
 
-                                            {/* COMPANY POLICY BADGES - Compact Horizontal Design */}
+                                            {/* COMPANY POLICY NOTICES - Stacked, clear, stays in card */}
                                             {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
-                                                <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                                <div className="mt-3 space-y-2 w-full">
                                                     {c.company_policies.map((policy, index) => (
                                                         <div
                                                             key={index}
-                                                            className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-full px-2.5 py-1"
-                                                            title={policy.description}
+                                                            className="bg-amber-50 border border-amber-200 rounded-lg p-3 w-full"
                                                         >
-                                                            <span className="text-blue-600 text-xs">
-                                                                {policy.icon || '📋'}
-                                                            </span>
-                                                            <span className="text-xs font-medium text-blue-700 whitespace-nowrap">
-                                                                {policy.title?.replace(/[📍🚚🏠]/g, '').trim() || 'Policy'}
-                                                            </span>
+                                                            <div className="flex items-start gap-2">
+                                                                <span className="text-amber-600 text-base flex-shrink-0 mt-0.5">
+                                                                    {policy.icon || '📋'}
+                                                                </span>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-xs font-bold text-amber-800 uppercase tracking-wide break-words">
+                                                                        {policy.title?.replace(/[📍🚚🏠]/g, '').trim() || 'IMPORTANT NOTICE'}
+                                                                    </p>
+                                                                    <p className="text-xs text-amber-700 mt-1 leading-relaxed break-words whitespace-normal">
+                                                                        {policy.description}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
                                             )}
-
                                             {/* Portfolio Pictures Preview */}
                                             {c.portfolio_pictures && c.portfolio_pictures.length > 0 && (
                                                 <div className="mt-4">
