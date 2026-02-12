@@ -576,87 +576,19 @@ export default function Step2Companies({
                                             />
                                         </div>
 
-                                        {/* Company Info */}
+                                        {/* Company Info - Name and rating only */}
                                         <div className="flex-1 min-w-0">
-                                            {/* Company Name */}
                                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{c.company_name}</h3>
 
-                                            {/* COMPANY POLICY NOTICES - FULL WIDTH - BETWEEN HEADER AND PORTFOLIO */}
-                                            {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
-                                                <div className="mt-4 space-y-2 w-full">
-                                                    {c.company_policies.map((policy, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className="bg-amber-50 border border-amber-200 rounded-lg p-3 w-full"
-                                                        >
-                                                            <div className="flex items-start gap-2">
-                                                                <span className="text-amber-600 text-base flex-shrink-0 mt-0.5">
-                                                                    {policy.icon || '📋'}
-                                                                </span>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <p className="text-xs font-bold text-amber-800 uppercase tracking-wide break-words">
-                                                                        {policy.title?.replace(/[📍🚚🏠]/g, '').trim() || 'IMPORTANT NOTICE'}
-                                                                    </p>
-                                                                    <p className="text-xs text-amber-700 mt-1 leading-relaxed break-words whitespace-normal">
-                                                                        {policy.description}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            {/* Portfolio Pictures Preview */}
-                                            {c.portfolio_pictures && c.portfolio_pictures.length > 0 && (
-                                                <div className="mt-4">
-                                                    <p className="text-xs font-medium text-gray-700 mb-2">Previous Work:</p>
-                                                    <div className="flex gap-2 overflow-x-auto pb-2">
-                                                        {c.portfolio_pictures.slice(0, 3).map((picture, index) => (
-                                                            <button
-                                                                key={index}
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    openPortfolioGallery(c, index)
-                                                                }}
-                                                                className="flex-shrink-0 relative group"
-                                                            >
-                                                                <img
-                                                                    src={picture}
-                                                                    alt={`Portfolio ${index + 1}`}
-                                                                    className="w-20 h-20 rounded-lg object-cover border border-gray-200 hover:border-naijaGreen transition"
-                                                                    onError={(e) => {
-                                                                        e.target.src = '/default-portfolio.jpg'
-                                                                        e.target.alt = 'Image failed to load'
-                                                                    }}
-                                                                />
-                                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition rounded-lg"></div>
-                                                            </button>
-                                                        ))}
-                                                        {c.portfolio_pictures.length > 3 && (
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    openPortfolioGallery(c, 3) // Start from 4th image
-                                                                }}
-                                                                className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 flex flex-col items-center justify-center border border-gray-200 hover:bg-gray-200 transition"
-                                                            >
-                                                                <span className="text-2xl">+</span>
-                                                                <span className="text-xs text-gray-600">{c.portfolio_pictures.length - 3} more</span>
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-
                                             {/* Rating - STARS ONLY */}
-                                            <div className="flex items-center mt-3">
+                                            <div className="flex items-center mt-2">
                                                 {renderCompanyStars(c.average_rating || 0)}
                                                 <span className="ml-2 text-xs sm:text-sm font-bold text-gray-800">
                                                     {c.average_rating ? c.average_rating.toFixed(1) : 'N/A'}
                                                 </span>
                                             </div>
 
-                                            {/* Review Count - NOW UNDER STARS */}
+                                            {/* Review Count */}
                                             <div className="mt-1">
                                                 <span className="text-gray-600 text-xs sm:text-sm">
                                                     {c.total_reviews || 0} review{c.total_reviews !== 1 ? 's' : ''}
@@ -676,6 +608,73 @@ export default function Step2Companies({
                                         </div>
                                     </div>
 
+                                    {/* COMPANY POLICY NOTICES - FULL WIDTH - BETWEEN HEADER AND PORTFOLIO */}
+                                    {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
+                                        <div className="mt-4 space-y-2 w-full">
+                                            {c.company_policies.map((policy, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="bg-amber-50 border border-amber-200 rounded-lg p-3 w-full"
+                                                >
+                                                    <div className="flex items-start gap-2">
+                                                        <span className="text-amber-600 text-base flex-shrink-0 mt-0.5">
+                                                            {policy.icon || '📋'}
+                                                        </span>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-xs font-bold text-amber-800 uppercase tracking-wide break-words">
+                                                                {policy.title?.replace(/[📍🚚🏠]/g, '').trim() || 'IMPORTANT NOTICE'}
+                                                            </p>
+                                                            <p className="text-xs text-amber-700 mt-1 leading-relaxed break-words whitespace-normal">
+                                                                {policy.description}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {/* Portfolio Pictures Preview */}
+                                    {c.portfolio_pictures && c.portfolio_pictures.length > 0 && (
+                                        <div className="mt-4">
+                                            <p className="text-xs font-medium text-gray-700 mb-2">Previous Work:</p>
+                                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                                {c.portfolio_pictures.slice(0, 3).map((picture, index) => (
+                                                    <button
+                                                        key={index}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            openPortfolioGallery(c, index)
+                                                        }}
+                                                        className="flex-shrink-0 relative group"
+                                                    >
+                                                        <img
+                                                            src={picture}
+                                                            alt={`Portfolio ${index + 1}`}
+                                                            className="w-20 h-20 rounded-lg object-cover border border-gray-200 hover:border-naijaGreen transition"
+                                                            onError={(e) => {
+                                                                e.target.src = '/default-portfolio.jpg'
+                                                                e.target.alt = 'Image failed to load'
+                                                            }}
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition rounded-lg"></div>
+                                                    </button>
+                                                ))}
+                                                {c.portfolio_pictures.length > 3 && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            openPortfolioGallery(c, 3) // Start from 4th image
+                                                        }}
+                                                        className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 flex flex-col items-center justify-center border border-gray-200 hover:bg-gray-200 transition"
+                                                    >
+                                                        <span className="text-2xl">+</span>
+                                                        <span className="text-xs text-gray-600">{c.portfolio_pictures.length - 3} more</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Price Section */}
                                     <div className="mt-6 bg-gradient-to-r from-naijaGreen/10 to-green-50 rounded-xl p-4">
                                         <p className="text-sm font-medium text-gray-700">
@@ -687,70 +686,72 @@ export default function Step2Companies({
                                     </div>
 
                                     {/* Recent Reviews Preview */}
-                                    {loadingReviews ? (
-                                        <div className="mt-6 text-center py-3">
-                                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-naijaGreen mr-2"></div>
-                                            <span className="text-sm text-gray-500">Loading reviews...</span>
-                                        </div>
-                                    ) : companyReviews[c.id] && companyReviews[c.id].length > 0 ? (
-                                        <div className="mt-6">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <h4 className="text-sm font-semibold text-gray-800">Recent Reviews</h4>
-                                                {c.total_reviews > 2 && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            handleViewAllReviews(c)
-                                                        }}
-                                                        className="text-xs text-naijaGreen hover:text-darkGreen underline"
-                                                    >
-                                                        View all {c.total_reviews} reviews
-                                                    </button>
-                                                )}
+                                    {
+                                        loadingReviews ? (
+                                            <div className="mt-6 text-center py-3">
+                                                <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-naijaGreen mr-2"></div>
+                                                <span className="text-sm text-gray-500">Loading reviews...</span>
                                             </div>
-                                            <div className="space-y-3">
-                                                {companyReviews[c.id].slice(0, 2).map((review, index) => (
-                                                    <div key={index} className="bg-gray-50 rounded-lg p-3">
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="flex items-center">
-                                                                <div className="flex">
-                                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                                        <svg
-                                                                            key={star}
-                                                                            className={`w-3 h-3 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
-                                                                            fill="currentColor"
-                                                                            viewBox="0 0 20 20"
-                                                                        >
-                                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                                                        </svg>
-                                                                    ))}
+                                        ) : companyReviews[c.id] && companyReviews[c.id].length > 0 ? (
+                                            <div className="mt-6">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <h4 className="text-sm font-semibold text-gray-800">Recent Reviews</h4>
+                                                    {c.total_reviews > 2 && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                handleViewAllReviews(c)
+                                                            }}
+                                                            className="text-xs text-naijaGreen hover:text-darkGreen underline"
+                                                        >
+                                                            View all {c.total_reviews} reviews
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {companyReviews[c.id].slice(0, 2).map((review, index) => (
+                                                        <div key={index} className="bg-gray-50 rounded-lg p-3">
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex items-center">
+                                                                    <div className="flex">
+                                                                        {[1, 2, 3, 4, 5].map((star) => (
+                                                                            <svg
+                                                                                key={star}
+                                                                                className={`w-3 h-3 ${star <= review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                                                                fill="currentColor"
+                                                                                viewBox="0 0 20 20"
+                                                                            >
+                                                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                                            </svg>
+                                                                        ))}
+                                                                    </div>
+                                                                    <span className="ml-2 text-xs font-medium text-gray-800">
+                                                                        {review.rating}.0
+                                                                    </span>
                                                                 </div>
-                                                                <span className="ml-2 text-xs font-medium text-gray-800">
-                                                                    {review.rating}.0
+                                                                <span className="text-xs text-gray-500">
+                                                                    {new Date(review.created_at).toLocaleDateString('en-NG', {
+                                                                        month: 'short',
+                                                                        day: 'numeric'
+                                                                    })}
                                                                 </span>
                                                             </div>
-                                                            <span className="text-xs text-gray-500">
-                                                                {new Date(review.created_at).toLocaleDateString('en-NG', {
-                                                                    month: 'short',
-                                                                    day: 'numeric'
-                                                                })}
-                                                            </span>
+                                                            <p className="text-xs text-gray-600 mt-2 line-clamp-2">
+                                                                "{review.comment.substring(0, 80)}{review.comment.length > 80 ? '...' : ''}"
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                — {review.customers?.customer_name || 'Customer'}
+                                                            </p>
                                                         </div>
-                                                        <p className="text-xs text-gray-600 mt-2 line-clamp-2">
-                                                            "{review.comment.substring(0, 80)}{review.comment.length > 80 ? '...' : ''}"
-                                                        </p>
-                                                        <p className="text-xs text-gray-500 mt-1">
-                                                            — {review.customers?.customer_name || 'Customer'}
-                                                        </p>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
-                                    ) : c.total_reviews > 0 ? (
-                                        <div className="mt-6 text-center py-3">
-                                            <p className="text-sm text-gray-500">No recent reviews to display</p>
-                                        </div>
-                                    ) : null}
+                                        ) : c.total_reviews > 0 ? (
+                                            <div className="mt-6 text-center py-3">
+                                                <p className="text-sm text-gray-500">No recent reviews to display</p>
+                                            </div>
+                                        ) : null
+                                    }
 
                                     {/* Call to Action - ONLY THIS BUTTON SENDS JOB */}
                                     <div className="mt-6 text-center">
@@ -769,224 +770,228 @@ export default function Step2Companies({
                             </div>
                         )
                     })}
-                </div>
+                </div >
             )}
 
             {/* REVIEWS MODAL */}
-            {showReviewsModal && selectedCompanyForReviews && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                        {/* Modal Header */}
-                        <div className="bg-naijaGreen text-white px-6 py-4 flex justify-between items-center">
-                            <div>
-                                <h3 className="text-xl font-bold">
-                                    {selectedCompanyForReviews.company_name} Reviews
-                                </h3>
-                                <p className="text-green-100 text-sm">
-                                    {selectedCompanyForReviews.total_reviews || 0} review{selectedCompanyForReviews.total_reviews !== 1 ? 's' : ''} •
-                                    Average: {selectedCompanyForReviews.average_rating?.toFixed(1) || 'N/A'} ⭐
-                                </p>
+            {
+                showReviewsModal && selectedCompanyForReviews && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                            {/* Modal Header */}
+                            <div className="bg-naijaGreen text-white px-6 py-4 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-xl font-bold">
+                                        {selectedCompanyForReviews.company_name} Reviews
+                                    </h3>
+                                    <p className="text-green-100 text-sm">
+                                        {selectedCompanyForReviews.total_reviews || 0} review{selectedCompanyForReviews.total_reviews !== 1 ? 's' : ''} •
+                                        Average: {selectedCompanyForReviews.average_rating?.toFixed(1) || 'N/A'} ⭐
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowReviewsModal(false)
+                                        setSelectedCompanyForReviews(null)
+                                        setModalReviews([])
+                                    }}
+                                    className="text-white hover:text-gray-200 text-2xl bg-white/20 rounded-full w-8 h-8 flex items-center justify-center"
+                                >
+                                    ×
+                                </button>
                             </div>
+
+                            {/* Modal Content */}
+                            <div className="p-6 overflow-y-auto flex-1">
+                                {loadingModalReviews ? (
+                                    <div className="text-center py-8">
+                                        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-naijaGreen mb-4"></div>
+                                        <p className="text-gray-600">Loading reviews...</p>
+                                    </div>
+                                ) : modalReviews.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <div className="text-6xl mb-4 text-gray-300">⭐</div>
+                                        <p className="text-xl text-gray-500 font-medium">No reviews yet</p>
+                                        <p className="text-gray-400 mt-2">Be the first to review this company</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {modalReviews.map((review, index) => (
+                                            <div key={index} className="border border-gray-200 rounded-xl p-5">
+                                                {/* Review Header */}
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            {renderStars(review.rating, 'md')}
+                                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                                {review.rating}.0 ★
+                                                            </span>
+                                                        </div>
+                                                        <p className="font-medium text-gray-900">
+                                                            {review.customers?.customer_name || 'Anonymous Customer'}
+                                                        </p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {review.jobs?.category && `${review.jobs.category} - `}{review.jobs?.sub_service}
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-sm text-gray-500">
+                                                            {new Date(review.created_at).toLocaleDateString('en-NG', {
+                                                                year: 'numeric',
+                                                                month: 'short',
+                                                                day: 'numeric'
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                {/* Review Content */}
+                                                <div className="mb-4">
+                                                    <p className="text-gray-700 whitespace-pre-line">{review.comment}</p>
+                                                </div>
+
+                                                {/* Review Photos */}
+                                                {review.review_photos && review.review_photos.length > 0 && (
+                                                    <div className="mb-4">
+                                                        <p className="text-sm text-gray-600 mb-2">Review Photos:</p>
+                                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                                            {review.review_photos.map((photo, photoIndex) => (
+                                                                <a
+                                                                    key={photoIndex}
+                                                                    href={photo}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="block"
+                                                                >
+                                                                    <img
+                                                                        src={photo}
+                                                                        alt={`Review photo ${photoIndex + 1}`}
+                                                                        className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
+                                                                        onError={(e) => {
+                                                                            e.target.src = '/default-review-photo.jpg'
+                                                                            e.target.alt = 'Image failed to load'
+                                                                        }}
+                                                                    />
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Modal Footer */}
+                            <div className="border-t border-gray-200 px-6 py-4">
+                                <button
+                                    onClick={() => {
+                                        setShowReviewsModal(false)
+                                        setSelectedCompanyForReviews(null)
+                                        setModalReviews([])
+                                    }}
+                                    className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+            {/* PORTFOLIO MODAL - IMAGE GALLERY WITH SWIPE */}
+            {
+                showPortfolioModal && selectedCompanyForPortfolio && (
+                    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+                        <div className="relative w-full max-w-6xl max-h-[90vh]">
+                            {/* Close Button */}
                             <button
                                 onClick={() => {
-                                    setShowReviewsModal(false)
-                                    setSelectedCompanyForReviews(null)
-                                    setModalReviews([])
+                                    setShowPortfolioModal(false)
+                                    setSelectedCompanyForPortfolio(null)
+                                    setCurrentPortfolioIndex(0)
                                 }}
-                                className="text-white hover:text-gray-200 text-2xl bg-white/20 rounded-full w-8 h-8 flex items-center justify-center"
+                                className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center"
                             >
                                 ×
                             </button>
-                        </div>
 
-                        {/* Modal Content */}
-                        <div className="p-6 overflow-y-auto flex-1">
-                            {loadingModalReviews ? (
-                                <div className="text-center py-8">
-                                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-naijaGreen mb-4"></div>
-                                    <p className="text-gray-600">Loading reviews...</p>
-                                </div>
-                            ) : modalReviews.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <div className="text-6xl mb-4 text-gray-300">⭐</div>
-                                    <p className="text-xl text-gray-500 font-medium">No reviews yet</p>
-                                    <p className="text-gray-400 mt-2">Be the first to review this company</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {modalReviews.map((review, index) => (
-                                        <div key={index} className="border border-gray-200 rounded-xl p-5">
-                                            {/* Review Header */}
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        {renderStars(review.rating, 'md')}
-                                                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                            {review.rating}.0 ★
-                                                        </span>
-                                                    </div>
-                                                    <p className="font-medium text-gray-900">
-                                                        {review.customers?.customer_name || 'Anonymous Customer'}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {review.jobs?.category && `${review.jobs.category} - `}{review.jobs?.sub_service}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm text-gray-500">
-                                                        {new Date(review.created_at).toLocaleDateString('en-NG', {
-                                                            year: 'numeric',
-                                                            month: 'short',
-                                                            day: 'numeric'
-                                                        })}
-                                                    </p>
-                                                </div>
-                                            </div>
+                            {/* Navigation Arrows */}
+                            {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
+                                <>
+                                    <button
+                                        onClick={() => handlePortfolioNavigation('prev')}
+                                        disabled={currentPortfolioIndex === 0}
+                                        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                        ←
+                                    </button>
+                                    <button
+                                        onClick={() => handlePortfolioNavigation('next')}
+                                        disabled={currentPortfolioIndex === selectedCompanyForPortfolio.portfolio_pictures.length - 1}
+                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                    >
+                                        →
+                                    </button>
+                                </>
+                            )}
 
-                                            {/* Review Content */}
-                                            <div className="mb-4">
-                                                <p className="text-gray-700 whitespace-pre-line">{review.comment}</p>
-                                            </div>
+                            {/* Main Image Display with touch support */}
+                            <div
+                                className="w-full h-[80vh] flex items-center justify-center"
+                                onTouchStart={onTouchStart}
+                                onTouchMove={onTouchMove}
+                                onTouchEnd={onTouchEnd}
+                            >
+                                <img
+                                    key={currentPortfolioIndex}
+                                    src={selectedCompanyForPortfolio.portfolio_pictures[currentPortfolioIndex]}
+                                    alt={`Portfolio ${currentPortfolioIndex + 1}`}
+                                    className="max-w-full max-h-full object-contain rounded-lg select-none"
+                                    draggable="false"
+                                    onError={(e) => {
+                                        e.target.src = '/default-portfolio.jpg'
+                                        e.target.alt = 'Image failed to load'
+                                    }}
+                                />
+                            </div>
+                            {/* Image Counter */}
+                            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+                                {currentPortfolioIndex + 1} / {selectedCompanyForPortfolio.portfolio_pictures?.length}
+                            </div>
 
-                                            {/* Review Photos */}
-                                            {review.review_photos && review.review_photos.length > 0 && (
-                                                <div className="mb-4">
-                                                    <p className="text-sm text-gray-600 mb-2">Review Photos:</p>
-                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                        {review.review_photos.map((photo, photoIndex) => (
-                                                            <a
-                                                                key={photoIndex}
-                                                                href={photo}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="block"
-                                                            >
-                                                                <img
-                                                                    src={photo}
-                                                                    alt={`Review photo ${photoIndex + 1}`}
-                                                                    className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition"
-                                                                    onError={(e) => {
-                                                                        e.target.src = '/default-review-photo.jpg'
-                                                                        e.target.alt = 'Image failed to load'
-                                                                    }}
-                                                                />
-                                                            </a>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                            {/* Thumbnail Strip */}
+                            {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
+                                <div className="mt-4 flex justify-center gap-2 overflow-x-auto py-2">
+                                    {selectedCompanyForPortfolio.portfolio_pictures.map((picture, index) => (
+                                        <button
+                                            key={index}
+                                            onClick={() => setCurrentPortfolioIndex(index)}
+                                            className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentPortfolioIndex ? 'border-naijaGreen' : 'border-transparent'}`}
+                                        >
+                                            <img
+                                                src={picture}
+                                                alt={`Thumbnail ${index + 1}`}
+                                                className="w-full h-full object-cover hover:opacity-90"
+                                                onError={(e) => {
+                                                    e.target.src = '/default-portfolio.jpg'
+                                                    e.target.alt = 'Thumbnail failed to load'
+                                                }}
+                                            />
+                                        </button>
                                     ))}
                                 </div>
                             )}
-                        </div>
-                        {/* Modal Footer */}
-                        <div className="border-t border-gray-200 px-6 py-4">
-                            <button
-                                onClick={() => {
-                                    setShowReviewsModal(false)
-                                    setSelectedCompanyForReviews(null)
-                                    setModalReviews([])
-                                }}
-                                className="w-full bg-naijaGreen text-white py-3 rounded-lg font-bold hover:bg-darkGreen transition"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* PORTFOLIO MODAL - IMAGE GALLERY WITH SWIPE */}
-            {showPortfolioModal && selectedCompanyForPortfolio && (
-                <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
-                    <div className="relative w-full max-w-6xl max-h-[90vh]">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => {
-                                setShowPortfolioModal(false)
-                                setSelectedCompanyForPortfolio(null)
-                                setCurrentPortfolioIndex(0)
-                            }}
-                            className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center"
-                        >
-                            ×
-                        </button>
 
-                        {/* Navigation Arrows */}
-                        {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
-                            <>
-                                <button
-                                    onClick={() => handlePortfolioNavigation('prev')}
-                                    disabled={currentPortfolioIndex === 0}
-                                    className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                    ←
-                                </button>
-                                <button
-                                    onClick={() => handlePortfolioNavigation('next')}
-                                    disabled={currentPortfolioIndex === selectedCompanyForPortfolio.portfolio_pictures.length - 1}
-                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 text-white hover:text-gray-300 text-3xl bg-black/50 rounded-full w-12 h-12 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                    →
-                                </button>
-                            </>
-                        )}
-
-                        {/* Main Image Display with touch support */}
-                        <div
-                            className="w-full h-[80vh] flex items-center justify-center"
-                            onTouchStart={onTouchStart}
-                            onTouchMove={onTouchMove}
-                            onTouchEnd={onTouchEnd}
-                        >
-                            <img
-                                key={currentPortfolioIndex}
-                                src={selectedCompanyForPortfolio.portfolio_pictures[currentPortfolioIndex]}
-                                alt={`Portfolio ${currentPortfolioIndex + 1}`}
-                                className="max-w-full max-h-full object-contain rounded-lg select-none"
-                                draggable="false"
-                                onError={(e) => {
-                                    e.target.src = '/default-portfolio.jpg'
-                                    e.target.alt = 'Image failed to load'
-                                }}
-                            />
-                        </div>
-                        {/* Image Counter */}
-                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm">
-                            {currentPortfolioIndex + 1} / {selectedCompanyForPortfolio.portfolio_pictures?.length}
-                        </div>
-
-                        {/* Thumbnail Strip */}
-                        {selectedCompanyForPortfolio.portfolio_pictures?.length > 1 && (
-                            <div className="mt-4 flex justify-center gap-2 overflow-x-auto py-2">
-                                {selectedCompanyForPortfolio.portfolio_pictures.map((picture, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => setCurrentPortfolioIndex(index)}
-                                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 ${index === currentPortfolioIndex ? 'border-naijaGreen' : 'border-transparent'}`}
-                                    >
-                                        <img
-                                            src={picture}
-                                            alt={`Thumbnail ${index + 1}`}
-                                            className="w-full h-full object-cover hover:opacity-90"
-                                            onError={(e) => {
-                                                e.target.src = '/default-portfolio.jpg'
-                                                e.target.alt = 'Thumbnail failed to load'
-                                            }}
-                                        />
-                                    </button>
-                                ))}
+                            {/* Company Info */}
+                            <div className="text-center mt-4 text-white">
+                                <h3 className="text-xl font-bold">{selectedCompanyForPortfolio.company_name}</h3>
+                                <p className="text-gray-300">Portfolio Gallery</p>
                             </div>
-                        )}
-
-                        {/* Company Info */}
-                        <div className="text-center mt-4 text-white">
-                            <h3 className="text-xl font-bold">{selectedCompanyForPortfolio.company_name}</h3>
-                            <p className="text-gray-300">Portfolio Gallery</p>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     )
 }
