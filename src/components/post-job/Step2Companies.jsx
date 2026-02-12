@@ -581,58 +581,23 @@ export default function Step2Companies({
                                             {/* Company Name */}
                                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{c.company_name}</h3>
 
-                                            {/* COMPANY POLICY BANNERS - Mobile Optimized */}
+                                            {/* COMPANY POLICY BADGES - Compact Horizontal Design */}
                                             {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
-                                                <div className="mt-3 space-y-2">
+                                                <div className="mt-3 flex flex-wrap items-center gap-1.5">
                                                     {c.company_policies.map((policy, index) => (
                                                         <div
                                                             key={index}
-                                                            className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-3"
+                                                            className="inline-flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-full px-2.5 py-1"
+                                                            title={policy.description}
                                                         >
-                                                            <div className="flex items-start gap-2">
-                                                                {/* Icon - Slightly smaller on mobile */}
-                                                                <span className="text-blue-600 text-base sm:text-lg flex-shrink-0 mt-0.5">
-                                                                    {policy.icon || '📋'}
-                                                                </span>
-
-                                                                {/* Content - Full width on mobile */}
-                                                                <div className="flex-1 min-w-0">
-                                                                    {/* Title - Smaller on mobile */}
-                                                                    <p className="text-xs font-bold text-blue-800 uppercase tracking-wide break-words">
-                                                                        {policy.title || 'Company Policy'}
-                                                                    </p>
-
-                                                                    {/* Description - Better line height and word breaking for mobile */}
-                                                                    <p className="text-xs sm:text-sm font-medium text-blue-700 mt-1 leading-relaxed break-words">
-                                                                        {policy.description}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
+                                                            <span className="text-blue-600 text-xs">
+                                                                {policy.icon || '📋'}
+                                                            </span>
+                                                            <span className="text-xs font-medium text-blue-700 whitespace-nowrap">
+                                                                {policy.title?.replace(/[📍🚚🏠]/g, '').trim() || 'Policy'}
+                                                            </span>
                                                         </div>
                                                     ))}
-
-                                                    {/* SPECIAL NOTE: For Yharah - Mobile optimized */}
-                                                    {c.company_name?.toLowerCase().includes('yharah') && job.logistics_destination_location && (
-                                                        <div className="mt-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-200">
-                                                            <div className="flex items-start gap-1.5">
-                                                                <span className="text-gray-500 text-sm">📍</span>
-                                                                <div>
-                                                                    <p className="text-gray-700">
-                                                                        Your destination: <span className="font-bold">{job.logistics_destination_location}</span>
-                                                                    </p>
-                                                                    {job.logistics_destination_location === 'Abeokuta' ? (
-                                                                        <p className="text-green-600 font-medium mt-1 flex items-center gap-1">
-                                                                            <span>✅</span> This company services your area
-                                                                        </p>
-                                                                    ) : (
-                                                                        <p className="text-orange-600 mt-1">
-                                                                            ⚠️ This company only services Abeokuta
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             )}
 
