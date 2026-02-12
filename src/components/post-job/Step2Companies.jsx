@@ -581,9 +581,9 @@ export default function Step2Companies({
                                             {/* Company Name */}
                                             <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate">{c.company_name}</h3>
 
-                                            {/* COMPANY POLICY NOTICES - Stacked, clear, stays in card */}
+                                            {/* COMPANY POLICY NOTICES - FULL WIDTH - BETWEEN HEADER AND PORTFOLIO */}
                                             {c.company_policies && Array.isArray(c.company_policies) && c.company_policies.length > 0 && (
-                                                <div className="mt-3 space-y-2 w-full">
+                                                <div className="mt-4 space-y-2 w-full">
                                                     {c.company_policies.map((policy, index) => (
                                                         <div
                                                             key={index}
