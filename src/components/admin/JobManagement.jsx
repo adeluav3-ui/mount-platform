@@ -464,19 +464,6 @@ const JobManagement = () => {
                                                                     <p className="text-sm text-red-700 whitespace-pre-wrap">{job.decline_reason}</p>
                                                                 </div>
                                                             )}
-
-                                                            <div className="text-sm text-gray-600 mt-2 space-y-1">
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-gray-400">📞</span>
-                                                                    <span>{job.declined_by_company.phone || 'N/A'}</span>
-                                                                </div>
-                                                                {job.declined_by_company.approved && (
-                                                                    <div className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
-                                                                        <span>✓</span>
-                                                                        <span>Verified</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
                                                         </div>
                                                     )}
 
