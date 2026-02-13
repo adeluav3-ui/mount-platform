@@ -537,8 +537,6 @@ const AdminSettings = () => {
                                 </div>
                             </div>
 
-                            // Add this section to your AdminSettings.jsx in the financial tab section:
-
                             {/* Service Fee Tiers Configuration */}
                             <div className="mt-8 pt-6 border-t border-gray-200">
                                 <h4 className="text-lg font-medium text-gray-900 mb-4">Customer Service Fee Tiers</h4>
