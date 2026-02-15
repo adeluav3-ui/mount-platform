@@ -346,8 +346,8 @@ export default function ProfileSection({ company, editing, setEditing }) {
     const handlePortfolioFileChange = (e) => {
         const files = Array.from(e.target.files)
 
-        if (portfolioPictures.length + files.length > 5) {
-            alert(`Maximum 5 portfolio pictures. You have ${portfolioPictures.length}, trying to add ${files.length}.`)
+        if (portfolioPictures.length + files.length > 10) {
+            alert(`Maximum 10 portfolio pictures. You have ${portfolioPictures.length}, trying to add ${files.length}.`)
             e.target.value = ''
             setSelectedPortfolioFiles([])
             return
@@ -1111,7 +1111,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
                         <h3 className="text-xl sm:text-2xl font-bold text-naijaGreen mb-6 flex items-center gap-2">
                             📸 Portfolio Pictures
                             <span className="text-sm font-normal text-gray-600">
-                                (Max 5) • {portfolioPictures.length}/5 uploaded
+                                (Max 10) • {portfolioPictures.length}/10 uploaded
                             </span>
                         </h3>
 
@@ -1201,7 +1201,7 @@ export default function ProfileSection({ company, editing, setEditing }) {
 
                                 <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                                     <div className="text-sm text-gray-600">
-                                        {5 - portfolioPictures.length} slots remaining
+                                        {10 - portfolioPictures.length} slots remaining
                                     </div>
                                     <button
                                         onClick={handlePortfolioUpload}
