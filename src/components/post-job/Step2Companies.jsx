@@ -395,6 +395,17 @@ export default function Step2Companies({
 
             const newJobId = jobData.id;
 
+            console.log('🔍 COMPANY OBJECT FIELDS CHECK:', {
+                companyId: company.id,
+                companyName: company.company_name,
+                fields: {
+                    telegram_chat_id: company.telegram_chat_id,
+                    has_telegram: 'telegram_chat_id' in company,
+                    phone: company.phone,
+                    all_keys: Object.keys(company)
+                }
+            });
+
             // 2. SECOND: Send all notifications (now we have jobId)
             let telegramSuccess = false;
             let pushSuccess = false;

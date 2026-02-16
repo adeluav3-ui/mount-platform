@@ -130,6 +130,7 @@ export default function Step1Form({
         portfolio_pictures,
         services,
         subcategory_prices,
+        telegram_chat_id,
         logistics_service_type,
         logistics_served_locations,
         logistics_interstate_states,
