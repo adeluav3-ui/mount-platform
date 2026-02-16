@@ -414,6 +414,22 @@ export default function Step2Companies({
 
                 if (notificationError) console.error('Notification DB error:', notificationError);
 
+                console.log('📢 About to call NotificationService.notifyCompanyNewJob with:', {
+                    company: {
+                        id: company.id,
+                        name: company.company_name,
+                        telegram_chat_id: company.telegram_chat_id,
+                        hasTelegram: !!company.telegram_chat_id
+                    },
+                    jobData: {
+                        id: newJobId,
+                        category: job.category,
+                        sub_service: job.sub_service,
+                        location: job.location,
+                        budget: Number(job.price) || 0
+                    }
+                });
+
                 // Send hybrid notifications (Push + Email)
                 const notificationResult = await NotificationService.notifyCompanyNewJob(
                     company, // Pass the FULL company object, not just ID
@@ -427,21 +443,35 @@ export default function Step2Companies({
                     }
                 );
 
-                console.log('📢 Notification result:', notificationResult);
+                console.log('📢 Notification result FULL:', JSON.stringify(notificationResult, null, 2));
 
                 // Extract notification results
                 telegramSuccess = notificationResult.results?.telegram?.success || false;
                 pushSuccess = notificationResult.results?.push?.success || false;
                 smsSuccess = notificationResult.results?.sms?.success || false;
 
-                console.log('✅ Notification status:', {
-                    telegram: telegramSuccess ? '✅' : '❌',
-                    push: pushSuccess ? '✅' : '❌',
-                    sms: smsSuccess ? '✅' : '❌'
+                console.log('✅ Notification status detailed:', {
+                    telegram: {
+                        success: telegramSuccess,
+                        result: notificationResult.results?.telegram
+                    },
+                    push: {
+                        success: pushSuccess,
+                        result: notificationResult.results?.push
+                    },
+                    sms: {
+                        success: smsSuccess,
+                        result: notificationResult.results?.sms
+                    }
                 });
 
             } catch (notifError) {
                 console.error('❌ Notification sending failed:', notifError);
+                console.error('❌ Notification error details:', {
+                    message: notifError.message,
+                    stack: notifError.stack,
+                    name: notifError.name
+                });
                 // Continue even if notifications fail
             }
 
