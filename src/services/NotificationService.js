@@ -149,13 +149,25 @@ class NotificationService {
             console.log('📦 Request body being sent:', JSON.stringify(requestBody, null, 2));
 
             // Call your existing telegram-webhook function
-            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook', {
+            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook/job-notification', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
                 },
-                body: JSON.stringify(requestBody)
+                body: JSON.stringify({
+                    action: 'send_job_notification',
+                    chat_id: company.telegram_chat_id,
+                    message: message,
+                    job_id: jobData.id,
+                    reply_markup: inlineKeyboard,
+                    company_name: company.company_name,
+                    category: jobData.category,
+                    sub_service: jobData.sub_service,
+                    location: jobData.location,
+                    budget: jobData.budget,
+                    description: jobData.description
+                })
             });
 
             console.log('📥 Response status:', response.status);
