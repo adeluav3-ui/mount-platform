@@ -74,6 +74,14 @@ class NotificationService {
     // Update this function in NotificationService.js
     static async sendTelegramJobNotification(company, jobData) {
         try {
+            console.log('📞 TELEGRAM DEBUG - Starting sendTelegramJobNotification:', {
+                companyName: company?.company_name,
+                companyId: company?.id,
+                telegramChatId: company?.telegram_chat_id,
+                hasTelegram: !!company?.telegram_chat_id,
+                jobId: jobData?.id
+            });
+
             // Check if company has Telegram chat ID
             if (!company.telegram_chat_id) {
                 console.log('📭 Company has no Telegram chat ID:', company.company_name);
@@ -118,40 +126,62 @@ class NotificationService {
             console.log('🤖 Sending Telegram job notification:', {
                 chatId: company.telegram_chat_id,
                 jobId: jobData.id,
-                company: company.company_name
+                company: company.company_name,
+                messageLength: message.length,
+                url: 'https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook'
             });
 
+            // Prepare the request body
+            const requestBody = {
+                action: 'send_job_notification',
+                chat_id: company.telegram_chat_id,
+                message: message,
+                job_id: jobData.id,
+                reply_markup: inlineKeyboard,
+                company_name: company.company_name,
+                category: jobData.category,
+                sub_service: jobData.sub_service,
+                location: jobData.location,
+                budget: jobData.budget,
+                description: jobData.description
+            };
+
+            console.log('📦 Request body being sent:', JSON.stringify(requestBody, null, 2));
+
             // Call your existing telegram-webhook function
-            // Update this fetch call in sendTelegramJobNotification function:
             const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
                 },
-                body: JSON.stringify({
-                    action: 'send_job_notification',
-                    chat_id: company.telegram_chat_id,
-                    message: message,
-                    job_id: jobData.id,
-                    reply_markup: inlineKeyboard,
-                    company_name: company.company_name,
-                    // Include job details as fallback
-                    category: jobData.category,
-                    sub_service: jobData.sub_service,
-                    location: jobData.location,
-                    budget: jobData.budget,
-                    description: jobData.description
-                })
+                body: JSON.stringify(requestBody)
             });
-            const result = await response.json();
 
-            console.log('📩 Telegram notification response:', result);
+            console.log('📥 Response status:', response.status);
+            console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+
+            // Get response as text first to see raw response
+            const responseText = await response.text();
+            console.log('📥 Raw response body:', responseText);
+
+            // Try to parse as JSON
+            let result;
+            try {
+                result = JSON.parse(responseText);
+            } catch (e) {
+                console.error('❌ Failed to parse response as JSON:', e);
+                result = { success: false, error: 'Invalid JSON response', raw: responseText };
+            }
+
+            console.log('📩 Parsed Telegram notification response:', result);
 
             return {
-                success: result.success,
+                success: result.success || false,
                 messageId: result.messageId,
-                provider: 'telegram'
+                provider: 'telegram',
+                statusCode: response.status,
+                rawResponse: result
             };
         } catch (error) {
             console.error('❌ Telegram notification error:', error);
