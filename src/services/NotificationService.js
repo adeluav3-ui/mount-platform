@@ -123,7 +123,7 @@ class NotificationService {
 
             // Call your existing telegram-webhook function
             // Update this fetch call in sendTelegramJobNotification function:
-            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook', {
+            const response = await fetch('https://zaupoobfkajpdaqglqwh.supabase.co/functions/v1/telegram-webhook/job-notification', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
