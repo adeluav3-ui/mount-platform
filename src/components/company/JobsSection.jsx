@@ -2,6 +2,8 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import QuoteForm from './QuoteForm'
+import { useMessaging } from '../../context/MessagingContext.jsx';
+import ChatModal from '../chat/ChatModal';
 
 // Add this component at the top, after imports
 const CustomerVerificationBadge = ({ verificationLevel, idType }) => {
@@ -60,6 +62,8 @@ export default function JobsSection({
     const [showOnsiteModal, setShowOnsiteModal] = useState(false)
     const [selectedJobForOnsite, setSelectedJobForOnsite] = useState(null)
     const [showDeclineModal, setShowDeclineModal] = useState(false)
+    const [showChat, setShowChat] = useState(false);
+    const { createConversation, setActiveConversation } = useMessaging();
     const [selectedJobToDecline, setSelectedJobToDecline] = useState(null)
 
     const loadJobs = async () => {
@@ -1009,12 +1013,34 @@ export default function JobsSection({
                                 <div className="p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
                                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
                                         <p className="font-bold text-gray-800 text-sm sm:text-base">Customer Contact:</p>
-                                        {job.customer?.verification_level && (
-                                            <CustomerVerificationBadge
-                                                verificationLevel={job.customer.verification_level}
-                                                idType={job.customer.id_type}
-                                            />
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {job.customer?.verification_level && (
+                                                <CustomerVerificationBadge
+                                                    verificationLevel={job.customer.verification_level}
+                                                    idType={job.customer.id_type}
+                                                />
+                                            )}
+                                            {/* Message Button */}
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const conversation = await createConversation(job.customer_id, job.id);
+                                                        setActiveConversation(conversation);
+                                                        setShowChat(true);
+                                                    } catch (error) {
+                                                        console.error('Error starting conversation:', error);
+                                                        alert('Failed to start conversation. Please try again.');
+                                                    }
+                                                }}
+                                                className="bg-naijaGreen text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-darkGreen transition flex items-center gap-1"
+                                                title="Message customer"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                </svg>
+                                                Message
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="space-y-1.5 text-sm sm:text-base">
                                         <p className="text-gray-700">
@@ -1661,6 +1687,12 @@ export default function JobsSection({
                     ))}
                 </div>
             )}
+            <ChatModal
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+                currentUserId={user?.id}
+                userRole="company"
+            />
         </div>
     )
 }

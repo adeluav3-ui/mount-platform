@@ -1,6 +1,6 @@
 // src/components/CustomerDashboard.jsx — SIMPLIFIED VERSION (NO BADGES)
 // Replace your existing imports section with this:
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 import { Link } from 'react-router-dom';
 import PostJob from "./post-job/PostJob";
@@ -10,8 +10,9 @@ import VerificationBadge from '../components/VerificationBadge';
 import logo from '../assets/logo.png';
 import VerificationModal from './VerificationModal';
 import OnboardingGuide from './onboarding/OnboardingGuide';
-import VideoTutorial from './onboarding/VideoTutorial';
 import HelpCenter from './onboarding/HelpCenter';
+import ChatModal from './chat/ChatModal';
+import { useMessaging } from '../context/MessagingContext.jsx';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
 const BellIcon = (props) => (
@@ -80,10 +81,62 @@ export default function CustomerDashboard() {
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [customerData, setCustomerData] = useState(null);
     const [showOnboarding, setShowOnboarding] = useState(false);
+    const [showChat, setShowChat] = useState(false);
+    const [hasUnread, setHasUnread] = useState(false);
+    const [showRedDot, setShowRedDot] = useState(false);
     const [showVideoTutorial, setShowVideoTutorial] = useState(false);
     const [showHelpCenter, setShowHelpCenter] = useState(false);
 
     const [currentView, setCurrentView] = useState('dashboard');
+
+    const checkForUnread = useCallback(async () => {
+        if (!user || !supabase) return;
+
+        try {
+            // Get conversations
+            const { data: conversations } = await supabase
+                .from('conversations')
+                .select('id')
+                .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
+
+            if (!conversations || conversations.length === 0) {
+                setShowRedDot(false);
+                return;
+            }
+
+            // Check for any unread messages
+            const { count } = await supabase
+                .from('messages')
+                .select('*', { count: 'exact', head: true })
+                .in('conversation_id', conversations.map(c => c.id))
+                .eq('is_read', false)
+                .neq('sender_id', user.id);
+
+            setShowRedDot(count > 0);
+        } catch (error) {
+            console.error('Error checking unread:', error);
+            setShowRedDot(false);
+        }
+    }, [user, supabase]);
+
+
+    const forceHideDot = () => {
+        setShowRedDot(false);
+    };
+
+    // Check on mount
+    useEffect(() => {
+        checkForUnread();
+    }, [checkForUnread]);
+
+    // Check when tab gets focus
+    useEffect(() => {
+        const handleFocus = () => {
+            checkForUnread();
+        };
+        window.addEventListener('focus', handleFocus);
+        return () => window.removeEventListener('focus', handleFocus);
+    }, [checkForUnread]);
 
     const handleVerificationSubmitted = (newStatus) => {
         setVerificationLevel(newStatus);
@@ -100,6 +153,7 @@ export default function CustomerDashboard() {
             console.log('Notification sound error:', error);
         }
     };
+
 
     // Check if onboarding should be shown
     useEffect(() => {
@@ -561,7 +615,17 @@ export default function CustomerDashboard() {
                         </div>
                         <span className="text-2xl sm:text-3xl font-extrabold tracking-wider">Mount</span>
                     </button>
-
+                    <button
+                        onClick={() => setShowChat(true)}
+                        className="relative p-2 text-gray-600 hover:text-naijaGreen hover:bg-gray-100 rounded-full transition"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        {showRedDot && (
+                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                        )}
+                    </button>
                     <div className="flex items-center gap-3 sm:gap-6">
                         {/* Help/Tutorial Button - Add this HERE */}
                         {/* Help Button in top navigation */}
@@ -738,6 +802,16 @@ export default function CustomerDashboard() {
                     setShowHelpCenter(false);
                     setShowOnboarding(true);
                 }}
+            />
+            <ChatModal
+                isOpen={showChat}
+                onClose={() => {
+                    setShowChat(false);
+                    // Just force hide the dot, don't check again
+                    forceHideDot();
+                }}
+                currentUserId={user?.id}
+                userRole="customer"
             />
         </div>
     );

@@ -1,7 +1,9 @@
 // src/components/admin/AdminDashboard.jsx - MOBILE-FRIENDLY VERSION
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../../context/SupabaseContext';
 import { Link, Navigate, useLocation, Outlet } from 'react-router-dom';
+import ChatModal from '../chat/ChatModal';
+import { useMessaging } from '../../context/MessagingContext.jsx';
 
 const AdminDashboard = () => {
     const { user, supabase, signOut } = useSupabase();
@@ -9,19 +11,64 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const location = useLocation();
+    const [showChat, setShowChat] = useState(false);
+    const [showRedDot, setShowRedDot] = useState(false);
     const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0);
+    const [hasUnread, setHasUnread] = useState(false);
 
     // Navigation items
     const navItems = [
         { path: '/admin', label: 'Overview', icon: '📊' },
         { path: '/admin/approvals', label: 'Approvals', icon: '✅' },
         { path: '/admin/verifications', label: 'ID Verifications', icon: '🆔' },
+        { path: '/admin/messages', label: 'Messages', icon: '💬' },
         { path: '/admin/payouts', label: 'Payouts', icon: '💸' },
         { path: '/admin/payments', label: 'Payments', icon: '💰' },
         { path: '/admin/jobs', label: 'Jobs', icon: '🔧' },
         { path: '/admin/users', label: 'Users', icon: '👥' },
         { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
     ];
+
+    const checkForUnread = useCallback(async () => {
+        if (!user || !supabase) {
+            setShowRedDot(false);
+            return;
+        }
+
+        try {
+            const { data: conversations } = await supabase
+                .from('conversations')
+                .select('id')
+                .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
+
+            if (!conversations || conversations.length === 0) {
+                setShowRedDot(false);
+                return;
+            }
+
+            const { count } = await supabase
+                .from('messages')
+                .select('*', { count: 'exact', head: true })
+                .in('conversation_id', conversations.map(c => c.id))
+                .eq('is_read', false)
+                .neq('sender_id', user.id);
+
+            setShowRedDot(count > 0);
+        } catch (error) {
+            console.error('Error checking unread:', error);
+            setShowRedDot(false);
+        }
+    }, [user, supabase]);
+
+    // Function to force hide the dot (this is the missing piece)
+    const forceHideDot = () => {
+        setShowRedDot(false);
+    };
+
+    // Check on mount
+    useEffect(() => {
+        checkForUnread();
+    }, [checkForUnread]);
 
     useEffect(() => {
         checkAdminStatus();
@@ -130,6 +177,20 @@ const AdminDashboard = () => {
 
                             {/* Desktop User Info */}
                             <div className="hidden sm:flex items-center space-x-3">
+                                {/* Chat Button */}
+                                <button
+                                    onClick={() => setShowChat(true)}
+                                    className="relative p-2 text-gray-600 hover:text-naijaGreen hover:bg-gray-100 rounded-full transition"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                    </svg>
+                                    {showRedDot && (
+                                        <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                                    )}
+                                </button>
+
+
                                 <div className="text-right">
                                     <p className="text-sm font-medium">{user?.email?.split('@')[0] || 'Admin'}</p>
                                     <p className="text-xs text-gray-400 truncate max-w-[200px]">{user?.email}</p>
@@ -201,6 +262,19 @@ const AdminDashboard = () => {
 
                                 {/* Mobile Logout Button */}
                                 <div className="pt-3 border-t border-gray-700">
+                                    {/* Add Chat Button for Mobile */}
+                                    <button
+                                        onClick={() => setShowChat(true)}
+                                        className="relative p-2 text-gray-600 hover:text-naijaGreen hover:bg-gray-100 rounded-full transition"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                        </svg>
+                                        {showRedDot && (
+                                            <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+                                        )}
+                                    </button>
+
                                     <div className="px-4 py-2">
                                         <p className="text-sm font-medium text-gray-300">{user?.email?.split('@')[0] || 'Admin'}</p>
                                         <p className="text-xs text-gray-400 truncate">{user?.email}</p>
@@ -251,6 +325,17 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             </div>
+            {/* Chat Modal */}
+            <ChatModal
+                isOpen={showChat}
+                onClose={() => {
+                    setShowChat(false);
+                    // Just force hide the dot, don't check again
+                    forceHideDot();
+                }}
+                currentUserId={user?.id}
+                userRole="admin"
+            />
         </div>
     );
 };

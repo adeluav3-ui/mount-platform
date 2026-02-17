@@ -1,8 +1,9 @@
-// src/App.jsx - UPDATED WITH SEO PAGES
+// src/App.jsx - UPDATED WITH MESSAGING SYSTEM
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SupabaseProvider, useSupabase } from './context/SupabaseContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { MessagingProvider } from './context/MessagingContext'; // ADD THIS
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PaymentPage from './components/payment/PaymentPage';
@@ -30,6 +31,9 @@ import ForCustomersPage from './components/seo/ForCustomersPage';
 import ForProvidersPage from './components/seo/ForProvidersPage';
 import HomeOverviewPage from './components/seo/HomeOverviewPage';
 import ContactPage from './components/seo/ContactPage';
+
+// NEW ADMIN MESSAGING PAGE - Create this file
+import AdminMessagingPage from './components/admin/AdminMessagingPage';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -80,10 +84,11 @@ function ProtectedRoutes() {
       <Route path="/review/:jobId" element={<ReviewSubmission />} />
       <Route path="/company/:companyId/reviews" element={<CompanyReviewsPage />} />
 
-      {/* Admin routes */}
+      {/* Admin routes - UPDATED WITH MESSAGING */}
       <Route path="/admin" element={<AdminDashboard />}>
         <Route index element={<AdminStats />} />
         <Route path="stats" element={<AdminStats />} />
+        <Route path="messages" element={<AdminMessagingPage />} /> {/* NEW */}
         <Route path="approvals" element={<PendingApprovals />} />
         <Route path="payments" element={<AdminPaymentVerification />} />
         <Route path="verifications" element={<VerificationReview />} />
@@ -133,8 +138,8 @@ function AppRouter() {
     location.pathname === '/how-it-works' ||
     location.pathname === '/for-customers' ||
     location.pathname === '/for-providers' ||
-    location.pathname === '/home' || // ✅ ADD THIS
-    location.pathname === '/contact' || // ✅ ADD THIS
+    location.pathname === '/home' ||
+    location.pathname === '/contact' ||
     location.pathname.startsWith('/locations');
 
   // If no user and not on a public route, show login screen
@@ -179,7 +184,7 @@ function AppRouter() {
   return user ? <ProtectedRoutes /> : <PublicRoutes />;
 }
 
-// Main App component
+// Main App component - UPDATED WITH MessagingProvider
 export default function App() {
   return (
     <Router
@@ -190,8 +195,10 @@ export default function App() {
     >
       <SupabaseProvider>
         <SettingsProvider>
-          <ScrollToTop />
-          <AppRouter />
+          <MessagingProvider> {/* ADD THIS */}
+            <ScrollToTop />
+            <AppRouter />
+          </MessagingProvider> {/* ADD THIS */}
         </SettingsProvider>
       </SupabaseProvider>
     </Router>

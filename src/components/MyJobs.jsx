@@ -2,6 +2,8 @@
 import React from 'react';
 import { useSupabase } from '../context/SupabaseContext'
 import { useState, useEffect } from 'react'
+import { useMessaging } from '../context/MessagingContext';
+import ChatModal from './chat/ChatModal';
 
 export default function MyJobs({ onHasNewQuotes }) {
     const { user, supabase } = useSupabase()
@@ -10,6 +12,8 @@ export default function MyJobs({ onHasNewQuotes }) {
     const [isProcessing, setIsProcessing] = useState(null)
     const [hasNewQuotes, setHasNewQuotes] = useState(false)
     const [companyNames, setCompanyNames] = useState({})
+    const [showChat, setShowChat] = useState(false);
+    const { createConversation, setActiveConversation } = useMessaging();
 
     // Load jobs and company names
     const loadJobs = async () => {
@@ -797,10 +801,35 @@ Click OK to proceed to payment.`;
                                     {/* COMPANY NAME - ALWAYS SHOW IF THERE'S A COMPANY */}
                                     {hasCompany && (
                                         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                                            <p className="text-sm text-gray-600 mb-1">Service Provider</p>
-                                            <p className="text-lg font-bold text-naijaGreen">
-                                                {getCompanyName(job)}
-                                            </p>
+                                            <div className="flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-sm text-gray-600 mb-1">Service Provider</p>
+                                                    <p className="text-lg font-bold text-naijaGreen">
+                                                        {getCompanyName(job)}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            // You'll need to get createConversation and setActiveConversation from useMessaging
+                                                            // Make sure to import useMessaging at the top of the file
+                                                            const conversation = await createConversation(job.company_id, job.id);
+                                                            setActiveConversation(conversation);
+                                                            // You'll also need to add state for showing chat modal
+                                                            setShowChat(true);
+                                                        } catch (error) {
+                                                            console.error('Error starting conversation:', error);
+                                                            alert('Failed to start conversation. Please try again.');
+                                                        }
+                                                    }}
+                                                    className="bg-naijaGreen text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-darkGreen transition flex items-center gap-1"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                    </svg>
+                                                    Message
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                     {/* QUOTE AVAILABLE - AWAITING ACCEPTANCE */}
@@ -1560,6 +1589,12 @@ Click OK to proceed to payment.`;
                     })}
                 </div>
             )}
+            <ChatModal
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+                currentUserId={user?.id}
+                userRole="customer"
+            />
         </div>
     )
 }

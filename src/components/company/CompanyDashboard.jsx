@@ -5,8 +5,9 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import ProfileSection from './ProfileSection'
 import JobsSection from './JobsSection'
 import logo from '../../assets/logo.png';
-import OneSignalService from "../../services/OneSignalService";
 import TelegramSetupGuide from './TelegramSetupGuide';
+import ChatModal from '../chat/ChatModal';
+import { useMessaging } from '../../context/MessagingContext.jsx';
 
 export default function CompanyDashboard() {
   const { user, signOut, supabase } = useSupabase()
@@ -16,6 +17,9 @@ export default function CompanyDashboard() {
   const [activePanel, setActivePanel] = useState('dashboard')
   const [showEnableNotifications, setShowEnableNotifications] = useState(false);
   const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [hasUnread, setHasUnread] = useState(false);
+  const [showRedDot, setShowRedDot] = useState(false);
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
   const [notifications, setNotifications] = useState([])
   const [stats, setStats] = useState({
@@ -26,6 +30,48 @@ export default function CompanyDashboard() {
     averageRating: 0,
     totalReviews: 0
   })
+
+  const checkForUnread = useCallback(async () => {
+    if (!user || !supabase) {
+      setShowRedDot(false);
+      return;
+    }
+
+    try {
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`participant_one.eq.${user.id},participant_two.eq.${user.id}`);
+
+      if (!conversations || conversations.length === 0) {
+        setShowRedDot(false);
+        return;
+      }
+
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .in('conversation_id', conversations.map(c => c.id))
+        .eq('is_read', false)
+        .neq('sender_id', user.id);
+
+      setShowRedDot(count > 0);
+    } catch (error) {
+      console.error('Error checking unread:', error);
+      setShowRedDot(false);
+    }
+  }, [user, supabase]);
+
+  // Function to force hide the dot (this is the missing piece)
+  const forceHideDot = () => {
+    setShowRedDot(false);
+  };
+
+  // Check on mount
+  useEffect(() => {
+    checkForUnread();
+  }, [checkForUnread]);
+
   const handleEnableNotifications = async () => {
     try {
       // Detect iOS
@@ -326,320 +372,7 @@ export default function CompanyDashboard() {
 
   }, [user, supabase])
 
-  // Clean mobile OneSignal setup
-  useEffect(() => {
-    const setupMobileOneSignal = async () => {
-      if (!user?.id) return;
 
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (!isMobile) return;
-
-      console.log('📱 MOBILE SETUP: Starting OneSignal initialization...');
-
-      try {
-        // Initialize OneSignal
-        const initialized = await OneSignalService.initialize(user.id);
-
-        if (initialized) {
-          // Check if we have Player ID
-          const playerId = await OneSignalService.getPlayerId();
-          console.log('📱 Initial Player ID check:', playerId);
-
-          if (!playerId) {
-            console.log('📱 No Player ID - triggering subscription...');
-            // Use the new mobile-specific method
-            await OneSignalService.ensureMobileSubscription(user.id);
-
-            // Check again after delay
-            setTimeout(async () => {
-              const newPlayerId = await OneSignalService.getPlayerId();
-              console.log('📱 Player ID after subscription attempt:', newPlayerId);
-
-              if (!newPlayerId) {
-                console.log('📱 Still no Player ID - showing enable button');
-                setShowEnableNotifications(true);
-              }
-            }, 3000);
-          } else {
-            console.log('📱 Already has Player ID:', playerId.substring(0, 20) + '...');
-          }
-        }
-      } catch (error) {
-        console.error('📱 Mobile OneSignal setup error:', error);
-        setShowEnableNotifications(true);
-      }
-    };
-
-    setupMobileOneSignal();
-  }, [user]);
-
-  // In CompanyDashboard.jsx, update the OneSignal section:
-  useEffect(() => {
-    const setupOneSignalForUser = async () => {
-      if (!user?.id) return;
-
-      // ADD DELAY for OneSignalDeferred to complete
-      console.log('⏳ Waiting 2 seconds for OneSignalDeferred...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Check device type
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-      console.log(`${isMobile ? '📱' : '💻'} Device detected:`, {
-        isMobile,
-        isIOS,
-        userAgent: navigator.userAgent,
-        permission: Notification.permission,
-        https: window.location.protocol === 'https:'
-      });
-      // Set up subscription success callback
-      OneSignalService.onSubscriptionSuccess = async (playerId) => {
-        console.log('🎉 SUBSCRIPTION SUCCESS! Player ID:', playerId);
-        console.log('👤 Will save to user ID:', user.id);
-        // Get current Player ID from database
-        const { data: company, error } = await supabase
-          .from('companies')
-          .select('onesignal_player_id')
-          .eq('id', user.id)
-          .single();
-
-        if (!error && company) {
-          // Save device to company_devices table
-          const { error: deviceError } = await supabase
-            .from('company_devices')
-            .upsert({
-              company_id: user.id,
-              player_id: playerId,
-              device_type: /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
-              device_name: OneSignalService.generateDeviceName(),
-              is_active: true,
-              last_active: new Date().toISOString()
-            }, { onConflict: 'player_id' });
-
-          if (deviceError) {
-            console.error('❌ Error saving device:', deviceError);
-          } else {
-            console.log('✅ Device saved successfully');
-          }
-        }
-      };
-      // In CompanyDashboard.jsx, add device management section
-      const DeviceManagement = () => {
-        const [devices, setDevices] = useState([]);
-        const [loading, setLoading] = useState(true);
-
-        const loadDevices = async () => {
-          if (!user) return;
-
-          const DeviceService = await import('../../services/DeviceService.js');
-          const result = await DeviceService.default.getCompanyDevices(user.id);
-
-          if (result.success) {
-            setDevices(result.devices);
-          }
-          setLoading(false);
-        };
-
-        useEffect(() => {
-          loadDevices();
-        }, [user]);
-
-        const setAsPrimary = async (playerId) => {
-          const DeviceService = await import('../../services/DeviceService.js');
-          const result = await DeviceService.default.setPrimaryDevice(user.id, playerId);
-
-          if (result.success) {
-            alert('✅ Primary device updated!');
-            loadDevices();
-          }
-        };
-
-        const removeDevice = async (playerId) => {
-          if (confirm('Remove this device from your account?')) {
-            const DeviceService = await import('../../services/DeviceService.js');
-            const result = await DeviceService.default.deactivateDevice(playerId);
-
-            if (result.success) {
-              alert('✅ Device removed');
-              loadDevices();
-            }
-          }
-        };
-
-        return (
-          <div className="bg-white rounded-xl p-6 shadow">
-            <h3 className="text-lg font-bold mb-4">Device Management</h3>
-
-            {loading ? (
-              <div className="text-center py-4">Loading devices...</div>
-            ) : devices.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">No devices registered</div>
-            ) : (
-              <div className="space-y-3">
-                {devices.map(device => (
-                  <div key={device.player_id} className={`border rounded-lg p-4 ${device.is_primary ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-medium">{device.device_name}</div>
-                        <div className="text-sm text-gray-500">
-                          {device.device_type} • {device.os_info}
-                          {device.is_primary && <span className="ml-2 text-green-600 font-medium">✓ Primary</span>}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          Last active: {new Date(device.last_active).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        {!device.is_primary && (
-                          <button
-                            onClick={() => setAsPrimary(device.player_id)}
-                            className="text-sm text-blue-600 hover:text-blue-800"
-                          >
-                            Set Primary
-                          </button>
-                        )}
-                        {!device.is_primary && (
-                          <button
-                            onClick={() => removeDevice(device.player_id)}
-                            className="text-sm text-red-600 hover:text-red-800"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      };
-
-      // Add to your CompanyDashboard render:
-      { activePanel === 'devices' && <DeviceManagement /> }
-      // Function to verify the save
-      const verifyPlayerIdSave = async (expectedPlayerId) => {
-        try {
-          const { data, error } = await supabase
-            .from('companies')
-            .select('onesignal_player_id')
-            .eq('id', user.id)
-            .single();
-
-          if (error) {
-            console.error('❌ Error verifying save:', error);
-            return;
-          }
-
-          console.log('🔍 Verification result:', {
-            savedPlayerId: data.onesignal_player_id,
-            expectedPlayerId,
-            match: data.onesignal_player_id === expectedPlayerId
-          });
-
-        } catch (error) {
-          console.error('❌ Verification failed:', error);
-        }
-      };
-
-      // Mobile-specific: Wait longer for slow connections
-      const waitTime = isMobile ? 5000 : 2000;
-      console.log(`⏳ Waiting ${waitTime}ms for OneSignal SDK...`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-
-      // STEP 1: Initialize OneSignal with retry logic
-      console.log('🔔 Initializing OneSignal for user:', user.id);
-
-      let initialized = false;
-      let playerId = null;
-      let optedIn = false;
-
-      // Try initialization up to 3 times
-      // Initialize OneSignal (only once)
-      try {
-        console.log('🔔 Setting up OneSignal...');
-
-        // Set up subscription success callback
-        OneSignalService.onSubscriptionSuccess = async (playerId) => {
-          console.log('🎉 OneSignal subscription successful:', playerId);
-
-          // The device is automatically saved by OneSignalService
-          // No need for additional logic here
-        };
-
-        // Initialize OneSignal
-        const initialized = await OneSignalService.initialize(user.id);
-
-        console.log('📊 OneSignal initialization result:', { initialized });
-
-        if (initialized) {
-          // Check current subscription
-          const playerId = await OneSignalService.getPlayerId();
-          const optedIn = await OneSignalService.isOptedIn?.(); // Optional chaining
-
-          console.log('📱 Current subscription check:');
-          console.log('  Player ID from OneSignalService:', playerId);
-          console.log('  Opted in check:', optedIn);
-
-          // Also add direct check:
-          const oneSignal = window.OneSignal || window._OneSignal;
-          if (oneSignal && oneSignal.User && oneSignal.User.PushSubscription) {
-            const directPlayerId = oneSignal.User.PushSubscription.q;
-            console.log('  Direct Player ID (ps.q):', directPlayerId);
-            console.log('  Opted in (ps.J):', oneSignal.User.PushSubscription.J);
-          }
-        }
-
-      } catch (error) {
-        console.error('❌ OneSignal setup error:', error);
-      }
-
-      // STEP 2: Handle mobile-specific subscription issues
-      if (isMobile) {
-        console.log('📱 MOBILE DEVICE - Checking subscription status...');
-
-        if (!playerId || !optedIn) {
-          console.log('📱 Mobile not subscribed, attempting to subscribe...');
-
-          // iOS requires special handling
-          if (isIOS) {
-            console.log('📱 iOS detected - will show manual prompt if needed');
-            // We'll handle this after a delay
-          } else {
-            // Android/other mobile: Try to auto-subscribe
-            console.log('📱 Android/other mobile - attempting auto-subscription');
-            await OneSignalService.triggerSubscription();
-          }
-
-          // Check again after delay
-          setTimeout(async () => {
-            const newPlayerId = await OneSignalService.getPlayerId();
-            const newOptedIn = await OneSignalService.isOptedIn();
-
-            if (!newPlayerId || !newOptedIn) {
-              console.log('📱 Mobile still not subscribed after auto-attempt');
-
-              // Show manual prompt for mobile
-              showMobileSubscriptionPrompt();
-            }
-          }, 8000);
-        }
-      }
-
-      // STEP 3: If not initialized at all, try manual trigger
-      if (!initialized) {
-        console.log('⚠️ OneSignal not initialized, trying manual trigger...');
-        setTimeout(async () => {
-          await OneSignalService.triggerSubscription();
-        }, 5000);
-      }
-    };
-
-    if (user?.id) {
-      setupOneSignalForUser();
-    }
-  }, [user, supabase]); // Only depend on user and supabase
 
   const NotificationSettings = () => {
     const [preferences, setPreferences] = useState({
@@ -1578,6 +1311,17 @@ export default function CompanyDashboard() {
               )}
             </button>
             <button
+              onClick={() => setShowChat(true)}
+              className="relative p-2 text-gray-600 hover:text-naijaGreen hover:bg-gray-100 rounded-full transition"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {showRedDot && (
+                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
+              )}
+            </button>
+            <button
               onClick={() => setActivePanel('notifications')}
               className={`px-4 py-3 font-medium text-sm transition-colors relative ${activePanel === 'notifications'
                 ? 'text-naijaGreen border-b-2 border-naijaGreen'
@@ -1861,6 +1605,16 @@ export default function CompanyDashboard() {
           </>
         )}
       </main>
+      <ChatModal
+        isOpen={showChat}
+        onClose={() => {
+          setShowChat(false);
+          // Just force hide the dot, don't check again
+          forceHideDot();
+        }}
+        currentUserId={user?.id}
+        userRole="company"
+      />
     </div>
   )
 }

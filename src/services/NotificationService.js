@@ -1,6 +1,4 @@
 // src/services/NotificationService.js - COMPLETE VERSION WITH SMS
-import smsService from './SMSService';
-import whatsappService from './WhatsAppService.js';
 
 class NotificationService {
     constructor() {
