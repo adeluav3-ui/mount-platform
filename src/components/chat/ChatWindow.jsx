@@ -1,7 +1,7 @@
 // src/components/chat/ChatWindow.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import ChatInput from './ChatInput';
-import { format } from 'date-fns';
+import { format } from '../../utils/dateUtils';
 import MediaModal from './MediaModal';
 
 export default function ChatWindow({

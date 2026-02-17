@@ -1,6 +1,6 @@
 // src/components/chat/ChatSidebar.jsx
 import React from 'react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from '../../utils/dateUtils';
 
 export default function ChatSidebar({
     conversations,
