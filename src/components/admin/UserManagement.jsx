@@ -25,7 +25,88 @@ const UserManagement = () => {
         fetchUsers();
         fetchStats();
     }, [view]);
+    const exportToCSV = () => {
+        try {
+            // Prepare data for export
+            const exportData = users.map(user => ({
+                'User Type': user.type === 'customer' ? 'Customer' : 'Company',
+                'Name': user.displayName || '',
+                'Email': user.email || '',
+                'Phone': user.phone || '',
+                'Status': user.type === 'company'
+                    ? (user.approved ? 'Approved' : 'Pending Approval')
+                    : 'Active',
+                'Registration Date': new Date(user.created_at).toLocaleDateString('en-NG'),
+                'Total Jobs': jobCounts[user.id] || 0,
+                // Company-specific fields
+                'Services': user.type === 'company'
+                    ? (user.services?.join(', ') || '')
+                    : '',
+                'Address': user.address || '',
+                'Bank Name': user.bank_name || '',
+                'Bank Account': user.bank_account ? `••••${user.bank_account.slice(-4)}` : ''
+            }));
 
+            // Define CSV headers
+            const headers = [
+                'User Type',
+                'Name',
+                'Email',
+                'Phone',
+                'Status',
+                'Registration Date',
+                'Total Jobs',
+                'Services',
+                'Address',
+                'Bank Name',
+                'Bank Account'
+            ];
+
+            // Convert to CSV
+            const csvRows = [];
+
+            // Add headers
+            csvRows.push(headers.join(','));
+
+            // Add data rows
+            for (const row of exportData) {
+                const values = headers.map(header => {
+                    const value = row[header]?.toString() || '';
+                    // Escape commas and quotes in the value
+                    return `"${value.replace(/"/g, '""')}"`;
+                });
+                csvRows.push(values.join(','));
+            }
+
+            // Create CSV file
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+
+            // Create download link
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+
+            // Generate filename with current date
+            const date = new Date().toISOString().split('T')[0];
+            const filename = `mount_users_${date}_${view}.csv`;
+
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+
+            // Cleanup
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            // Show success message
+            alert(`✅ Exported ${exportData.length} users successfully!`);
+
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('❌ Failed to export users. Please try again.');
+        }
+    };
     const fetchStats = async () => {
         try {
             // Get customer count
@@ -319,19 +400,34 @@ const UserManagement = () => {
                         <h1 className="text-xl sm:text-2xl font-bold text-gray-800">User Management</h1>
                         <p className="text-gray-600 text-sm sm:text-base mt-1">Manage customers and companies on the platform</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 sm:flex sm:space-x-4 sm:text-right">
-                        <div className="text-center sm:text-right">
-                            <p className="text-lg sm:text-2xl font-bold text-blue-600">{stats.totalCustomers}</p>
-                            <p className="text-xs sm:text-sm text-gray-500">Customers</p>
+
+                    {/* Stats and Export Button */}
+                    <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4">
+                        <div className="grid grid-cols-3 gap-2 sm:flex sm:space-x-4 sm:text-right">
+                            <div className="text-center sm:text-right">
+                                <p className="text-lg sm:text-2xl font-bold text-blue-600">{stats.totalCustomers}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">Customers</p>
+                            </div>
+                            <div className="text-center sm:text-right">
+                                <p className="text-lg sm:text-2xl font-bold text-green-600">{stats.activeCompanies}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">Active Companies</p>
+                            </div>
+                            <div className="text-center sm:text-right">
+                                <p className="text-lg sm:text-2xl font-bold text-purple-600">{stats.totalCompanies}</p>
+                                <p className="text-xs sm:text-sm text-gray-500">Total Companies</p>
+                            </div>
                         </div>
-                        <div className="text-center sm:text-right">
-                            <p className="text-lg sm:text-2xl font-bold text-green-600">{stats.activeCompanies}</p>
-                            <p className="text-xs sm:text-sm text-gray-500">Active Companies</p>
-                        </div>
-                        <div className="text-center sm:text-right">
-                            <p className="text-lg sm:text-2xl font-bold text-purple-600">{stats.totalCompanies}</p>
-                            <p className="text-xs sm:text-sm text-gray-500">Total Companies</p>
-                        </div>
+
+                        {/* Export Button */}
+                        <button
+                            onClick={exportToCSV}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center gap-2 text-sm sm:text-base"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Export to CSV
+                        </button>
                     </div>
                 </div>
             </div>
