@@ -9,7 +9,8 @@ const ConsentCheckbox = ({ onAccept, initialAccepted = false }) => {
     const [showPrivacy, setShowPrivacy] = useState(false);
 
     const handleCheckboxChange = (e) => {
-        const isChecked = e.target.checked;
+        // For the custom checkbox, we'll handle it differently
+        const isChecked = !accepted;
         setAccepted(isChecked);
         if (isChecked && onAccept) {
             onAccept();
@@ -20,14 +21,52 @@ const ConsentCheckbox = ({ onAccept, initialAccepted = false }) => {
         <>
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                 <label className="flex items-start space-x-3 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={accepted}
-                        onChange={handleCheckboxChange}
-                        className="mt-0.5 w-4 h-4 sm:w-5 sm:h-5 text-naijaGreen rounded focus:ring-naijaGreen focus:ring-2"
-                        required
-                    />
-                    <div className="text-sm sm:text-base">
+                    {/* Custom Checkbox - iOS friendly */}
+                    <div className="relative flex items-center justify-center mt-0.5">
+                        <input
+                            type="checkbox"
+                            checked={accepted}
+                            onChange={handleCheckboxChange}
+                            className="absolute opacity-0 w-6 h-6 cursor-pointer z-10"
+                            style={{
+                                width: '24px',
+                                height: '24px',
+                                WebkitAppearance: 'none',
+                                appearance: 'none'
+                            }}
+                            required
+                        />
+                        <div
+                            className={`w-6 h-6 sm:w-6 sm:h-6 rounded border-2 flex items-center justify-center transition-all ${accepted
+                                    ? 'bg-naijaGreen border-naijaGreen'
+                                    : 'bg-white border-gray-300'
+                                }`}
+                            style={{
+                                width: '24px',
+                                height: '24px',
+                                minWidth: '24px',
+                                minHeight: '24px'
+                            }}
+                        >
+                            {accepted && (
+                                <svg
+                                    className="w-4 h-4 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="3"
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="text-sm sm:text-base flex-1">
                         <span className="font-medium text-gray-800">
                             I agree to the{' '}
                             <button
