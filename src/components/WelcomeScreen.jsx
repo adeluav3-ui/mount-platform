@@ -16,7 +16,7 @@ const WelcomeScreen = () => {
     }, []);
 
     const handleGetStarted = () => {
-        navigate('/login');
+        navigate('/app/login');
     };
 
     return (
@@ -151,7 +151,7 @@ const WelcomeScreen = () => {
                 >
                     <p className="mb-2">Already have an account?</p>
                     <button
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('/app/login')}
                         className="text-yellow-300 hover:text-yellow-200 font-semibold underline text-base md:text-lg"
                     >
                         Sign In Here
