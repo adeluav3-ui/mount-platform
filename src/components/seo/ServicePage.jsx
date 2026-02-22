@@ -241,7 +241,7 @@ export default function ServicePage() {
         const serviceName = serviceData.name; // e.g., "Electrician"
         trackSEOButtonClick(`Find ${serviceName} Pro`, `/services/${serviceSlug}`);
         trackSEOClick(`service-${serviceSlug}`, 'find-pro');
-        navigate('/login', {
+        navigate('/app', {
             state: {
                 from: 'seo-service-page',
                 service: serviceSlug
@@ -295,7 +295,7 @@ export default function ServicePage() {
                         {/* CTA Button */}
                         <div className="hidden lg:block">
                             <a
-                                href="/login"
+                                href="/app"
                                 className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-6 py-3 rounded-lg font-bold hover:shadow-xl transition-all duration-300"
                             >
                                 Get Started
@@ -331,7 +331,7 @@ export default function ServicePage() {
                                     <span className="font-medium text-gray-700">For Providers</span>
                                 </Link>
                                 <div className="pt-4 mt-4 border-t border-gray-100">
-                                    <a href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center">
+                                    <a href="/app" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center">
                                         Get Started Free
                                     </a>
                                 </div>
@@ -469,7 +469,7 @@ export default function ServicePage() {
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <a
-                                href="/login"
+                                href="/app"
                                 className="bg-naijaGreen text-white px-8 py-3 rounded-lg font-bold hover:bg-darkGreen transition text-lg"
                             >
                                 Get Started Free

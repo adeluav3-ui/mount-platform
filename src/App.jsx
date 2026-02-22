@@ -39,8 +39,12 @@ import AdminMessagingPage from './components/admin/AdminMessagingPage';
 function PublicRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<WelcomeScreen />} />
-      <Route path="/login" element={<Login />} />
+      {/* LANDING PAGE - Now at root */}
+      <Route path="/" element={<HomeOverviewPage />} />
+
+      {/* WEB APP - Now at /app */}
+      <Route path="/app" element={<WelcomeScreen />} />
+      <Route path="/app/login" element={<Login />} />
 
       {/* SEO PAGES */}
       <Route path="/services" element={<ServicesHubPage />} />
@@ -49,8 +53,10 @@ function PublicRoutes() {
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/for-customers" element={<ForCustomersPage />} />
       <Route path="/for-providers" element={<ForProvidersPage />} />
-      <Route path="/home" element={<HomeOverviewPage />} />
       <Route path="/contact" element={<ContactPage />} />
+
+      {/* Redirect old /home to root */}
+      <Route path="/home" element={<Navigate to="/" replace />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -132,13 +138,13 @@ function AppRouter() {
 
   // Determine if current route is public
   const isPublicRoute =
-    location.pathname === '/' ||
-    location.pathname === '/login' ||
+    location.pathname === '/' ||                    // Landing page
+    location.pathname === '/app' ||                 // Welcome screen
+    location.pathname === '/app/login' ||           // Login page
     location.pathname.startsWith('/services') ||
     location.pathname === '/how-it-works' ||
     location.pathname === '/for-customers' ||
     location.pathname === '/for-providers' ||
-    location.pathname === '/home' ||
     location.pathname === '/contact' ||
     location.pathname.startsWith('/locations');
 
@@ -168,15 +174,15 @@ function AppRouter() {
     );
   }
 
-  // If user exists on login page, redirect to dashboard
-  if (user && location.pathname === '/login') {
+  // If user exists on app login page, redirect to dashboard
+  if (user && location.pathname === '/app/login') {
     console.log('User on login page, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
-  // If user exists on landing page, redirect to dashboard
-  if (user && location.pathname === '/') {
-    console.log('User on landing page, redirecting to dashboard');
+  // If user exists on welcome screen, redirect to dashboard
+  if (user && location.pathname === '/app') {
+    console.log('User on welcome screen, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 

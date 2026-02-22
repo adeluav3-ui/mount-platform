@@ -12,7 +12,7 @@ const HomeOverviewPage = () => {
 
     const handleGetStartedClick = () => {
         trackSEOButtonClick('Get Started Main', '/home');
-        navigate('/login', { state: { from: 'seo-home-overview' } });
+        navigate('/app', { state: { from: 'seo-home-overview' } });
     };
 
     const handleExploreServices = () => {

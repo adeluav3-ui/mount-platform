@@ -79,7 +79,7 @@ export default function ServicesHubPage() {
         trackSEOButtonClick('Get Started', '/services');
         trackSEOClick('services-hub', 'get-started');
         // Your existing navigation code here
-        navigate('/login', { state: { from: 'seo-services-hub' } });
+        navigate('/app', { state: { from: 'seo-services-hub' } });
     };
     useScrollTracking(window.location.pathname);
     return (
@@ -148,7 +148,7 @@ export default function ServicesHubPage() {
                             {/* CTA Button for Desktop */}
                             <div className="hidden lg:block">
                                 <a
-                                    href="/login"
+                                    href="/app"
                                     className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-6 py-3 rounded-lg font-bold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
                                 >
                                     Get Started
@@ -215,7 +215,7 @@ export default function ServicesHubPage() {
                                     {/* Mobile CTA Button */}
                                     <div className="pt-4 mt-4 border-t border-gray-100">
                                         <a
-                                            href="/login"
+                                            href="/app"
                                             onClick={() => setIsMobileMenuOpen(false)}
                                             className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center hover:shadow-lg transition-shadow"
                                         >

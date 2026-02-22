@@ -139,7 +139,7 @@ export default function HowItWorksPage() {
     const handleGetStartedClick = () => {
         trackSEOButtonClick('Get Started Guide', '/how-it-works');
         trackSEOClick('how-it-works', 'get-started-guide');
-        navigate('/login', { state: { from: 'seo-how-it-works' } });
+        navigate('/app', { state: { from: 'seo-how-it-works' } });
     };
     useScrollTracking(window.location.pathname);
 
@@ -177,7 +177,7 @@ export default function HowItWorksPage() {
                             </nav>
 
                             <div className="hidden lg:block">
-                                <a href="/login" className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-5 md:px-6 py-2.5 md:py-3 rounded-lg font-bold hover:shadow-xl transition text-sm md:text-base">
+                                <a href="/app" className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-5 md:px-6 py-2.5 md:py-3 rounded-lg font-bold hover:shadow-xl transition text-sm md:text-base">
                                     Get Started
                                 </a>
                             </div>
@@ -207,7 +207,7 @@ export default function HowItWorksPage() {
                                         <span className="font-medium text-gray-700 text-sm md:text-base">How It Works</span>
                                     </Link>
                                     <div className="pt-3 md:pt-4 mt-3 md:mt-4 border-t border-gray-100">
-                                        <a href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-2.5 md:py-3 px-4 rounded-lg font-bold text-center text-sm md:text-base hover:shadow-lg transition">
+                                        <a href="/app" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-2.5 md:py-3 px-4 rounded-lg font-bold text-center text-sm md:text-base hover:shadow-lg transition">
                                             Get Started Free
                                         </a>
                                     </div>
@@ -363,7 +363,7 @@ export default function HowItWorksPage() {
                             </p>
                             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center">
                                 <a
-                                    href="/login"
+                                    href="/app"
                                     className="bg-naijaGreen text-white px-6 md:px-8 py-2.5 md:py-3 rounded-lg font-bold hover:bg-darkGreen transition text-base md:text-lg"
                                 >
                                     Get Started Free
@@ -447,7 +447,7 @@ export default function HowItWorksPage() {
                                         <ul className="space-y-1.5 md:space-y-2">
                                             <li><Link to="/for-customers" className="text-gray-400 hover:text-white transition text-xs md:text-sm">For Customers</Link></li>
                                             <li><Link to="/for-providers" className="text-gray-400 hover:text-white transition text-xs md:text-sm">For Providers</Link></li>
-                                            <li><a href="/login" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Get Started</a></li>
+                                            <li><a href="/app" className="text-gray-400 hover:text-white transition text-xs md:text-sm">Get Started</a></li>
                                         </ul>
                                     </div>
                                     <div>

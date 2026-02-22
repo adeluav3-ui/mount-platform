@@ -69,7 +69,7 @@ export default function LocationsHubPage() {
                         </nav>
 
                         <div className="hidden lg:block">
-                            <a href="/login" className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-6 py-3 rounded-lg font-bold hover:shadow-xl transition">
+                            <a href="/app" className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white px-6 py-3 rounded-lg font-bold hover:shadow-xl transition">
                                 Get Started
                             </a>
                         </div>
@@ -99,7 +99,7 @@ export default function LocationsHubPage() {
                                     <span className="font-medium text-gray-700">How It Works</span>
                                 </Link>
                                 <div className="pt-4 mt-4 border-t border-gray-100">
-                                    <a href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center">
+                                    <a href="/app" onClick={() => setIsMobileMenuOpen(false)} className="block w-full bg-gradient-to-r from-naijaGreen to-darkGreen text-white py-3 px-4 rounded-lg font-bold text-center">
                                         Get Started Free
                                     </a>
                                 </div>
@@ -219,7 +219,7 @@ export default function LocationsHubPage() {
                             No matter where you are in Ogun State, we connect you with verified professionals.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <a href="/login" className="bg-naijaGreen text-white px-8 py-3 rounded-lg font-bold hover:bg-darkGreen transition text-lg">
+                            <a href="/app" className="bg-naijaGreen text-white px-8 py-3 rounded-lg font-bold hover:bg-darkGreen transition text-lg">
                                 Get Started Free
                             </a>
                             <a href="/services" className="border-2 border-naijaGreen text-naijaGreen px-8 py-3 rounded-lg font-bold hover:bg-naijaGreen hover:text-white transition text-lg">

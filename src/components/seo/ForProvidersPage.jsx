@@ -9,7 +9,7 @@ const ForProvidersPage = () => {
 
     const handleSignUpClick = () => {
         trackSEOButtonClick('Sign Up as Provider', '/for-providers');
-        navigate('/login', { state: { userType: 'company', from: 'seo-for-providers' } });
+        navigate('/app', { state: { userType: 'company', from: 'seo-for-providers' } });
     };
 
     const benefits = [

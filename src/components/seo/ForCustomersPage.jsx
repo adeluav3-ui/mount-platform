@@ -9,7 +9,7 @@ const ForCustomersPage = () => {
 
     const handleGetStartedClick = () => {
         trackSEOButtonClick('Get Started as Customer', '/for-customers');
-        navigate('/login', { state: { from: 'seo-for-customers' } });
+        navigate('/app', { state: { from: 'seo-for-customers' } });
     };
 
     const handleExploreServicesClick = () => {
