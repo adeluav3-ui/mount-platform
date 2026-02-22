@@ -163,7 +163,7 @@ function AppRouter() {
           <p className="mb-6 opacity-90">Please login again to continue.</p>
           <button
             onClick={() => {
-              window.location.href = `/login?redirect=${encodeURIComponent(location.pathname)}`;
+              window.location.href = `/app/login?redirect=${encodeURIComponent(location.pathname)}`;
             }}
             className="bg-white text-naijaGreen font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
           >
