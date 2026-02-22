@@ -20,8 +20,8 @@ const AuthCheck = ({ children }) => {
                 console.log('Current path:', location.pathname);
 
                 // Give a small delay for Supabase to establish session after login
-                if (location.pathname === '/login') {
-                    console.log('On login page, adding extra delay...');
+                if (location.pathname === '/app/login') {
+                    console.log('On app login page, adding extra delay...');
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
@@ -68,9 +68,9 @@ const AuthCheck = ({ children }) => {
 
     // Reset check when location changes (for login/logout)
     useEffect(() => {
-        // When path changes to login, reset the check
-        if (location.pathname === '/login') {
-            console.log('Reset auth check for login page');
+        // When path changes to app login page, reset the check
+        if (location.pathname === '/app/login' || location.pathname === '/app') {
+            console.log('Reset auth check for app login/welcome page');
             hasChecked.current = false;
             setHasLoaded(false);
             setAuthStatus('checking');
@@ -109,7 +109,32 @@ const AuthCheck = ({ children }) => {
 
     // If unauthenticated but in a protected route, show login prompt
     if (authStatus === 'unauthenticated') {
-        const isProtectedRoute = !['/', '/login'].includes(location.pathname);
+        // Define public routes (don't require authentication)
+        const publicRoutes = [
+            '/',                    // Landing page
+            '/app',                 // Welcome screen
+            '/app/login',           // Login page
+            '/services',
+            '/how-it-works',
+            '/for-customers',
+            '/for-providers',
+            '/contact',
+            '/locations'
+        ];
+
+        // Check if current path starts with any public route
+        const isPublicRoute = publicRoutes.some(route =>
+            location.pathname === route || location.pathname.startsWith(route + '/')
+        );
+
+        const isProtectedRoute = !isPublicRoute;
+
+        console.log('AuthCheck - Checking if protected route:', {
+            pathname: location.pathname,
+            isPublicRoute,
+            isProtectedRoute,
+            authStatus
+        });
 
         console.log('AuthCheck - Checking if protected route:', {
             pathname: location.pathname,
@@ -131,7 +156,7 @@ const AuthCheck = ({ children }) => {
                         <p className="mb-6 opacity-90">You need to login to access this page.</p>
                         <button
                             onClick={() => {
-                                window.location.href = '/login?redirect=' + encodeURIComponent(location.pathname);
+                                window.location.href = '/app/login?redirect=' + encodeURIComponent(location.pathname);
                             }}
                             className="bg-white text-naijaGreen font-bold py-3 px-6 rounded-lg hover:bg-gray-100 transition-colors"
                         >
