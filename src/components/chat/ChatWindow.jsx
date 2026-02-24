@@ -1,203 +1,204 @@
 // src/components/chat/ChatWindow.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ChatInput from './ChatInput';
 import { format } from '../../utils/dateUtils';
 import MediaModal from './MediaModal';
 
-export default function ChatWindow({
-    conversation,
-    messages,
-    currentUserId,
-    onSendMessage,
-    loading,
-    isMobile = false
-}) {
+function formatMessageTime(timestamp) {
+    try { return format(new Date(timestamp), 'h:mm a'); } catch { return ''; }
+}
+
+function formatMessageDate(timestamp) {
+    try {
+        const date = new Date(timestamp);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        if (date.toDateString() === today.toDateString()) return 'Today';
+        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return format(date, 'MMM d, yyyy');
+    } catch { return ''; }
+}
+
+const roleColors = {
+    admin: '#7c3aed',
+    company: '#1d4ed8',
+    default: '#15803d',
+};
+
+function Avatar({ participant, size = 36 }) {
+    const color = roleColors[participant?.role] || roleColors.default;
+    const initials = participant?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || '?';
+    return (
+        <div style={{ width: size, height: size, borderRadius: '50%', background: color + '22', color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: size * 0.38, flexShrink: 0 }}>
+            {initials}
+        </div>
+    );
+}
+
+export default function ChatWindow({ conversation, messages, currentUserId, onSendMessage, loading, isMobile = false, onBack }) {
     const messagesEndRef = useRef(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const messagesContainerRef = useRef(null);
+    const containerRef = useRef(null);
     const [mediaModal, setMediaModal] = useState({ isOpen: false, url: '', type: '' });
+    const [isAtBottom, setIsAtBottom] = useState(true);
+    const [newMsgCount, setNewMsgCount] = useState(0);
+    const prevMsgCountRef = useRef(0);
 
-    const otherParticipant = conversation?.other_participant;
+    const other = conversation?.other_participant;
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    // Smart scroll — only auto-scroll if user is near bottom
+    const scrollToBottom = useCallback((force = false) => {
+        if (force || isAtBottom) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            setNewMsgCount(0);
+        }
+    }, [isAtBottom]);
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
+        const newCount = messages.length;
+        const diff = newCount - prevMsgCountRef.current;
+        prevMsgCountRef.current = newCount;
 
-    const handleSendMessage = async (text, files) => {
-        if ((!text.trim() && (!files || files.length === 0)) || !conversation) return;
+        if (diff <= 0) return;
 
-        setIsUploading(true);
-        try {
-            await onSendMessage(text, files);
-        } catch (error) {
-            console.error('Error sending message:', error);
-        } finally {
-            setIsUploading(false);
+        // If own message (optimistic), force scroll
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg?.sender_id === currentUserId) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            setNewMsgCount(0);
+        } else if (!isAtBottom) {
+            setNewMsgCount(prev => prev + diff);
+        } else {
+            scrollToBottom();
         }
-    };
+    }, [messages.length]);
 
-    const formatMessageTime = (timestamp) => {
-        try {
-            return format(new Date(timestamp), 'h:mm a');
-        } catch {
-            return '';
-        }
-    };
-
-    const formatMessageDate = (timestamp) => {
-        try {
-            const date = new Date(timestamp);
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            if (date.toDateString() === today.toDateString()) {
-                return 'Today';
-            } else if (date.toDateString() === yesterday.toDateString()) {
-                return 'Yesterday';
-            } else {
-                return format(date, 'MMM d, yyyy');
-            }
-        } catch {
-            return '';
-        }
-    };
+    const handleScroll = useCallback(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+        setIsAtBottom(atBottom);
+        if (atBottom) setNewMsgCount(0);
+    }, []);
 
     // Group messages by date
-    const groupedMessages = messages.reduce((groups, message) => {
-        const date = formatMessageDate(message.created_at);
-        if (!groups[date]) {
-            groups[date] = [];
-        }
-        groups[date].push(message);
-        return groups;
+    const grouped = messages.reduce((acc, msg) => {
+        const date = formatMessageDate(msg.created_at);
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(msg);
+        return acc;
     }, {});
 
     if (!conversation) {
         return (
-            <div className="flex-1 flex items-center justify-center bg-gray-50">
-                <div className="text-center">
-                    <div className="text-6xl mb-4">💬</div>
-                    <p className="text-gray-500 text-lg">Select a conversation to start chatting</p>
-                </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9fafb', flexDirection: 'column', gap: 12 }}>
+                <div style={{ fontSize: 56 }}>💬</div>
+                <p style={{ color: '#6b7280', fontSize: 16, fontWeight: 500 }}>Select a conversation to start chatting</p>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-gray-50">
-            {/* Chat Header - Only show on mobile if needed */}
-            {!isMobile && (
-                <div className="bg-white border-b border-gray-200 p-4 flex items-center space-x-3">
-                    {/* Avatar */}
-                    <div className="flex-shrink-0">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${otherParticipant?.role === 'admin' ? 'bg-purple-500' :
-                            otherParticipant?.role === 'company' ? 'bg-blue-500' :
-                                'bg-green-500'
-                            }`}>
-                            {otherParticipant?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || '?'}
-                        </div>
-                    </div>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#f9fafb' }}>
 
-                    {/* User Info */}
-                    <div className="flex-1">
-                        <h3 className="font-bold text-gray-800">
-                            {otherParticipant?.full_name || 'Unknown User'}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                            {otherParticipant?.role === 'admin' ? 'Admin' :
-                                otherParticipant?.role === 'company' ? 'Service Provider' : 'Customer'}
-                        </p>
+            {/* Chat Header */}
+            <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                {(isMobile && onBack) && (
+                    <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1a7a4a', display: 'flex', alignItems: 'center', padding: 4, borderRadius: 6 }}>
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                )}
+                <Avatar participant={other} size={38} />
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, color: '#111827', fontSize: 15 }}>{other?.full_name || 'Unknown'}</div>
+                    <div style={{ fontSize: 12, color: '#9ca3af' }}>
+                        {other?.role === 'admin' ? '👑 Admin' : other?.role === 'company' ? '🏢 Service Provider' : '👤 Customer'}
                     </div>
                 </div>
-            )}
+            </div>
 
-            {/* Messages Area - Flexible height */}
+            {/* Messages area */}
             <div
-                ref={messagesContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-6"
-                style={{ maxHeight: 'calc(100vh - 140px)' }}
+                ref={containerRef}
+                onScroll={handleScroll}
+                style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 0 }}
             >
                 {loading ? (
-                    <div className="flex justify-center items-center h-full">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-naijaGreen"></div>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <div style={{ width: 32, height: 32, border: '3px solid #e5e7eb', borderTopColor: '#1a7a4a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                     </div>
                 ) : messages.length === 0 ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-400">No messages yet. Say hello! 👋</p>
+                    <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                        <p style={{ color: '#9ca3af', fontSize: 14 }}>No messages yet. Say hello! 👋</p>
                     </div>
                 ) : (
-                    Object.entries(groupedMessages).map(([date, dateMessages]) => (
+                    Object.entries(grouped).map(([date, dateMessages]) => (
                         <div key={date}>
                             {/* Date separator */}
-                            <div className="flex justify-center mb-4">
-                                <span className="px-3 py-1 bg-gray-200 text-gray-600 rounded-full text-xs">
+                            <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 8px' }}>
+                                <span style={{ background: '#e5e7eb', color: '#6b7280', borderRadius: 100, padding: '3px 12px', fontSize: 11, fontWeight: 600 }}>
                                     {date}
                                 </span>
                             </div>
 
-                            {/* Messages for this date */}
-                            <div className="space-y-3">
-                                {dateMessages.map((message) => {
-                                    const isOwnMessage = message.sender_id === currentUserId;
+                            {/* Messages */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {dateMessages.map((msg, i) => {
+                                    const isOwn = msg.sender_id === currentUserId;
+                                    const isPending = msg._pending;
+                                    const prevMsg = dateMessages[i - 1];
+                                    const nextMsg = dateMessages[i + 1];
+                                    const isFirst = !prevMsg || prevMsg.sender_id !== msg.sender_id;
+                                    const isLast = !nextMsg || nextMsg.sender_id !== msg.sender_id;
 
                                     return (
-                                        <div
-                                            key={message.id}
-                                            className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                                        >
-                                            <div className={`max-w-[80%] ${isOwnMessage ? 'order-2' : ''}`}>
-                                                {/* Message bubble */}
-                                                <div
-                                                    className={`rounded-2xl px-4 py-2 ${isOwnMessage
-                                                        ? 'bg-naijaGreen text-white rounded-br-none'
-                                                        : 'bg-white border border-gray-200 rounded-bl-none'
-                                                        }`}
-                                                >
-                                                    {/* Message text */}
-                                                    {message.message && (
-                                                        <p className="whitespace-pre-wrap break-words">
-                                                            {message.message}
+                                        <div key={msg.id} style={{
+                                            display: 'flex',
+                                            justifyContent: isOwn ? 'flex-end' : 'flex-start',
+                                            marginBottom: isLast ? 8 : 2,
+                                        }}>
+                                            <div style={{ maxWidth: '75%', display: 'flex', flexDirection: 'column', alignItems: isOwn ? 'flex-end' : 'flex-start' }}>
+                                                {/* Bubble */}
+                                                <div style={{
+                                                    padding: '8px 12px',
+                                                    borderRadius: isOwn
+                                                        ? `16px 16px ${isLast ? '4px' : '16px'} 16px`
+                                                        : `16px 16px 16px ${isLast ? '4px' : '16px'}`,
+                                                    background: isOwn ? '#1a7a4a' : '#fff',
+                                                    color: isOwn ? '#fff' : '#111827',
+                                                    border: isOwn ? 'none' : '1px solid #e5e7eb',
+                                                    opacity: isPending ? 0.75 : 1,
+                                                    transition: 'opacity 0.2s',
+                                                    boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
+                                                }}>
+                                                    {msg.message && (
+                                                        <p style={{ margin: 0, fontSize: 14, lineHeight: '20px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                                            {msg.message}
                                                         </p>
                                                     )}
 
-                                                    {/* Media attachments */}
-                                                    {message.media_urls && message.media_urls.length > 0 && (
-                                                        <div className={`mt-2 space-y-2`}>
-                                                            {message.media_urls.map((url, index) => (
-                                                                <div key={index}>
-                                                                    {message.media_types[index] === 'image' ? (
-                                                                        <img
-                                                                            src={url}
-                                                                            alt="Attachment"
-                                                                            className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition max-h-64 object-cover"
-                                                                            onClick={() => setMediaModal({
-                                                                                isOpen: true,
-                                                                                url: url,
-                                                                                type: 'image'
-                                                                            })}
+                                                    {/* Media */}
+                                                    {msg.media_urls?.length > 0 && (
+                                                        <div style={{ marginTop: msg.message ? 6 : 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                            {msg.media_urls.map((url, idx) => (
+                                                                <div key={idx}>
+                                                                    {msg.media_types?.[idx] === 'image' ? (
+                                                                        <img src={url} alt="attachment"
+                                                                            onClick={() => setMediaModal({ isOpen: true, url, type: 'image' })}
+                                                                            style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 10, objectFit: 'cover', cursor: 'pointer', display: 'block', transition: 'opacity 0.15s' }}
+                                                                            onMouseOver={e => e.target.style.opacity = '0.9'}
+                                                                            onMouseOut={e => e.target.style.opacity = '1'}
                                                                         />
                                                                     ) : (
-                                                                        <div
-                                                                            className="relative cursor-pointer group"
-                                                                            onClick={() => setMediaModal({
-                                                                                isOpen: true,
-                                                                                url: url,
-                                                                                type: 'video'
-                                                                            })}
-                                                                        >
-                                                                            <video
-                                                                                src={url}
-                                                                                className="max-w-full rounded-lg max-h-64 object-cover"
-                                                                            />
-                                                                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 group-hover:bg-opacity-50 transition">
-                                                                                <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
-                                                                                    <path d="M8 5v14l11-7z" />
-                                                                                </svg>
+                                                                        <div style={{ position: 'relative', cursor: 'pointer', borderRadius: 10, overflow: 'hidden' }}
+                                                                            onClick={() => setMediaModal({ isOpen: true, url, type: 'video' })}>
+                                                                            <video src={url} style={{ maxWidth: '100%', maxHeight: 220, display: 'block', borderRadius: 10 }} />
+                                                                            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10 }}>
+                                                                                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                    <svg width="18" height="18" fill="#111827" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -207,13 +208,17 @@ export default function ChatWindow({
                                                     )}
                                                 </div>
 
-                                                {/* Message time */}
-                                                <p className={`text-xs text-gray-400 mt-1 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
-                                                    {formatMessageTime(message.created_at)}
-                                                    {message.is_read && isOwnMessage && (
-                                                        <span className="ml-2 text-green-500">✓✓</span>
-                                                    )}
-                                                </p>
+                                                {/* Timestamp + status */}
+                                                {isLast && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2, padding: '0 4px' }}>
+                                                        <span style={{ fontSize: 10, color: '#9ca3af' }}>{formatMessageTime(msg.created_at)}</span>
+                                                        {isOwn && (
+                                                            <span style={{ fontSize: 11, color: isPending ? '#9ca3af' : msg.is_read ? '#1a7a4a' : '#9ca3af' }}>
+                                                                {isPending ? '○' : msg.is_read ? '✓✓' : '✓'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
@@ -225,20 +230,29 @@ export default function ChatWindow({
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Chat Input - Fixed at bottom */}
-            <div className="bg-white border-t border-gray-200">
-                <ChatInput
-                    onSendMessage={handleSendMessage}
-                    isUploading={isUploading}
-                    disabled={loading}
-                />
-            </div>
+            {/* Scroll to bottom button */}
+            {newMsgCount > 0 && (
+                <div style={{ position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)' }}>
+                    <button
+                        onClick={() => { scrollToBottom(true); setNewMsgCount(0); }}
+                        style={{ background: '#1a7a4a', color: '#fff', border: 'none', borderRadius: 20, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                        ↓ {newMsgCount} new message{newMsgCount > 1 ? 's' : ''}
+                    </button>
+                </div>
+            )}
+
+            {/* Input */}
+            <ChatInput onSendMessage={onSendMessage} disabled={loading} />
+
             <MediaModal
                 isOpen={mediaModal.isOpen}
                 onClose={() => setMediaModal({ isOpen: false, url: '', type: '' })}
                 mediaUrl={mediaModal.url}
                 mediaType={mediaModal.type}
             />
+
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }
