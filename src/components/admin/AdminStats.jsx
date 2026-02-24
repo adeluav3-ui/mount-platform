@@ -6,12 +6,11 @@ import { Link } from 'react-router-dom';
 const AdminStats = () => {
     const { supabase } = useSupabase();
     const [stats, setStats] = useState({
+        pendingJobs: 0,
         totalJobs: 0,
         totalRevenue: 0,
         activeCompanies: 0,
         activeCustomers: 0,
-        pendingDisbursements: 0,
-        pendingApprovals: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -25,6 +24,12 @@ const AdminStats = () => {
             const { count: totalJobs } = await supabase
                 .from('jobs')
                 .select('*', { count: 'exact', head: true });
+
+            // Get strictly pending jobs (status = 'pending' only)
+            const { count: pendingJobs } = await supabase
+                .from('jobs')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
 
             // Get platform revenue (sum of platform_fee from completed jobs)
             const { data: revenueData } = await supabase
@@ -45,25 +50,12 @@ const AdminStats = () => {
                 .from('customers')
                 .select('*', { count: 'exact', head: true });
 
-            // Get pending disbursements
-            const { count: pendingDisbursements } = await supabase
-                .from('disbursement_requests')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending');
-
-            // Get pending company approvals
-            const { count: pendingApprovals } = await supabase
-                .from('companies')
-                .select('*', { count: 'exact', head: true })
-                .eq('approved', false);
-
             setStats({
+                pendingJobs: pendingJobs || 0,
                 totalJobs: totalJobs || 0,
                 totalRevenue,
                 activeCompanies: activeCompanies || 0,
                 activeCustomers: activeCustomers || 0,
-                pendingDisbursements: pendingDisbursements || 0,
-                pendingApprovals: pendingApprovals || 0
             });
         } catch (error) {
             console.error('Error fetching stats:', error);
@@ -82,7 +74,7 @@ const AdminStats = () => {
         };
 
         const content = (
-            <div className={`p-6 rounded-xl border ${colors[color]} transition-transform hover:scale-[1.02]`}>
+            <div className={`p-6 rounded-xl border ${colors[color]} transition-transform hover:scale-[1.02] relative`}>
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm font-medium opacity-80">{title}</p>
@@ -96,10 +88,7 @@ const AdminStats = () => {
             </div>
         );
 
-        if (link) {
-            return <Link to={link}>{content}</Link>;
-        }
-
+        if (link) return <Link to={link}>{content}</Link>;
         return content;
     };
 
@@ -116,12 +105,23 @@ const AdminStats = () => {
             <h1 className="text-2xl font-bold text-gray-800">Platform Overview</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* 1st — Pending Jobs */}
+                <StatCard
+                    title="Pending Jobs"
+                    value={stats.pendingJobs}
+                    icon="⏳"
+                    color="orange"
+                    subtitle="Jobs not yet attended to"
+                    link="/admin/jobs"
+                />
+                {/* 2nd — Total Jobs */}
                 <StatCard
                     title="Total Jobs"
                     value={stats.totalJobs}
                     icon="🔧"
                     color="blue"
                     subtitle="All platform jobs"
+                    link="/admin/jobs"
                 />
                 <StatCard
                     title="Platform Revenue"
@@ -142,28 +142,12 @@ const AdminStats = () => {
                     title="Active Customers"
                     value={stats.activeCustomers}
                     icon="👤"
-                    color="orange"
-                    subtitle="Registered users"
-                />
-                <StatCard
-                    title="Pending Disbursements"
-                    value={stats.pendingDisbursements}
-                    icon="💸"
-                    color="red"
-                    subtitle="Awaiting approval"
-                    link="/admin/disbursements"
-                />
-                <StatCard
-                    title="Pending Approvals"
-                    value={stats.pendingApprovals}
-                    icon="✅"
                     color="blue"
-                    subtitle="Companies awaiting verification"
-                    link="/admin/approvals"
+                    subtitle="Registered users"
                 />
             </div>
 
-            {/* Recent Activity */}
+            {/* Quick Actions */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
