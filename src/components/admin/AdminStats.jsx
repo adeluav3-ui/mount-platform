@@ -159,13 +159,6 @@ const AdminStats = () => {
                         Review Approvals
                     </Link>
                     <Link
-                        to="/admin/disbursements"
-                        className="p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-center"
-                    >
-                        <span className="block text-xl mb-2">💰</span>
-                        Process Disbursements
-                    </Link>
-                    <Link
                         to="/admin/jobs"
                         className="p-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-center"
                     >
