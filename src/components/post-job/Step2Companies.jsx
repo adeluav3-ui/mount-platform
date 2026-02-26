@@ -118,16 +118,23 @@ export default function Step2Companies({
             return true
         }
 
-        // 5. Only check sub-service filtering for categories WITH subservices
-        const prices = company.subcategory_prices || {}
+        // 5. Check if company offers this specific sub-service
+        // First, check if the sub-service is directly in their services array
+        const offersSubService = company.services?.includes(job.sub_service)
 
-        // If sub_service is "Other", check if company has any "Other" subcategory
+        // If not, check if they have it in subcategory_prices (for backward compatibility)
+        const prices = company.subcategory_prices || {}
+        const hasPriceForSubService = prices.hasOwnProperty(job.sub_service)
+
+        // For "Other" sub-service, check if they have "Other" in services or prices
         if (job.sub_service === "Other") {
-            return Object.keys(prices).some(sub => sub === "Other")
+            const offersOtherInServices = company.services?.includes("Other")
+            const hasOtherInPrices = prices.hasOwnProperty("Other")
+            return offersOtherInServices || hasOtherInPrices
         }
 
-        // Check if company has price for this specific sub-service
-        return prices.hasOwnProperty(job.sub_service)
+        // Show company if they offer the sub-service OR have a price for it
+        return offersSubService || hasPriceForSubService
     })
     // Fetch recent reviews for each company
     useEffect(() => {
