@@ -1,5 +1,5 @@
 // src/services/NotificationService.js - COMPLETE VERSION WITH SMS
-import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendPaymentConfirmation } from './emailService.js';
+import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendPaymentConfirmation } from '/src/services/emailService.js';
 class NotificationService {
     constructor() {
         // We'll use dynamic imports for Supabase context
