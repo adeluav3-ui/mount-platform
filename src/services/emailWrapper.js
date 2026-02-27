@@ -1,9 +1,9 @@
 // src/services/emailWrapper.js
-// Use a dynamic import that Vite can't statically analyze
+// Add a dummy export to ensure the module is kept
+export const __emailWrapper = true;
 
 export async function sendNewJobEmail(companyEmail, companyName, jobData) {
     try {
-        // Use a template literal to hide the import from Vite's static analysis
         const modulePath = './emailService.js';
         const { sendNewJobNotification } = await import(/* @vite-ignore */ modulePath);
         return await sendNewJobNotification(companyEmail, companyName, jobData);
