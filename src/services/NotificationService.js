@@ -456,7 +456,8 @@ class NotificationService {
             company: company.company_name,
             telegram: results.telegram?.success ? '✅' : '❌',
             push: results.push?.success ? '✅' : '❌',
-            sms: results.sms?.success ? '✅' : '❌'
+            sms: results.sms?.success ? '✅' : '❌',
+            email: results.email?.success ? '✅' : '❌'
         });
 
         return {
