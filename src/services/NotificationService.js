@@ -1,10 +1,215 @@
 // src/services/NotificationService.js - COMPLETE VERSION WITH SMS
-
+import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendPaymentConfirmation } from './emailService';
 class NotificationService {
     constructor() {
         // We'll use dynamic imports for Supabase context
     }
 
+
+    // Add to NotificationService class
+    static async getCompanyEmail(companyId) {
+        try {
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            const { data: company, error } = await supabase
+                .from('companies')
+                .select('email, company_name')
+                .eq('id', companyId)
+                .single();
+
+            if (error) {
+                console.error('❌ Error getting company email:', error);
+                return null;
+            }
+
+            return company;
+        } catch (error) {
+            console.error('❌ Error in getCompanyEmail:', error);
+            return null;
+        }
+    }
+
+    static async getCustomerEmail(customerId) {
+        try {
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            const { data: customer, error } = await supabase
+                .from('customers')
+                .select('email, customer_name')
+                .eq('id', customerId)
+                .single();
+
+            if (error) {
+                console.error('❌ Error getting customer email:', error);
+                return null;
+            }
+
+            return customer;
+        } catch (error) {
+            console.error('❌ Error in getCustomerEmail:', error);
+            return null;
+        }
+    }
+
+    // Email notification for new job to company
+    static async sendEmailJobNotification(companyId, jobData) {
+        try {
+            const company = await this.getCompanyEmail(companyId);
+
+            if (!company?.email) {
+                console.log('📧 No email found for company');
+                return { success: false, error: 'No email address' };
+            }
+
+            console.log('📧 Sending email notification to:', company.email);
+
+            const result = await sendNewJobNotification(
+                company.email,
+                company.company_name,
+                jobData
+            );
+
+            // Log email notification
+            await this.logNotification({
+                user_id: companyId,
+                job_id: jobData.id,
+                title: 'Email Job Alert',
+                message: `New ${jobData.category} job notification sent`,
+                type: 'email',
+                email_status: result.success ? 'sent' : 'failed',
+                created_at: new Date().toISOString()
+            });
+
+            return {
+                success: result.success,
+                email: company.email,
+                companyName: company.company_name,
+                provider: 'email'
+            };
+
+        } catch (error) {
+            console.error('❌ Email notification error:', error);
+            return { success: false, error: error.message, provider: 'email' };
+        }
+    }
+
+    // Email notification for quote to customer
+    static async sendQuoteEmailNotification(customerId, jobData, quoteAmount) {
+        try {
+            const customer = await this.getCustomerEmail(customerId);
+
+            if (!customer?.email) {
+                console.log('📧 No email found for customer');
+                return { success: false, error: 'No email address' };
+            }
+
+            console.log('📧 Sending quote email to customer:', customer.email);
+
+            const jobWithQuote = {
+                ...jobData,
+                quotedPrice: quoteAmount,
+                companyName: jobData.company_name
+            };
+
+            const result = await sendQuoteNotification(
+                customer.email,
+                customer.customer_name,
+                jobWithQuote
+            );
+
+            return {
+                success: result.success,
+                email: customer.email,
+                customerName: customer.customer_name,
+                provider: 'email'
+            };
+
+        } catch (error) {
+            console.error('❌ Quote email error:', error);
+            return { success: false, error: error.message, provider: 'email' };
+        }
+    }
+
+    // Email notification for status updates
+    static async sendStatusEmailNotification(userId, userType, jobData, status) {
+        try {
+            let userEmail, userName;
+
+            if (userType === 'customer') {
+                const customer = await this.getCustomerEmail(userId);
+                userEmail = customer?.email;
+                userName = customer?.customer_name;
+            } else {
+                const company = await this.getCompanyEmail(userId);
+                userEmail = company?.email;
+                userName = company?.company_name;
+            }
+
+            if (!userEmail) {
+                console.log('📧 No email found for user');
+                return { success: false, error: 'No email address' };
+            }
+
+            const result = await sendStatusUpdateNotification(
+                userEmail,
+                userName,
+                jobData,
+                status
+            );
+
+            return {
+                success: result.success,
+                email: userEmail,
+                userName: userName,
+                provider: 'email'
+            };
+
+        } catch (error) {
+            console.error('❌ Status email error:', error);
+            return { success: false, error: error.message, provider: 'email' };
+        }
+    }
+
+    // Email notification for payment confirmation
+    static async sendPaymentEmailNotification(userId, userType, jobData, amount, paymentType) {
+        try {
+            let userEmail, userName;
+
+            if (userType === 'customer') {
+                const customer = await this.getCustomerEmail(userId);
+                userEmail = customer?.email;
+                userName = customer?.customer_name;
+            } else {
+                const company = await this.getCompanyEmail(userId);
+                userEmail = company?.email;
+                userName = company?.company_name;
+            }
+
+            if (!userEmail) {
+                console.log('📧 No email found for user');
+                return { success: false, error: 'No email address' };
+            }
+
+            const result = await sendPaymentConfirmation(
+                userEmail,
+                userName,
+                jobData,
+                amount,
+                paymentType
+            );
+
+            return {
+                success: result.success,
+                email: userEmail,
+                userName: userName,
+                provider: 'email'
+            };
+
+        } catch (error) {
+            console.error('❌ Payment email error:', error);
+            return { success: false, error: error.message, provider: 'email' };
+        }
+    }
     // Get all active devices for a company
     static async getCompanyDevices(companyId) {
         try {
@@ -219,7 +424,11 @@ class NotificationService {
             results.telegram = await this.sendTelegramJobNotification(company, jobData);
         }
 
-        // 2. Push notifications
+        // 2. Email (New - always try)
+        console.log('📧 Sending email notification');
+        results.email = await this.sendEmailJobNotification(company.id, jobData);
+
+        // 3. Push notifications
         const devices = await this.getCompanyDevices(company.id);
         if (devices.length > 0) {
             results.push = await this.sendOneSignalPush(devices, jobData, company.company_name);
