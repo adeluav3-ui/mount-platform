@@ -1,47 +1,39 @@
 // src/services/emailWrapper.js
-// Add a dummy export to ensure the module is kept
-export const __emailWrapper = true;
+// Static imports instead of dynamic
+import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendPaymentConfirmation } from './emailService.js';
 
 export async function sendNewJobEmail(companyEmail, companyName, jobData) {
     try {
-        const modulePath = './emailService.js';
-        const { sendNewJobNotification } = await import(/* @vite-ignore */ modulePath);
         return await sendNewJobNotification(companyEmail, companyName, jobData);
     } catch (error) {
-        console.error('Failed to load email service:', error);
+        console.error('Failed to send new job email:', error);
         return { success: false, error: 'Email service unavailable' };
     }
 }
 
 export async function sendQuoteEmail(customerEmail, customerName, jobData) {
     try {
-        const modulePath = './emailService.js';
-        const { sendQuoteNotification } = await import(/* @vite-ignore */ modulePath);
         return await sendQuoteNotification(customerEmail, customerName, jobData);
     } catch (error) {
-        console.error('Failed to load email service:', error);
+        console.error('Failed to send quote email:', error);
         return { success: false, error: 'Email service unavailable' };
     }
 }
 
 export async function sendStatusEmail(userEmail, userName, jobData, status) {
     try {
-        const modulePath = './emailService.js';
-        const { sendStatusUpdateNotification } = await import(/* @vite-ignore */ modulePath);
         return await sendStatusUpdateNotification(userEmail, userName, jobData, status);
     } catch (error) {
-        console.error('Failed to load email service:', error);
+        console.error('Failed to send status email:', error);
         return { success: false, error: 'Email service unavailable' };
     }
 }
 
 export async function sendPaymentEmail(userEmail, userName, jobData, amount, paymentType) {
     try {
-        const modulePath = './emailService.js';
-        const { sendPaymentConfirmation } = await import(/* @vite-ignore */ modulePath);
         return await sendPaymentConfirmation(userEmail, userName, jobData, amount, paymentType);
     } catch (error) {
-        console.error('Failed to load email service:', error);
+        console.error('Failed to send payment email:', error);
         return { success: false, error: 'Email service unavailable' };
     }
 }
