@@ -87,16 +87,29 @@ export default defineConfig({
         })
     ],
     optimizeDeps: {
-        include: ['react-helmet-async'] // ADD THIS
+        include: ['react-helmet-async', 'resend'] // ADDED 'resend' here
     },
     build: {
         rollupOptions: {
             input: {
                 main: './index.html'
             },
-            external: [] // MAKE SURE THIS IS EMPTY or doesn't include react-helmet-async
+            external: [], // Keep empty
+            output: {
+                manualChunks: {
+                    // ADD THIS - Separate vendor chunks
+                    vendor: ['react', 'react-dom', 'react-router-dom'],
+                    resend: ['resend'] // ADD THIS
+                }
+            }
         },
-        sourcemap: true
+        sourcemap: true,
+        // ADD THIS - CommonJS options
+        commonjsOptions: {
+            include: [/node_modules/],
+            extensions: ['.js', '.cjs'],
+            transformMixedEsModules: true
+        }
     },
     server: {
         historyApiFallback: true,
