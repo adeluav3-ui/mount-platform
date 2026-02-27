@@ -51,11 +51,10 @@ class NotificationService {
     }
 
     // Email notification for new job to company
-    // Email notification for new job to company
     static async sendEmailJobNotification(companyId, jobData) {
         try {
-            // Dynamically import emailService only when needed
-            const { sendNewJobNotification } = await import('./emailService.js');
+            // Dynamically import the wrapper
+            const { sendNewJobEmail } = await import('./emailWrapper.js');
 
             const company = await this.getCompanyEmail(companyId);
 
@@ -66,7 +65,7 @@ class NotificationService {
 
             console.log('📧 Sending email notification to:', company.email);
 
-            const result = await sendNewJobNotification(
+            const result = await sendNewJobEmail(
                 company.email,
                 company.company_name,
                 jobData
@@ -99,7 +98,7 @@ class NotificationService {
     // Email notification for quote to customer
     static async sendQuoteEmailNotification(customerId, jobData, quoteAmount) {
         try {
-            const { sendQuoteNotification } = await import('./emailService.js');
+            const { sendQuoteEmail } = await import('./emailWrapper.js');
 
             const customer = await this.getCustomerEmail(customerId);
 
@@ -116,7 +115,7 @@ class NotificationService {
                 companyName: jobData.company_name
             };
 
-            const result = await sendQuoteNotification(
+            const result = await sendQuoteEmail(
                 customer.email,
                 customer.customer_name,
                 jobWithQuote
@@ -138,7 +137,7 @@ class NotificationService {
     // Email notification for status updates
     static async sendStatusEmailNotification(userId, userType, jobData, status) {
         try {
-            const { sendStatusUpdateNotification } = await import('./emailService.js');
+            const { sendStatusEmail } = await import('./emailWrapper.js');
 
             let userEmail, userName;
 
@@ -157,7 +156,7 @@ class NotificationService {
                 return { success: false, error: 'No email address' };
             }
 
-            const result = await sendStatusUpdateNotification(
+            const result = await sendStatusEmail(
                 userEmail,
                 userName,
                 jobData,
@@ -180,7 +179,7 @@ class NotificationService {
     // Email notification for payment confirmation
     static async sendPaymentEmailNotification(userId, userType, jobData, amount, paymentType) {
         try {
-            const { sendPaymentConfirmation } = await import('./emailService.js');
+            const { sendPaymentEmail } = await import('./emailWrapper.js');
 
             let userEmail, userName;
 
@@ -199,125 +198,7 @@ class NotificationService {
                 return { success: false, error: 'No email address' };
             }
 
-            const result = await sendPaymentConfirmation(
-                userEmail,
-                userName,
-                jobData,
-                amount,
-                paymentType
-            );
-
-            return {
-                success: result.success,
-                email: userEmail,
-                userName: userName,
-                provider: 'email'
-            };
-
-        } catch (error) {
-            console.error('❌ Payment email error:', error);
-            return { success: false, error: error.message, provider: 'email' };
-        }
-    }
-
-    // Email notification for quote to customer
-    static async sendQuoteEmailNotification(customerId, jobData, quoteAmount) {
-        try {
-            const customer = await this.getCustomerEmail(customerId);
-
-            if (!customer?.email) {
-                console.log('📧 No email found for customer');
-                return { success: false, error: 'No email address' };
-            }
-
-            console.log('📧 Sending quote email to customer:', customer.email);
-
-            const jobWithQuote = {
-                ...jobData,
-                quotedPrice: quoteAmount,
-                companyName: jobData.company_name
-            };
-
-            const result = await sendQuoteNotification(
-                customer.email,
-                customer.customer_name,
-                jobWithQuote
-            );
-
-            return {
-                success: result.success,
-                email: customer.email,
-                customerName: customer.customer_name,
-                provider: 'email'
-            };
-
-        } catch (error) {
-            console.error('❌ Quote email error:', error);
-            return { success: false, error: error.message, provider: 'email' };
-        }
-    }
-
-    // Email notification for status updates
-    static async sendStatusEmailNotification(userId, userType, jobData, status) {
-        try {
-            let userEmail, userName;
-
-            if (userType === 'customer') {
-                const customer = await this.getCustomerEmail(userId);
-                userEmail = customer?.email;
-                userName = customer?.customer_name;
-            } else {
-                const company = await this.getCompanyEmail(userId);
-                userEmail = company?.email;
-                userName = company?.company_name;
-            }
-
-            if (!userEmail) {
-                console.log('📧 No email found for user');
-                return { success: false, error: 'No email address' };
-            }
-
-            const result = await sendStatusUpdateNotification(
-                userEmail,
-                userName,
-                jobData,
-                status
-            );
-
-            return {
-                success: result.success,
-                email: userEmail,
-                userName: userName,
-                provider: 'email'
-            };
-
-        } catch (error) {
-            console.error('❌ Status email error:', error);
-            return { success: false, error: error.message, provider: 'email' };
-        }
-    }
-
-    // Email notification for payment confirmation
-    static async sendPaymentEmailNotification(userId, userType, jobData, amount, paymentType) {
-        try {
-            let userEmail, userName;
-
-            if (userType === 'customer') {
-                const customer = await this.getCustomerEmail(userId);
-                userEmail = customer?.email;
-                userName = customer?.customer_name;
-            } else {
-                const company = await this.getCompanyEmail(userId);
-                userEmail = company?.email;
-                userName = company?.company_name;
-            }
-
-            if (!userEmail) {
-                console.log('📧 No email found for user');
-                return { success: false, error: 'No email address' };
-            }
-
-            const result = await sendPaymentConfirmation(
+            const result = await sendPaymentEmail(
                 userEmail,
                 userName,
                 jobData,
