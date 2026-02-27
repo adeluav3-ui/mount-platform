@@ -4,7 +4,21 @@ class NotificationService {
         // We'll use dynamic imports for Supabase context
     }
 
+    static emailFunctions = null;
 
+    static initialize(emails) {
+        console.log('📧 Initializing NotificationService with email functions');
+        this.emailFunctions = emails;
+    }
+
+    // Make sure this method is called before any email is sent
+    static ensureEmailFunctions() {
+        if (!this.emailFunctions) {
+            console.error('❌ Email functions not initialized! Make sure initializeServices.js is imported in main.jsx');
+            return false;
+        }
+        return true;
+    }
     // Add to NotificationService class
     static async getCompanyEmail(companyId) {
         try {
@@ -50,29 +64,23 @@ class NotificationService {
         }
     }
 
-    static emailFunctions = null;
-
-    static initialize(emails) {
-        this.emailFunctions = emails;
-    }
-
     // Email notification for new job to company
     static async sendEmailJobNotification(companyId, jobData) {
         try {
-            // Use template literal with vite-ignore to hide from static analysis
-            const wrapperPath = './emailWrapper.js';
-            const { sendNewJobEmail } = await import(/* @vite-ignore */ wrapperPath);
+            if (!this.ensureEmailFunctions()) {
+                return { success: false, error: 'Email service not initialized', provider: 'email' };
+            }
 
             const company = await this.getCompanyEmail(companyId);
 
             if (!company?.email) {
                 console.log('📧 No email found for company');
-                return { success: false, error: 'No email address' };
+                return { success: false, error: 'No email address', provider: 'email' };
             }
 
             console.log('📧 Sending email notification to:', company.email);
 
-            const result = await sendNewJobEmail(
+            const result = await this.emailFunctions.sendNewJobEmail(
                 company.email,
                 company.company_name,
                 jobData
@@ -102,132 +110,6 @@ class NotificationService {
         }
     }
 
-    // Email notification for quote to customer
-    static async sendQuoteEmailNotification(customerId, jobData, quoteAmount) {
-        try {
-            const wrapperPath = './emailWrapper.js';
-            const { sendQuoteEmail } = await import(/* @vite-ignore */ wrapperPath);
-
-            const customer = await this.getCustomerEmail(customerId);
-
-            if (!customer?.email) {
-                console.log('📧 No email found for customer');
-                return { success: false, error: 'No email address' };
-            }
-
-            console.log('📧 Sending quote email to customer:', customer.email);
-
-            const jobWithQuote = {
-                ...jobData,
-                quotedPrice: quoteAmount,
-                companyName: jobData.company_name
-            };
-
-            const result = await sendQuoteEmail(
-                customer.email,
-                customer.customer_name,
-                jobWithQuote
-            );
-
-            return {
-                success: result.success,
-                email: customer.email,
-                customerName: customer.customer_name,
-                provider: 'email'
-            };
-
-        } catch (error) {
-            console.error('❌ Quote email error:', error);
-            return { success: false, error: error.message, provider: 'email' };
-        }
-    }
-
-    // Email notification for status updates
-    static async sendStatusEmailNotification(userId, userType, jobData, status) {
-        try {
-            const wrapperPath = './emailWrapper.js';
-            const { sendStatusEmail } = await import(/* @vite-ignore */ wrapperPath);
-
-            let userEmail, userName;
-
-            if (userType === 'customer') {
-                const customer = await this.getCustomerEmail(userId);
-                userEmail = customer?.email;
-                userName = customer?.customer_name;
-            } else {
-                const company = await this.getCompanyEmail(userId);
-                userEmail = company?.email;
-                userName = company?.company_name;
-            }
-
-            if (!userEmail) {
-                console.log('📧 No email found for user');
-                return { success: false, error: 'No email address' };
-            }
-
-            const result = await sendStatusEmail(
-                userEmail,
-                userName,
-                jobData,
-                status
-            );
-
-            return {
-                success: result.success,
-                email: userEmail,
-                userName: userName,
-                provider: 'email'
-            };
-
-        } catch (error) {
-            console.error('❌ Status email error:', error);
-            return { success: false, error: error.message, provider: 'email' };
-        }
-    }
-
-    // Email notification for payment confirmation
-    static async sendPaymentEmailNotification(userId, userType, jobData, amount, paymentType) {
-        try {
-            const wrapperPath = './emailWrapper.js';
-            const { sendPaymentEmail } = await import(/* @vite-ignore */ wrapperPath);
-
-            let userEmail, userName;
-
-            if (userType === 'customer') {
-                const customer = await this.getCustomerEmail(userId);
-                userEmail = customer?.email;
-                userName = customer?.customer_name;
-            } else {
-                const company = await this.getCompanyEmail(userId);
-                userEmail = company?.email;
-                userName = company?.company_name;
-            }
-
-            if (!userEmail) {
-                console.log('📧 No email found for user');
-                return { success: false, error: 'No email address' };
-            }
-
-            const result = await sendPaymentEmail(
-                userEmail,
-                userName,
-                jobData,
-                amount,
-                paymentType
-            );
-
-            return {
-                success: result.success,
-                email: userEmail,
-                userName: userName,
-                provider: 'email'
-            };
-
-        } catch (error) {
-            console.error('❌ Payment email error:', error);
-            return { success: false, error: error.message, provider: 'email' };
-        }
-    }
     // Get all active devices for a company
     static async getCompanyDevices(companyId) {
         try {
