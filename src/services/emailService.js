@@ -1,20 +1,4 @@
 // src/services/emailService.js
-let resendInstance = null;
-
-// Initialize Resend lazily
-const getResend = async () => {
-    if (!resendInstance) {
-        try {
-            const { Resend } = await import('resend');
-            resendInstance = new Resend(import.meta.env.VITE_RESEND_API_KEY);
-            console.log('📧 Resend initialized successfully');
-        } catch (error) {
-            console.error('❌ Failed to initialize Resend:', error);
-            throw error;
-        }
-    }
-    return resendInstance;
-};
 
 // Email templates
 const emailTemplates = {
@@ -188,32 +172,41 @@ export const sendEmail = async ({ to, template, data }) => {
         // Generate email content
         const { subject, html } = templateFn(...data);
 
-        // Get Resend instance
-        const resend = await getResend();
+        // Get Supabase URL and anon key from environment
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-        // Send via Resend
-        const { data: emailData, error } = await resend.emails.send({
-            from: 'Mount Platform <notifications@mountltd.com>',
-            to: [to],
-            subject: subject,
-            html: html,
+        // Call Supabase Edge Function
+        const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+            },
+            body: JSON.stringify({
+                to,
+                subject,
+                html,
+                from: 'Mount Platform <notifications@mountltd.com>'
+            })
         });
 
-        if (error) {
-            console.error('Resend error:', error);
-            return { success: false, error };
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to send email');
         }
 
+        const result = await response.json();
         console.log(`✅ Email sent: ${subject} to ${to}`);
-        return { success: true, data: emailData };
+        return { success: true, data: result.data };
 
     } catch (error) {
         console.error('Email sending failed:', error);
-        return { success: false, error };
+        return { success: false, error: error.message };
     }
 };
 
-// Helper functions for specific notifications
+// Helper functions (keep these exactly as they are)
 export const sendNewJobNotification = async (companyEmail, companyName, jobDetails) => {
     return sendEmail({
         to: companyEmail,
