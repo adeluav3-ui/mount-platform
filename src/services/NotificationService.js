@@ -51,10 +51,12 @@ class NotificationService {
     }
 
     // Email notification for new job to company
+    // Email notification for new job to company
     static async sendEmailJobNotification(companyId, jobData) {
         try {
-            // Dynamically import the wrapper
-            const { sendNewJobEmail } = await import('./emailWrapper.js');
+            // Use template literal with vite-ignore to hide from static analysis
+            const wrapperPath = './emailWrapper.js';
+            const { sendNewJobEmail } = await import(/* @vite-ignore */ wrapperPath);
 
             const company = await this.getCompanyEmail(companyId);
 
@@ -98,7 +100,8 @@ class NotificationService {
     // Email notification for quote to customer
     static async sendQuoteEmailNotification(customerId, jobData, quoteAmount) {
         try {
-            const { sendQuoteEmail } = await import('./emailWrapper.js');
+            const wrapperPath = './emailWrapper.js';
+            const { sendQuoteEmail } = await import(/* @vite-ignore */ wrapperPath);
 
             const customer = await this.getCustomerEmail(customerId);
 
@@ -137,7 +140,8 @@ class NotificationService {
     // Email notification for status updates
     static async sendStatusEmailNotification(userId, userType, jobData, status) {
         try {
-            const { sendStatusEmail } = await import('./emailWrapper.js');
+            const wrapperPath = './emailWrapper.js';
+            const { sendStatusEmail } = await import(/* @vite-ignore */ wrapperPath);
 
             let userEmail, userName;
 
@@ -179,7 +183,8 @@ class NotificationService {
     // Email notification for payment confirmation
     static async sendPaymentEmailNotification(userId, userType, jobData, amount, paymentType) {
         try {
-            const { sendPaymentEmail } = await import('./emailWrapper.js');
+            const wrapperPath = './emailWrapper.js';
+            const { sendPaymentEmail } = await import(/* @vite-ignore */ wrapperPath);
 
             let userEmail, userName;
 

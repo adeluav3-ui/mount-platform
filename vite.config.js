@@ -87,7 +87,8 @@ export default defineConfig({
         })
     ],
     optimizeDeps: {
-        include: ['react-helmet-async', 'resend'] // ADDED 'resend' here
+        include: ['react-helmet-async', 'resend'],
+        exclude: ['src/services/emailService.js', 'src/services/emailWrapper.js'] // ADDED 'resend' here
     },
     build: {
         rollupOptions: {
