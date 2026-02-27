@@ -1,5 +1,5 @@
 // src/services/emailWrapper.js
-// Static imports instead of dynamic
+// Static imports
 import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendPaymentConfirmation } from './emailService.js';
 
 export async function sendNewJobEmail(companyEmail, companyName, jobData) {

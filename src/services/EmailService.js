@@ -1,17 +1,20 @@
 // src/services/emailService.js
-let Resend;
+let resendInstance = null;
 
-// Dynamic import to avoid build issues
-const initResend = async () => {
-    const module = await import('resend');
-    Resend = module.Resend;
-    return new Resend(import.meta.env.VITE_RESEND_API_KEY);
+// Initialize Resend lazily
+const getResend = async () => {
+    if (!resendInstance) {
+        try {
+            const { Resend } = await import('resend');
+            resendInstance = new Resend(import.meta.env.VITE_RESEND_API_KEY);
+            console.log('📧 Resend initialized successfully');
+        } catch (error) {
+            console.error('❌ Failed to initialize Resend:', error);
+            throw error;
+        }
+    }
+    return resendInstance;
 };
-
-let resendPromise = initResend();
-
-// Initialize Resend with your API key
-const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
 
 // Email templates
 const emailTemplates = {
@@ -184,6 +187,9 @@ export const sendEmail = async ({ to, template, data }) => {
 
         // Generate email content
         const { subject, html } = templateFn(...data);
+
+        // Get Resend instance
+        const resend = await getResend();
 
         // Send via Resend
         const { data: emailData, error } = await resend.emails.send({
