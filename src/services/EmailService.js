@@ -1,5 +1,14 @@
 // src/services/emailService.js
-import { Resend } from 'resend';
+let Resend;
+
+// Dynamic import to avoid build issues
+const initResend = async () => {
+    const module = await import('resend');
+    Resend = module.Resend;
+    return new Resend(import.meta.env.VITE_RESEND_API_KEY);
+};
+
+let resendPromise = initResend();
 
 // Initialize Resend with your API key
 const resend = new Resend(import.meta.env.VITE_RESEND_API_KEY);
