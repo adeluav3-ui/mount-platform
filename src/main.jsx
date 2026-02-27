@@ -6,6 +6,7 @@ import { SupabaseProvider } from './context/SupabaseContext.jsx'
 import './index.css'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { initPerformanceTracking } from './utils/performance';
+import './services/initializeServices.js';
 import { initializeGA4 } from './utils/ga4';
 
 console.log('=== MOUNT PLATFORM STARTING ===')

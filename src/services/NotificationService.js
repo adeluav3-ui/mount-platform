@@ -50,7 +50,12 @@ class NotificationService {
         }
     }
 
-    // Email notification for new job to company
+    static emailFunctions = null;
+
+    static initialize(emails) {
+        this.emailFunctions = emails;
+    }
+
     // Email notification for new job to company
     static async sendEmailJobNotification(companyId, jobData) {
         try {
