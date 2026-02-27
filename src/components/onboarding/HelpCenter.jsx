@@ -121,7 +121,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                     <div className="bg-white p-3 rounded-lg border">
                                         <div className="flex items-center justify-between">
                                             <code className="text-gray-800 text-lg sm:text-xl font-bold tracking-wide">
-                                                0813 9672 432
+                                                0903 7590 136
                                             </code>
                                             <div className="text-xs text-gray-500">NG</div>
                                         </div>
@@ -521,7 +521,7 @@ const HelpCenter = ({ isOpen, onClose, onStartTour }) => {
                                         <span className="text-green-600">📱</span>
                                         <span className="text-sm text-gray-700">Phone:</span>
                                     </div>
-                                    <code className="text-green-600 text-sm font-bold">0813 9672 432</code>
+                                    <code className="text-green-600 text-sm font-bold">0903 759 0136</code>
                                 </div>
                             </div>
                         </div>
