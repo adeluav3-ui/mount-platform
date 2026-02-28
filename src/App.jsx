@@ -54,6 +54,8 @@ function PublicRoutes() {
       <Route path="/for-customers" element={<ForCustomersPage />} />
       <Route path="/for-providers" element={<ForProvidersPage />} />
       <Route path="/contact" element={<ContactPage />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
 
       {/* Redirect old /home to root */}
       <Route path="/home" element={<Navigate to="/" replace />} />

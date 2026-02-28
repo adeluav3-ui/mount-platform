@@ -241,6 +241,23 @@ const HomeOverviewPage = () => {
                                     {link.name}
                                 </a>
                             ))}
+
+                            {/* NEW: Mobile Legal Links */}
+                            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e8ede9' }}>
+                                <a href="/terms" onClick={() => setIsMenuOpen(false)}
+                                    style={{ display: 'block', padding: '0.65rem 0', color: 'var(--ink-soft)', fontWeight: 500, fontSize: '0.9rem', textDecoration: 'none' }}>
+                                    📄 Terms of Service
+                                </a>
+                                <a href="/privacy" onClick={() => setIsMenuOpen(false)}
+                                    style={{ display: 'block', padding: '0.65rem 0', color: 'var(--ink-soft)', fontWeight: 500, fontSize: '0.9rem', textDecoration: 'none' }}>
+                                    🔒 Privacy & Cookies Policy
+                                </a>
+                                <a href="/contact" onClick={() => setIsMenuOpen(false)}
+                                    style={{ display: 'block', padding: '0.65rem 0', color: 'var(--ink-soft)', fontWeight: 500, fontSize: '0.9rem', textDecoration: 'none' }}>
+                                    📧 Contact Us
+                                </a>
+                            </div>
+
                             <button onClick={() => { setIsMenuOpen(false); handleGetStartedClick(); }} className="btn-primary"
                                 style={{ marginTop: '0.75rem', width: '100%', padding: '0.75rem', borderRadius: '100px', fontWeight: 600, fontSize: '0.95rem', border: 'none', cursor: 'pointer' }}>
                                 Get Started
@@ -520,6 +537,71 @@ const HomeOverviewPage = () => {
                             ))}
                         </div>
                     </div>
+
+                    {/* NEW: Legal Links Row */}
+                    <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        justifyContent: 'center',
+                        gap: '2rem',
+                        marginBottom: '1.5rem',
+                        padding: '1rem 0',
+                        borderTop: '1px solid rgba(255,255,255,0.1)',
+                        borderBottom: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                        <a
+                            href="/terms"
+                            style={{
+                                color: 'rgba(255,255,255,0.7)',
+                                fontSize: '0.85rem',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                                transition: 'color 0.2s',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.color = '#fff'; }}
+                            onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                        >
+                            <span>📄</span> Terms of Service
+                        </a>
+                        <a
+                            href="/privacy"
+                            style={{
+                                color: 'rgba(255,255,255,0.7)',
+                                fontSize: '0.85rem',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                                transition: 'color 0.2s',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.color = '#fff'; }}
+                            onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                        >
+                            <span>🔒</span> Privacy & Cookies Policy
+                        </a>
+                        <a
+                            href="/contact"
+                            style={{
+                                color: 'rgba(255,255,255,0.7)',
+                                fontSize: '0.85rem',
+                                textDecoration: 'none',
+                                fontWeight: 500,
+                                transition: 'color 0.2s',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem'
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.color = '#fff'; }}
+                            onMouseOut={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}
+                        >
+                            <span>📧</span> Contact Us
+                        </a>
+                    </div>
+
                     <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                         <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.82rem' }}>
                             © {new Date().getFullYear()} Mount Ltd. All rights reserved.
