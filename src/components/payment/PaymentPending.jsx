@@ -28,18 +28,35 @@ const PaymentPending = () => {
     const fetchPaymentDetails = async () => {
         try {
             // FIX: Remove comments from the select string
-            const { data, error } = await supabase
+            // First get the transaction
+            const { data: transaction, error: transactionError } = await supabase
                 .from('financial_transactions')
-                .select(`
-                *,
-                jobs (
-                    description,
-                    status,
-                    companies!inner(company_name)
-                )
-            `)
+                .select('*')
                 .eq('bank_reference', reference)
                 .single();
+
+            if (transactionError) throw transactionError;
+
+            // Then get the job with company details
+            const { data: job, error: jobError } = await supabase
+                .from('jobs')
+                .select(`
+        description,
+        status,
+        companies (
+            company_name
+        )
+    `)
+                .eq('id', transaction.job_id)
+                .single();
+
+            if (jobError) throw jobError;
+
+            // Combine the data
+            const data = {
+                ...transaction,
+                jobs: job
+            };
 
             if (error) throw error;
 
