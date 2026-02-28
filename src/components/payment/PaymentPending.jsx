@@ -228,6 +228,37 @@ const PaymentPending = () => {
                             </div>
                         </div>
 
+                        {/* Upload Proof Section */}
+                        {!uploadedProof && (
+                            <div className="border-t border-gray-200 pt-6">
+                                <h4 className="font-medium text-gray-800 mb-4">
+                                    Upload Proof of Payment
+                                </h4>
+
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                                    <div className="text-4xl mb-4">📎</div>
+                                    <p className="font-medium mb-2">Upload transfer confirmation</p>
+                                    <p className="text-sm text-gray-500 mb-4">Screenshot of your successful bank transfer (Max 5MB)</p>
+
+                                    <label className="cursor-pointer inline-block">
+                                        <span className={`px-6 py-3 rounded-lg font-medium ${uploading
+                                            ? 'bg-gray-400 text-white cursor-not-allowed'
+                                            : 'bg-naijaGreen text-white hover:bg-darkGreen'
+                                            }`}>
+                                            {uploading ? 'Uploading...' : 'Choose File'}
+                                        </span>
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*,.pdf"
+                                            onChange={handleUploadProof}
+                                            disabled={uploading || uploadedProof}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Already Uploaded Section */}
                         {uploadedProof && (
                             <div className="border-t border-gray-200 pt-6">
