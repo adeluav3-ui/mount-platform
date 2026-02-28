@@ -31,6 +31,8 @@ import ForCustomersPage from './components/seo/ForCustomersPage';
 import ForProvidersPage from './components/seo/ForProvidersPage';
 import HomeOverviewPage from './components/seo/HomeOverviewPage';
 import ContactPage from './components/seo/ContactPage';
+import TermsPage from './components/TermsPage';
+import PrivacyPage from './components/PrivacyPage';
 
 // NEW ADMIN MESSAGING PAGE - Create this file
 import AdminMessagingPage from './components/admin/AdminMessagingPage';
