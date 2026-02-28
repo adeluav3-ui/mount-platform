@@ -150,6 +150,8 @@ function AppRouter() {
     location.pathname === '/for-customers' ||
     location.pathname === '/for-providers' ||
     location.pathname === '/contact' ||
+    location.pathname === '/privacy' ||  // NEW: Privacy page
+    location.pathname === '/terms' ||    // NEW: Terms page
     location.pathname.startsWith('/locations');
 
   // If no user and not on a public route, show login screen
