@@ -27,36 +27,20 @@ const PaymentPending = () => {
 
     const fetchPaymentDetails = async () => {
         try {
-            // FIX: Remove comments from the select string
-            // First get the transaction
-            const { data: transaction, error: transactionError } = await supabase
+            const { data, error } = await supabase
                 .from('financial_transactions')
-                .select('*')
+                .select(`
+                *,
+                jobs (
+                    description,
+                    status,
+                    companies (
+                        company_name
+                    )
+                )
+            `)
                 .eq('bank_reference', reference)
                 .single();
-
-            if (transactionError) throw transactionError;
-
-            // Then get the job with company details
-            const { data: job, error: jobError } = await supabase
-                .from('jobs')
-                .select(`
-        description,
-        status,
-        companies (
-            company_name
-        )
-    `)
-                .eq('id', transaction.job_id)
-                .single();
-
-            if (jobError) throw jobError;
-
-            // Combine the data
-            const data = {
-                ...transaction,
-                jobs: job
-            };
 
             if (error) throw error;
 
@@ -176,7 +160,7 @@ const PaymentPending = () => {
     const displayAmount = amount || paymentDetails?.amount || 0;
     const displayType = paymentType || paymentDetails?.type || 'bank_transfer';
     const jobDescription = paymentDetails?.jobs?.description || 'Job Details';
-    const companyName = paymentDetails?.jobs?.companies?.company_name || 'Service Provider';
+    const companyName = paymentDetails?.jobs?.companies?.[0]?.company_name || 'Service Provider';
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4">
