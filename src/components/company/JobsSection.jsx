@@ -408,10 +408,10 @@ export default function JobsSection({
         try {
             console.log('DEBUG: Fetching company for user:', user.id);
 
-            // Get company data - companies.id should match user.id
+            // Get company data - NOW INCLUDING account_name
             const { data: companyData, error: companyError } = await supabase
                 .from('companies')
-                .select('id, company_name, bank_name, bank_account, email') // Use bank_account, not account_number
+                .select('id, company_name, account_name, bank_name, bank_account, email') // ADDED account_name
                 .eq('id', user.id)
                 .single();
 
@@ -434,6 +434,9 @@ export default function JobsSection({
                 return;
             }
 
+            // Determine the account name to display in the prompt
+            const displayAccountName = companyData.account_name || companyData.company_name;
+
             // Ask for the onsite fee amount
             const feeInput = prompt(
                 `Enter the onsite check fee amount (in Naira):\n\n` +
@@ -441,7 +444,8 @@ export default function JobsSection({
                 `Your bank details:\n` +
                 `Bank: ${companyData.bank_name}\n` +
                 `Account: ${companyData.bank_account}\n` +
-                `Name: ${companyData.company_name} (company name)\n\n` +
+                `Account Name: ${displayAccountName}\n` +
+                `Company Name: ${companyData.company_name}\n\n` +
                 `Enter amount (e.g., 5000):`
             );
 
@@ -460,6 +464,9 @@ export default function JobsSection({
                 return;
             }
 
+            // Use account_name if available, otherwise fall back to company_name
+            const accountNameToUse = companyData.account_name || companyData.company_name;
+
             // Update job with onsite fee details
             const { error: updateError } = await supabase
                 .from('jobs')
@@ -469,8 +476,8 @@ export default function JobsSection({
                     onsite_fee_amount: onsiteFee,
                     onsite_fee_bank_details: JSON.stringify({
                         bank_name: companyData.bank_name,
-                        account_number: companyData.bank_account, // Using bank_account
-                        account_name: companyData.company_name, // Using company_name as account name
+                        account_number: companyData.bank_account,
+                        account_name: accountNameToUse, // USING account_name from database
                         company_name: companyData.company_name
                     }),
                     updated_at: new Date().toISOString()
@@ -485,6 +492,7 @@ export default function JobsSection({
             console.log('=== DEBUG: Creating onsite fee notification ===');
             console.log('Job ID:', jobId);
             console.log('Onsite Fee:', onsiteFee);
+            console.log('Using account name:', accountNameToUse);
 
             const { data: job } = await supabase
                 .from('jobs')
@@ -509,7 +517,8 @@ export default function JobsSection({
                         bank_details: {
                             bank_name: companyData.bank_name,
                             account_number: companyData.bank_account,
-                            account_name: companyData.company_name
+                            account_name: accountNameToUse, // USING account_name in metadata too
+                            company_name: companyData.company_name
                         }
                     }
                 });
