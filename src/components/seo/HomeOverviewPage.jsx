@@ -252,10 +252,6 @@ const HomeOverviewPage = () => {
                                     style={{ display: 'block', padding: '0.65rem 0', color: 'var(--ink-soft)', fontWeight: 500, fontSize: '0.9rem', textDecoration: 'none' }}>
                                     🔒 Privacy & Cookies Policy
                                 </a>
-                                <a href="/contact" onClick={() => setIsMenuOpen(false)}
-                                    style={{ display: 'block', padding: '0.65rem 0', color: 'var(--ink-soft)', fontWeight: 500, fontSize: '0.9rem', textDecoration: 'none' }}>
-                                    📧 Contact Us
-                                </a>
                             </div>
 
                             <button onClick={() => { setIsMenuOpen(false); handleGetStartedClick(); }} className="btn-primary"
