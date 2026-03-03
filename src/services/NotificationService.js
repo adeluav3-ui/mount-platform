@@ -157,11 +157,16 @@ class NotificationService {
             // Get Supabase instance
             const { supabase } = await import('../context/SupabaseContext.jsx');
 
-            // 1. Fetch all admins from the admin table
+            // 1. Fetch all admins from admin_users table with their profile info
             const { data: admins, error } = await supabase
-                .from('admin')
-                .select('id, email, full_name, name')
-                .eq('is_active', true); // Assuming you have an is_active field
+                .from('admin_users')
+                .select(`
+                user_id,
+                email,
+                profiles!inner (
+                    full_name
+                )
+            `);
 
             if (error) {
                 console.error('❌ Error fetching admins:', error);
@@ -169,11 +174,11 @@ class NotificationService {
             }
 
             if (!admins || admins.length === 0) {
-                console.log('📭 No active admins found');
+                console.log('📭 No admins found in admin_users table');
                 return { success: false, error: 'No admins found' };
             }
 
-            console.log(`👥 Found ${admins.length} active admins`);
+            console.log(`👥 Found ${admins.length} admins`);
 
             // 2. Fetch customer details
             const { data: customer, error: customerError } = await supabase
@@ -196,11 +201,11 @@ class NotificationService {
             const results = [];
 
             for (const admin of admins) {
-                // Determine admin name (handle different possible field names)
-                const adminName = admin.full_name || admin.name || 'Admin';
+                // Get admin name from the joined profiles data
+                const adminName = admin.profiles?.full_name || 'Admin';
 
                 if (!admin.email) {
-                    console.warn(`⚠️ Admin ${admin.id} has no email, skipping`);
+                    console.warn(`⚠️ Admin ${admin.user_id} has no email, skipping`);
                     continue;
                 }
 
@@ -218,7 +223,7 @@ class NotificationService {
                 }
 
                 // Send email using the email service
-                const result = await this.emailFunctions.sendAdminNewJobNotification(
+                const result = await this.emailFunctions.sendAdminNewJobEmail(
                     admin.email,
                     adminName,
                     jobData,
@@ -233,7 +238,7 @@ class NotificationService {
 
                 // Log to notifications table
                 await this.logNotification({
-                    user_id: admin.id,
+                    user_id: admin.user_id,
                     job_id: jobData.id,
                     title: 'Admin New Job Alert',
                     message: `New ${jobData.category} job posted by ${customerDetails.name}`,
