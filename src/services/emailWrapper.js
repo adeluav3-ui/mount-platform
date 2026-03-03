@@ -1,6 +1,6 @@
 // src/services/emailWrapper.js
 // Static imports
-import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendPaymentConfirmation } from './emailService.js';
+import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendAdminNewJobNotification, sendPaymentConfirmation } from './emailService.js';
 
 export async function sendNewJobEmail(companyEmail, companyName, jobData) {
     try {
@@ -16,6 +16,15 @@ export async function sendQuoteEmail(customerEmail, customerName, jobData) {
         return await sendQuoteNotification(customerEmail, customerName, jobData);
     } catch (error) {
         console.error('Failed to send quote email:', error);
+        return { success: false, error: 'Email service unavailable' };
+    }
+}
+
+export async function sendAdminNewJobEmail(adminEmail, adminName, jobData, customerDetails) {
+    try {
+        return await sendAdminNewJobNotification(adminEmail, adminName, jobData, customerDetails);
+    } catch (error) {
+        console.error('Failed to send admin notification:', error);
         return { success: false, error: 'Email service unavailable' };
     }
 }

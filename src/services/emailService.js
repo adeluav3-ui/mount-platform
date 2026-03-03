@@ -157,7 +157,99 @@ const emailTemplates = {
                 </div>
             </div>
         `
+    }),
+    // In emailTemplates, add this new template:
+    adminNewJobNotification: (adminName, jobDetails, customerDetails) => ({
+        subject: `📢 New Job Posted: ${jobDetails.category} - Mount Platform`,
+        html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #00843E; padding: 30px 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Mount Platform</h1>
+                <p style="color: white; margin: 10px 0 0; opacity: 0.9;">Admin Notification</p>
+            </div>
+            
+            <div style="padding: 30px 20px; background: #f9f9f9;">
+                <h2 style="color: #333; margin-bottom: 20px;">Hello ${adminName}!</h2>
+                
+                <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+                    A new job has been posted on Mount and sent to providers:
+                </p>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #00843E;">
+                    <h3 style="color: #00843E; margin: 0 0 15px 0;">Job Details</h3>
+                    
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; color: #666; width: 120px;"><strong>Category:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${jobDetails.category}${jobDetails.sub_service ? ` - ${jobDetails.sub_service}` : ''}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Location:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${jobDetails.location}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Budget:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${jobDetails.budget === 'N/A' ? 'Not specified' : `₦${Number(jobDetails.budget).toLocaleString()}`}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Job ID:</strong></td>
+                            <td style="padding: 8px 0; color: #333; font-family: monospace;">${jobDetails.id}</td>
+                        </tr>
+                    </table>
+                    
+                    <div style="margin-top: 15px; padding: 15px; background: #f0f9f0; border-radius: 6px;">
+                        <p style="margin: 0 0 5px 0; color: #333;"><strong>Description:</strong></p>
+                        <p style="margin: 0; color: #666;">${jobDetails.description}</p>
+                    </div>
+                </div>
+                
+                <div style="background: #e8f0fe; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #0066cc;">
+                    <h3 style="color: #0066cc; margin: 0 0 15px 0;">Customer Information</h3>
+                    
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; color: #666; width: 120px;"><strong>Name:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${customerDetails.name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Email:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${customerDetails.email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Phone:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${customerDetails.phone || 'Not provided'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Address:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${jobDetails.exact_address}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>📊 Status:</strong> Job is pending and waiting for provider quotes
+                    </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="https://www.mountltd.com/admin/jobs" 
+                       style="background: #00843E; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                        View in Admin Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <div style="padding: 20px; text-align: center; color: #999; font-size: 12px;">
+                <p>© 2025 Mount Platform. All rights reserved.</p>
+                <p>
+                    <a href="https://www.mountltd.com/admin" style="color: #00843E; text-decoration: none;">Admin Dashboard</a>
+                </p>
+            </div>
+        </div>
+    `
     })
+
 };
 
 // Main email sending function
@@ -204,6 +296,14 @@ export const sendEmail = async ({ to, template, data }) => {
         console.error('Email sending failed:', error);
         return { success: false, error: error.message };
     }
+};
+
+export const sendAdminNewJobNotification = async (adminEmail, adminName, jobDetails, customerDetails) => {
+    return sendEmail({
+        to: adminEmail,
+        template: 'adminNewJobNotification',
+        data: [adminName, jobDetails, customerDetails]
+    });
 };
 
 // Helper functions (keep these exactly as they are)

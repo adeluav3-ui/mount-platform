@@ -402,6 +402,29 @@ export default function Step2Companies({
 
             const newJobId = jobData.id;
 
+            // AFTER getting newJobId, ADD THIS:
+            try {
+                // Notify admins about the new job
+                console.log('👑 Notifying admins about new job:', newJobId);
+                const adminResult = await NotificationService.notifyAdminsNewJob(
+                    {
+                        id: newJobId,
+                        category: job.category,
+                        sub_service: job.sub_service,
+                        location: job.location,
+                        budget: Number(job.price) || 0,
+                        description: job.description,
+                        exact_address: job.exact_address
+                    },
+                    user.id // customer ID
+                );
+
+                console.log('👑 Admin notification result:', adminResult);
+            } catch (adminError) {
+                // Don't fail the job posting if admin notification fails
+                console.error('❌ Failed to notify admins:', adminError);
+            }
+
             console.log('🔍 COMPANY OBJECT FIELDS CHECK:', {
                 companyId: company.id,
                 companyName: company.company_name,

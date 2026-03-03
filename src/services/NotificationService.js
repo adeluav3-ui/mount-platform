@@ -149,6 +149,123 @@ class NotificationService {
         }
     }
 
+    // Add to NotificationService.js
+    static async notifyAdminsNewJob(jobData, customerId) {
+        try {
+            console.log('👑 Notifying admins about new job:', jobData.id);
+
+            // Get Supabase instance
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            // 1. Fetch all admins from the admin table
+            const { data: admins, error } = await supabase
+                .from('admin')
+                .select('id, email, full_name, name')
+                .eq('is_active', true); // Assuming you have an is_active field
+
+            if (error) {
+                console.error('❌ Error fetching admins:', error);
+                return { success: false, error: error.message };
+            }
+
+            if (!admins || admins.length === 0) {
+                console.log('📭 No active admins found');
+                return { success: false, error: 'No admins found' };
+            }
+
+            console.log(`👥 Found ${admins.length} active admins`);
+
+            // 2. Fetch customer details
+            const { data: customer, error: customerError } = await supabase
+                .from('customers')
+                .select('customer_name, email, phone')
+                .eq('id', customerId)
+                .single();
+
+            if (customerError) {
+                console.warn('⚠️ Could not fetch customer details:', customerError);
+            }
+
+            const customerDetails = {
+                name: customer?.customer_name || 'Customer',
+                email: customer?.email || 'Not available',
+                phone: customer?.phone || 'Not provided'
+            };
+
+            // 3. Send email to each admin
+            const results = [];
+
+            for (const admin of admins) {
+                // Determine admin name (handle different possible field names)
+                const adminName = admin.full_name || admin.name || 'Admin';
+
+                if (!admin.email) {
+                    console.warn(`⚠️ Admin ${admin.id} has no email, skipping`);
+                    continue;
+                }
+
+                console.log(`📧 Sending admin notification to: ${admin.email}`);
+
+                // Check if email service is initialized
+                if (!this.emailFunctions) {
+                    console.error('❌ Email functions not initialized');
+                    results.push({
+                        admin: admin.email,
+                        success: false,
+                        error: 'Email service not initialized'
+                    });
+                    continue;
+                }
+
+                // Send email using the email service
+                const result = await this.emailFunctions.sendAdminNewJobNotification(
+                    admin.email,
+                    adminName,
+                    jobData,
+                    customerDetails
+                );
+
+                results.push({
+                    admin: admin.email,
+                    success: result.success,
+                    error: result.error
+                });
+
+                // Log to notifications table
+                await this.logNotification({
+                    user_id: admin.id,
+                    job_id: jobData.id,
+                    title: 'Admin New Job Alert',
+                    message: `New ${jobData.category} job posted by ${customerDetails.name}`,
+                    type: 'admin_email',
+                    email_status: result.success ? 'sent' : 'failed',
+                    created_at: new Date().toISOString()
+                });
+
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            // 4. Summarize results
+            const successful = results.filter(r => r.success).length;
+            const failed = results.filter(r => !r.success).length;
+
+            console.log(`📊 Admin notifications complete: ${successful} sent, ${failed} failed`);
+
+            return {
+                success: successful > 0,
+                total: admins.length,
+                sent: successful,
+                failed: failed,
+                results: results
+            };
+
+        } catch (error) {
+            console.error('❌ Error in notifyAdminsNewJob:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Get company phone number
     static async getCompanyPhone(companyId) {
         try {
