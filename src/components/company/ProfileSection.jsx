@@ -44,13 +44,6 @@ const servicesData = {
         "POP patching and finishing",
         "Other"
     ],
-    "Home Appliances": [
-        "Washing machine repair",
-        "Gas cooker installation and repair",
-        "Microwave repair",
-        "TV mounting",
-        "Other"
-    ],
     "Security & Smart Home": [
         "CCTV installation",
         "Doorbell camera (smart bell) installation",
@@ -63,22 +56,6 @@ const servicesData = {
         "Tile installation and repairs",
         "Concrete patching",
         "Fence repair",
-        "Other"
-    ],
-    "Beauty & Personal Care": [
-        "Women's Hairstyling",
-        "Men's Haircut",
-        "Women's Haircut",
-        "Kids Hair Styling",
-        "Hair Braiding",
-        "Hair Weaving",
-        "Manicure",
-        "Pedicure",
-        "Nail Art",
-        "Nail Extensions",
-        "Lash Extensions",
-        "Makeup Services",
-        "Facial Treatment",
         "Other"
     ],
     "Cleaning Services": [],
