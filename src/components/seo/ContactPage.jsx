@@ -38,9 +38,6 @@ const ContactPage = () => {
                                         <a href="tel:+2348139672432" className="text-gray-700 hover:text-naijaGreen block">
                                             +234 813 967 2432
                                         </a>
-                                        <a href="tel:+2349037590136" className="text-gray-700 hover:text-naijaGreen block">
-                                            +234 903 759 0136
-                                        </a>
                                     </div>
                                 </div>
 
@@ -53,7 +50,7 @@ const ContactPage = () => {
                                         <a href="https://tiktok.com/@mountltd" className="text-gray-700 hover:text-black">
                                             TikTok
                                         </a>
-                                        <a href="https://linkedin.com/company/mountltd" className="text-gray-700 hover:text-blue-700">
+                                        <a href="https://linkedin.com/company/mount-ltd" className="text-gray-700 hover:text-blue-700">
                                             LinkedIn
                                         </a>
                                     </div>
