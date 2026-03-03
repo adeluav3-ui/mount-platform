@@ -157,15 +157,12 @@ class NotificationService {
             // Get Supabase instance
             const { supabase } = await import('../context/SupabaseContext.jsx');
 
-            // 1. Fetch all admins from admin_users table with their profile info
+            // 1. Fetch all admins from admin_users table
             const { data: admins, error } = await supabase
                 .from('admin_users')
                 .select(`
                 user_id,
-                email,
-                profiles!inner (
-                    full_name
-                )
+                email
             `);
 
             if (error) {
@@ -180,7 +177,26 @@ class NotificationService {
 
             console.log(`👥 Found ${admins.length} admins`);
 
-            // 2. Fetch customer details
+            // 2. Get admin names from profiles separately
+            const adminIds = admins.map(a => a.user_id);
+            const { data: profiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('id', adminIds);
+
+            if (profilesError) {
+                console.warn('⚠️ Could not fetch admin profiles:', profilesError);
+            }
+
+            // Create a map of user_id to full_name
+            const adminNameMap = {};
+            if (profiles) {
+                profiles.forEach(profile => {
+                    adminNameMap[profile.id] = profile.full_name;
+                });
+            }
+
+            // 3. Fetch customer details
             const { data: customer, error: customerError } = await supabase
                 .from('customers')
                 .select('customer_name, email, phone')
@@ -197,12 +213,12 @@ class NotificationService {
                 phone: customer?.phone || 'Not provided'
             };
 
-            // 3. Send email to each admin
+            // 4. Send email to each admin
             const results = [];
 
             for (const admin of admins) {
-                // Get admin name from the joined profiles data
-                const adminName = admin.profiles?.full_name || 'Admin';
+                // Get admin name from the map we created
+                const adminName = adminNameMap[admin.user_id] || 'Admin';
 
                 if (!admin.email) {
                     console.warn(`⚠️ Admin ${admin.user_id} has no email, skipping`);
@@ -251,7 +267,7 @@ class NotificationService {
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
 
-            // 4. Summarize results
+            // 5. Summarize results
             const successful = results.filter(r => r.success).length;
             const failed = results.filter(r => !r.success).length;
 
