@@ -2,9 +2,9 @@
 // Shown to Google OAuth users who don't yet have a customers record
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSupabase } from '../context/SupabaseContext';
-import logo from '../assets/logo.png';
-import NotificationService from '../services/NotificationService';
+import { useSupabase } from '../../context/SupabaseContext';
+import logo from '../../assets/logo.png';
+import NotificationService from '../../services/NotificationService';
 
 export default function CompleteProfile() {
     const { user, supabase } = useSupabase();
