@@ -415,14 +415,16 @@ class NotificationService {
                     error: result.error
                 });
 
+                // Log to notifications table - without job_id since this is a user signup
                 await this.logNotification({
                     user_id: admin.user_id,
+                    job_id: null,  // Explicitly set to null for signup notifications
                     title: 'Admin New User Alert',
                     message: `New ${userType} signed up: ${userDetails.name}`,
                     type: 'admin_email',
                     email_status: result.success ? 'sent' : 'failed',
                     created_at: new Date().toISOString()
-                });
+                }).catch(err => console.warn('Could not log notification:', err));
 
                 await new Promise(resolve => setTimeout(resolve, 100));
             }
