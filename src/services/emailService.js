@@ -158,6 +158,81 @@ const emailTemplates = {
             </div>
         `
     }),
+
+    // Add to emailTemplates object
+    adminNewUserNotification: (adminName, userDetails, userType) => ({
+        subject: `👤 New User Signup: ${userDetails.name} - Mount Platform`,
+        html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #00843E; padding: 30px 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Mount Platform</h1>
+                <p style="color: white; margin: 10px 0 0; opacity: 0.9;">New User Registration</p>
+            </div>
+            
+            <div style="padding: 30px 20px; background: #f9f9f9;">
+                <h2 style="color: #333; margin-bottom: 20px;">Hello ${adminName}!</h2>
+                
+                <p style="color: #666; line-height: 1.6; margin-bottom: 20px;">
+                    A new user has just signed up on Mount:
+                </p>
+                
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #00843E;">
+                    <h3 style="color: #00843E; margin: 0 0 15px 0;">User Details</h3>
+                    
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px 0; color: #666; width: 120px;"><strong>Name:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${userDetails.name}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Email:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${userDetails.email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Phone:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${userDetails.phone || 'Not provided'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>User Type:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">
+                                <span style="background: ${userType === 'company' ? '#00843E' : '#0066cc'}; color: white; padding: 3px 10px; border-radius: 15px; font-size: 12px;">
+                                    ${userType === 'company' ? '🏢 Service Provider' : '👤 Customer'}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #666;"><strong>Joined:</strong></td>
+                            <td style="padding: 8px 0; color: #333;">${new Date().toLocaleString()}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                ${userType === 'company' ? `
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #ff9800;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>⚠️ Company Verification Required:</strong> This company needs to be verified before they can accept jobs.
+                    </p>
+                </div>
+                ` : ''}
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="https://www.mountltd.com/admin/users" 
+                       style="background: #00843E; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                        View in Admin Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <div style="padding: 20px; text-align: center; color: #999; font-size: 12px;">
+                <p>© 2025 Mount Platform. All rights reserved.</p>
+                <p>
+                    <a href="https://www.mountltd.com/admin" style="color: #00843E; text-decoration: none;">Admin Dashboard</a>
+                </p>
+            </div>
+        </div>
+    `
+    }),
+
     // In emailTemplates, add this new template:
     adminNewJobNotification: (adminName, jobDetails, customerDetails) => ({
         subject: `📢 New Job Posted: ${jobDetails.category} - Mount Platform`,
@@ -328,6 +403,14 @@ export const sendStatusUpdateNotification = async (userEmail, userName, jobDetai
         to: userEmail,
         template: 'jobStatusUpdate',
         data: [userName, jobDetails, status]
+    });
+};
+
+export const sendAdminNewUserNotification = async (adminEmail, adminName, userDetails, userType) => {
+    return sendEmail({
+        to: adminEmail,
+        template: 'adminNewUserNotification',
+        data: [adminName, userDetails, userType]
     });
 };
 

@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ConsentCheckbox from './ConsentCheckbox';
 import PrivacyPolicy from './PrivacyPolicy';
+import NotificationService from '../services/NotificationService';
 
 const mainCategories = [
     "Electrical",
@@ -236,6 +237,14 @@ export default function Login() {
                 throw customerError;
             }
             console.log("7. Customer created successfully");
+
+            try {
+                console.log("8. Notifying admins about new customer...");
+                await NotificationService.notifyAdminsNewUser(userId, 'customer');
+            } catch (notifError) {
+                console.error('Failed to notify admins about new customer:', notifError);
+                // Don't fail signup if notification fails
+            }
 
             alert('✅ Signup complete! Please check your email to confirm signup.');
 

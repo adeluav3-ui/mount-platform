@@ -7,6 +7,7 @@ console.log('🚀 Initializing services...');
 // Initialize NotificationService with email functions
 NotificationService.initialize({
     sendNewJobEmail: emailWrapper.sendNewJobEmail,
+    sendAdminNewUserEmail: emailWrapper.sendAdminNewUserEmail,
     sendAdminNewJobEmail: emailWrapper.sendAdminNewJobEmail
 });
 

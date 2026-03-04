@@ -287,6 +287,165 @@ class NotificationService {
         }
     }
 
+    static async notifyAdminsNewUser(userId, userType) {
+        try {
+            console.log(`👑 Notifying admins about new ${userType} signup:`, userId);
+
+            // Get Supabase instance
+            const { supabase } = await import('../context/SupabaseContext.jsx');
+
+            // 1. Fetch all admins from admin_users table
+            const { data: admins, error } = await supabase
+                .from('admin_users')
+                .select('user_id, email');
+
+            if (error) {
+                console.error('❌ Error fetching admins:', error);
+                return { success: false, error: error.message };
+            }
+
+            if (!admins || admins.length === 0) {
+                console.log('📭 No admins found in admin_users table');
+                return { success: false, error: 'No admins found' };
+            }
+
+            console.log(`👥 Found ${admins.length} admins`);
+
+            // 2. Get admin names from profiles
+            const adminIds = admins.map(a => a.user_id);
+            const { data: profiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .in('id', adminIds);
+
+            if (profilesError) {
+                console.warn('⚠️ Could not fetch admin profiles:', profilesError);
+            }
+
+            const adminNameMap = {};
+            if (profiles) {
+                profiles.forEach(profile => {
+                    adminNameMap[profile.id] = profile.full_name;
+                });
+            }
+
+            // 3. Fetch user details based on type
+            let userDetails = {};
+
+            if (userType === 'customer') {
+                const { data: customer } = await supabase
+                    .from('customers')
+                    .select('customer_name, email, phone')
+                    .eq('id', userId)
+                    .single();
+
+                if (customer) {
+                    userDetails = {
+                        name: customer.customer_name,
+                        email: customer.email,
+                        phone: customer.phone
+                    };
+                }
+            } else if (userType === 'company') {
+                const { data: company } = await supabase
+                    .from('companies')
+                    .select('company_name, email, phone')
+                    .eq('id', userId)
+                    .single();
+
+                if (company) {
+                    userDetails = {
+                        name: company.company_name,
+                        email: company.email,
+                        phone: company.phone
+                    };
+                }
+            }
+
+            // Fallback to profiles if specific table doesn't have data
+            if (!userDetails.name) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('full_name, email, phone')
+                    .eq('id', userId)
+                    .single();
+
+                if (profile) {
+                    userDetails = {
+                        name: profile.full_name || 'User',
+                        email: profile.email,
+                        phone: profile.phone
+                    };
+                }
+            }
+
+            // 4. Send email to each admin
+            const results = [];
+
+            for (const admin of admins) {
+                const adminName = adminNameMap[admin.user_id] || 'Admin';
+
+                if (!admin.email) {
+                    console.warn(`⚠️ Admin ${admin.user_id} has no email, skipping`);
+                    continue;
+                }
+
+                console.log(`📧 Sending admin notification to: ${admin.email}`);
+
+                if (!this.emailFunctions) {
+                    console.error('❌ Email functions not initialized');
+                    results.push({
+                        admin: admin.email,
+                        success: false,
+                        error: 'Email service not initialized'
+                    });
+                    continue;
+                }
+
+                const result = await this.emailFunctions.sendAdminNewUserNotification(
+                    admin.email,
+                    adminName,
+                    userDetails,
+                    userType
+                );
+
+                results.push({
+                    admin: admin.email,
+                    success: result.success,
+                    error: result.error
+                });
+
+                await this.logNotification({
+                    user_id: admin.user_id,
+                    title: 'Admin New User Alert',
+                    message: `New ${userType} signed up: ${userDetails.name}`,
+                    type: 'admin_email',
+                    email_status: result.success ? 'sent' : 'failed',
+                    created_at: new Date().toISOString()
+                });
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            const successful = results.filter(r => r.success).length;
+            const failed = results.filter(r => !r.success).length;
+
+            console.log(`📊 Admin notifications complete: ${successful} sent, ${failed} failed`);
+
+            return {
+                success: successful > 0,
+                total: admins.length,
+                sent: successful,
+                failed: failed,
+                results: results
+            };
+
+        } catch (error) {
+            console.error('❌ Error in notifyAdminsNewUser:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // Get company phone number
     static async getCompanyPhone(companyId) {
         try {

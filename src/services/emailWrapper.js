@@ -1,12 +1,21 @@
 // src/services/emailWrapper.js
 // Static imports
-import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendAdminNewJobNotification, sendPaymentConfirmation } from './emailService.js';
+import { sendNewJobNotification, sendQuoteNotification, sendStatusUpdateNotification, sendAdminNewJobNotification, sendPaymentConfirmation, sendAdminNewUserNotification } from './emailService.js';
 
 export async function sendNewJobEmail(companyEmail, companyName, jobData) {
     try {
         return await sendNewJobNotification(companyEmail, companyName, jobData);
     } catch (error) {
         console.error('Failed to send new job email:', error);
+        return { success: false, error: 'Email service unavailable' };
+    }
+}
+
+export async function sendAdminNewUserEmail(adminEmail, adminName, userDetails, userType) {
+    try {
+        return await sendAdminNewUserNotification(adminEmail, adminName, userDetails, userType);
+    } catch (error) {
+        console.error('Failed to send admin new user notification:', error);
         return { success: false, error: 'Email service unavailable' };
     }
 }
