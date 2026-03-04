@@ -402,7 +402,7 @@ class NotificationService {
                     continue;
                 }
 
-                const result = await this.emailFunctions.sendAdminNewUserNotification(
+                const result = await this.emailFunctions.sendAdminNewUserEmail(
                     admin.email,
                     adminName,
                     userDetails,
