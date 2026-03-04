@@ -1,9 +1,9 @@
-// src/App.jsx - UPDATED WITH MESSAGING SYSTEM
+// src/App.jsx - UPDATED WITH MESSAGING SYSTEM + COMPLETE PROFILE ROUTE
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SupabaseProvider, useSupabase } from './context/SupabaseContext';
 import { SettingsProvider } from './context/SettingsContext';
-import { MessagingProvider } from './context/MessagingContext'; // ADD THIS
+import { MessagingProvider } from './context/MessagingContext';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import PaymentPage from './components/payment/PaymentPage';
@@ -33,18 +33,17 @@ import HomeOverviewPage from './components/seo/HomeOverviewPage';
 import ContactPage from './components/seo/ContactPage';
 import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
-
-// NEW ADMIN MESSAGING PAGE - Create this file
 import AdminMessagingPage from './components/admin/AdminMessagingPage';
+import CompleteProfile from './components/auth/CompleteProfile'; // NEW
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
   return (
     <Routes>
-      {/* LANDING PAGE - Now at root */}
+      {/* LANDING PAGE */}
       <Route path="/" element={<HomeOverviewPage />} />
 
-      {/* WEB APP - Now at /app */}
+      {/* WEB APP */}
       <Route path="/app" element={<WelcomeScreen />} />
       <Route path="/app/login" element={<Login />} />
 
@@ -72,8 +71,6 @@ function ProtectedRoutes() {
   const { user } = useSupabase();
   const location = useLocation();
 
-  // If user is null but we're in ProtectedRoutes, something went wrong
-  // This shouldn't happen if AuthWrapper is working correctly
   if (!user) {
     console.warn('ProtectedRoutes accessed without user, redirecting to login');
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
@@ -81,6 +78,9 @@ function ProtectedRoutes() {
 
   return (
     <Routes>
+      {/* NEW: Google OAuth profile completion */}
+      <Route path="/complete-profile" element={<CompleteProfile />} />
+
       {/* Payment routes */}
       <Route path="/payment/pending" element={<PaymentPending />} />
       <Route path="/payment/bank-transfer/:jobId" element={<BankTransferPayment />} />
@@ -94,11 +94,11 @@ function ProtectedRoutes() {
       <Route path="/review/:jobId" element={<ReviewSubmission />} />
       <Route path="/company/:companyId/reviews" element={<CompanyReviewsPage />} />
 
-      {/* Admin routes - UPDATED WITH MESSAGING */}
+      {/* Admin routes */}
       <Route path="/admin" element={<AdminDashboard />}>
         <Route index element={<AdminStats />} />
         <Route path="stats" element={<AdminStats />} />
-        <Route path="messages" element={<AdminMessagingPage />} /> {/* NEW */}
+        <Route path="messages" element={<AdminMessagingPage />} />
         <Route path="approvals" element={<PendingApprovals />} />
         <Route path="payments" element={<AdminPaymentVerification />} />
         <Route path="verifications" element={<VerificationReview />} />
@@ -109,7 +109,7 @@ function ProtectedRoutes() {
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
-      {/* Catch-all for authenticated users - redirect to dashboard */}
+      {/* Catch-all for authenticated users */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
@@ -127,7 +127,6 @@ function AppRouter() {
     pathname: location.pathname
   });
 
-  // Show loading screen while checking auth
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-naijaGreen to-darkGreen flex items-center justify-center">
@@ -140,21 +139,19 @@ function AppRouter() {
     );
   }
 
-  // Determine if current route is public
   const isPublicRoute =
-    location.pathname === '/' ||                    // Landing page
-    location.pathname === '/app' ||                 // Welcome screen
-    location.pathname === '/app/login' ||           // Login page
+    location.pathname === '/' ||
+    location.pathname === '/app' ||
+    location.pathname === '/app/login' ||
     location.pathname.startsWith('/services') ||
     location.pathname === '/how-it-works' ||
     location.pathname === '/for-customers' ||
     location.pathname === '/for-providers' ||
     location.pathname === '/contact' ||
-    location.pathname === '/privacy' ||  // NEW: Privacy page
-    location.pathname === '/terms' ||    // NEW: Terms page
+    location.pathname === '/privacy' ||
+    location.pathname === '/terms' ||
     location.pathname.startsWith('/locations');
 
-  // If no user and not on a public route, show login screen
   if (!user && !isPublicRoute) {
     console.log('No user on protected route, redirecting to login');
     return (
@@ -182,21 +179,18 @@ function AppRouter() {
 
   // If user exists on app login page, redirect to dashboard
   if (user && location.pathname === '/app/login') {
-    console.log('User on login page, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
   // If user exists on welcome screen, redirect to dashboard
   if (user && location.pathname === '/app') {
-    console.log('User on welcome screen, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Render appropriate routes based on auth state
   return user ? <ProtectedRoutes /> : <PublicRoutes />;
 }
 
-// Main App component - UPDATED WITH MessagingProvider
+// Main App component
 export default function App() {
   return (
     <Router
@@ -207,10 +201,10 @@ export default function App() {
     >
       <SupabaseProvider>
         <SettingsProvider>
-          <MessagingProvider> {/* ADD THIS */}
+          <MessagingProvider>
             <ScrollToTop />
             <AppRouter />
-          </MessagingProvider> {/* ADD THIS */}
+          </MessagingProvider>
         </SettingsProvider>
       </SupabaseProvider>
     </Router>

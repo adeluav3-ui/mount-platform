@@ -1,17 +1,17 @@
-// src/components/AuthCheck.jsx - FIXED VERSION
+// src/components/AuthCheck.jsx - UPDATED (handles Google OAuth incomplete profiles)
 import React, { useEffect, useState, useRef } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AuthCheck = ({ children }) => {
-    const { getCurrentUser, getSession } = useSupabase();
-    const [authStatus, setAuthStatus] = useState('checking'); // 'checking', 'authenticated', 'unauthenticated'
+    const { getCurrentUser, getSession, supabase } = useSupabase();
+    const [authStatus, setAuthStatus] = useState('checking');
     const hasChecked = useRef(false);
     const [hasLoaded, setHasLoaded] = useState(false);
-    const location = useLocation(); // Get current location
+    const location = useLocation();
+    const navigate = useNavigate();
 
     useEffect(() => {
-        // Skip if we've already checked
         if (hasChecked.current) return;
 
         const verifyAuth = async () => {
@@ -19,39 +19,61 @@ const AuthCheck = ({ children }) => {
                 console.log('AuthCheck - Initial authentication check...');
                 console.log('Current path:', location.pathname);
 
-                // Give a small delay for Supabase to establish session after login
                 if (location.pathname === '/app/login') {
-                    console.log('On app login page, adding extra delay...');
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
 
-                // Try to get current user
                 const user = await getCurrentUser();
-                console.log('AuthCheck - getCurrentUser result:', user ? 'User found' : 'No user');
 
-                if (user) {
-                    console.log('✅ AuthCheck - User authenticated:', user.email);
-                    setAuthStatus('authenticated');
-                    hasChecked.current = true;
-                    setHasLoaded(true);
-                    return;
+                if (!user) {
+                    const session = await getSession();
+                    if (!session) {
+                        console.log('❌ AuthCheck - No authentication found');
+                        setAuthStatus('unauthenticated');
+                        hasChecked.current = true;
+                        setHasLoaded(true);
+                        return;
+                    }
                 }
 
-                // Try to get session
-                const session = await getSession();
-                console.log('AuthCheck - getSession result:', session ? 'Session found' : 'No session');
+                const authedUser = user || (await getSession())?.user;
+                console.log('✅ AuthCheck - User authenticated:', authedUser?.email);
 
-                if (session) {
-                    console.log('✅ AuthCheck - Session found:', session.user.email);
-                    setAuthStatus('authenticated');
-                    hasChecked.current = true;
-                    setHasLoaded(true);
-                    return;
+                // ── NEW: Check for incomplete OAuth profile ──────────────────────
+                // Only run this check on protected routes, not on /complete-profile itself
+                const isCompletingProfile = location.pathname === '/complete-profile';
+
+                if (!isCompletingProfile && authedUser) {
+                    const { data: customerRow } = await supabase
+                        .from('customers')
+                        .select('id')
+                        .eq('id', authedUser.id)
+                        .maybeSingle();  // maybeSingle won't throw if no row found
+
+                    if (!customerRow) {
+                        // Also check if this user is a company or admin - if so, skip redirect
+                        const { data: profileRow } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', authedUser.id)
+                            .maybeSingle();
+
+                        const role = profileRow?.role;
+
+                        if (!role || role === 'customer') {
+                            // No customers record + customer/no role = incomplete OAuth signup
+                            console.log('⚠️ AuthCheck - No customers record found, redirecting to complete-profile');
+                            hasChecked.current = true;
+                            setHasLoaded(true);
+                            setAuthStatus('authenticated');
+                            navigate('/complete-profile', { replace: true });
+                            return;
+                        }
+                    }
                 }
+                // ── END NEW ───────────────────────────────────────────────────────
 
-                // If we get here, no auth found
-                console.log('❌ AuthCheck - No authentication found');
-                setAuthStatus('unauthenticated');
+                setAuthStatus('authenticated');
                 hasChecked.current = true;
                 setHasLoaded(true);
 
@@ -64,11 +86,10 @@ const AuthCheck = ({ children }) => {
         };
 
         verifyAuth();
-    }, [getCurrentUser, getSession, location.pathname]);
+    }, [getCurrentUser, getSession, supabase, location.pathname, navigate]);
 
-    // Reset check when location changes (for login/logout)
+    // Reset check on login/welcome page navigation
     useEffect(() => {
-        // When path changes to app login page, reset the check
         if (location.pathname === '/app/login' || location.pathname === '/app') {
             console.log('Reset auth check for app login/welcome page');
             hasChecked.current = false;
@@ -77,24 +98,16 @@ const AuthCheck = ({ children }) => {
         }
     }, [location.pathname]);
 
-    // Add visibility change handler to prevent re-checks
     useEffect(() => {
         const handleVisibilityChange = () => {
-            // When tab becomes visible again, don't re-check auth
-            // Just log it for debugging
             if (document.visibilityState === 'visible') {
                 console.log('📱 Tab became visible - skipping auth re-check');
             }
         };
-
         document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
-    // Show loading only on initial load
     if (!hasLoaded) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-naijaGreen to-darkGreen flex items-center justify-center">
@@ -107,42 +120,25 @@ const AuthCheck = ({ children }) => {
         );
     }
 
-    // If unauthenticated but in a protected route, show login prompt
     if (authStatus === 'unauthenticated') {
-        // Define public routes (don't require authentication)
         const publicRoutes = [
-            '/',                    // Landing page
-            '/app',                 // Welcome screen
-            '/app/login',           // Login page
+            '/',
+            '/app',
+            '/app/login',
             '/services',
             '/how-it-works',
             '/for-customers',
             '/for-providers',
             '/contact',
-            '/locations'
+            '/locations',
+            '/complete-profile'   // Allow unauthenticated access for edge cases
         ];
 
-        // Check if current path starts with any public route
         const isPublicRoute = publicRoutes.some(route =>
             location.pathname === route || location.pathname.startsWith(route + '/')
         );
 
-        const isProtectedRoute = !isPublicRoute;
-
-        console.log('AuthCheck - Checking if protected route:', {
-            pathname: location.pathname,
-            isPublicRoute,
-            isProtectedRoute,
-            authStatus
-        });
-
-        console.log('AuthCheck - Checking if protected route:', {
-            pathname: location.pathname,
-            isProtectedRoute,
-            authStatus
-        });
-
-        if (isProtectedRoute) {
+        if (!isPublicRoute) {
             console.log('AuthCheck - Showing login prompt for protected route');
             return (
                 <div className="min-h-screen bg-gradient-to-br from-naijaGreen to-darkGreen flex items-center justify-center">
@@ -168,8 +164,6 @@ const AuthCheck = ({ children }) => {
         }
     }
 
-    // If authenticated or on public route, show children
-    console.log('AuthCheck - Rendering children, authStatus:', authStatus);
     return children;
 };
 
