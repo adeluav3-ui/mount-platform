@@ -946,7 +946,7 @@ export default function Login() {
                     </div>
 
                     {/* Google Sign-In Button */}
-                    <button
+                    {/* <button
                         type="button"
                         onClick={async () => {
                             try {
@@ -989,7 +989,7 @@ export default function Login() {
                             />
                         </svg>
                         <span>Continue with Google</span>
-                    </button>
+                    </button>*/}
                     {/* Toggle Link */}
                     <div className="mt-8 pt-8 border-t border-gray-200 text-center">
                         <p className="text-gray-600">
