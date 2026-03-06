@@ -11,7 +11,6 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import AdminStats from './components/admin/AdminStats';
 import BankTransferPayment from './components/payment/BankTransferPayment';
 import PendingApprovals from './components/admin/PendingApprovals';
-import DisbursementRequests from './components/admin/DisbursementRequests';
 import PayoutManagement from './components/admin/PayoutManagement';
 import JobManagement from './components/admin/JobManagement';
 import UserManagement from './components/admin/UserManagement';
@@ -102,7 +101,6 @@ function ProtectedRoutes() {
         <Route path="approvals" element={<PendingApprovals />} />
         <Route path="payments" element={<AdminPaymentVerification />} />
         <Route path="verifications" element={<VerificationReview />} />
-        <Route path="disbursements" element={<DisbursementRequests />} />
         <Route path="payouts" element={<PayoutManagement />} />
         <Route path="jobs" element={<JobManagement />} />
         <Route path="users" element={<UserManagement />} />

@@ -1,39 +1,39 @@
-// src/components/payment/PaymentBreakdown.jsx - ENHANCED VERSION
+// src/components/payment/PaymentBreakdown.jsx
 import React, { useState, useEffect } from 'react';
-import PaymentService from '../../utils/PaymentService';
+import PaymentService from '../../utils/PaymentService'; // kept — used for getPaymentBreakdown (job data)
 import { useSettings } from '../../context/SettingsContext';
+
+// Customer-facing service fee has been removed entirely.
+// This component now shows: Job Amount → Deposit → Platform Commission → Payment Schedule → Company Payout.
+// The 5% provider commission shown here is deducted from provider payouts — NOT charged to the customer.
+
+const Skeleton = () => (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+        <div className="h-16 bg-gray-100" />
+        <div className="p-6 space-y-4">
+            {[80, 60, 90, 70].map((w, i) => (
+                <div key={i} className="h-4 bg-gray-100 rounded" style={{ width: `${w}%` }} />
+            ))}
+        </div>
+    </div>
+);
 
 const PaymentBreakdown = ({ jobId, customerId, onPaymentCalculated }) => {
     const { getSetting } = useSettings();
     const [breakdown, setBreakdown] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [promotionStatus, setPromotionStatus] = useState(null);
 
-    useEffect(() => {
-        fetchPaymentBreakdown();
-    }, [jobId, customerId]);
+    useEffect(() => { fetchPaymentBreakdown(); }, [jobId, customerId]);
 
     const fetchPaymentBreakdown = async () => {
         try {
             setLoading(true);
             setError(null);
-
             const result = await PaymentService.getPaymentBreakdown(jobId, customerId);
-
             if (result.success) {
                 setBreakdown(result.breakdown);
-
-                // Check promotion status
-                if (customerId) {
-                    const promotionResult = await PaymentService.checkCustomerPromotionStatus(customerId);
-                    setPromotionStatus(promotionResult);
-                }
-
-                // Notify parent component
-                if (onPaymentCalculated) {
-                    onPaymentCalculated(result.breakdown);
-                }
+                if (onPaymentCalculated) onPaymentCalculated(result.breakdown);
             } else {
                 setError(result.message || 'Failed to calculate payment breakdown');
             }
@@ -45,282 +45,164 @@ const PaymentBreakdown = ({ jobId, customerId, onPaymentCalculated }) => {
         }
     };
 
-    const currencySymbol = getSetting('currencySymbol') || '₦';
-    const promotionMonths = getSetting('promotionPeriodMonths') || 3;
+    const currencySymbol = getSetting('currencySymbol') || '\u20a6';
+    const fmt = (amount) => `${currencySymbol}${parseFloat(amount || 0).toLocaleString()}`;
 
-    if (loading) {
-        return (
-            <div className="animate-pulse bg-gray-100 rounded-xl p-6">
-                <div className="h-6 bg-gray-200 rounded mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded"></div>
+    if (loading) return <Skeleton />;
+
+    if (error) return (
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-red-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+                <div>
+                    <p className="font-semibold text-red-800 text-sm">Calculation Error</p>
+                    <p className="text-red-600 text-xs mt-0.5">{error}</p>
+                    <button onClick={fetchPaymentBreakdown} className="mt-2 text-xs font-semibold text-red-700 hover:text-red-900 underline">Try again</button>
+                </div>
             </div>
-        );
-    }
+        </div>
+    );
 
-    if (error) {
-        return (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-                <p className="text-red-600 font-medium">Error: {error}</p>
-                <button
-                    onClick={fetchPaymentBreakdown}
-                    className="mt-2 text-sm text-red-700 hover:text-red-900 underline"
-                >
-                    Try again
-                </button>
-            </div>
-        );
-    }
+    if (!breakdown) return (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+            <p className="text-amber-700 text-sm">No payment breakdown available.</p>
+        </div>
+    );
 
-    if (!breakdown) {
-        return (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                <p className="text-yellow-700">No payment breakdown available.</p>
-            </div>
-        );
-    }
-
-    const formatCurrency = (amount) => {
-        return `${currencySymbol}${parseFloat(amount || 0).toLocaleString()}`;
-    };
+    // Guard all sub-properties with optional chaining to prevent runtime throws
+    const depositAmt = breakdown?.deposit?.amount ?? 0;
+    const depositPct = breakdown?.deposit?.percentage ?? 50;
+    const commissionPct = breakdown?.platformCommission?.percentage ?? 5;
+    const commissionAmt = breakdown?.platformCommission?.amount ?? 0;
+    const totalDueNow = breakdown?.totals?.totalDueNow ?? 0;
+    const finalDue = breakdown?.totals?.finalPaymentDue ?? 0;
+    const companyPayout = breakdown?.companyPayout?.amount ?? 0;
+    const schedule = Array.isArray(breakdown?.paymentSchedule) ? breakdown.paymentSchedule : [];
 
     return (
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
             {/* Header */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-100 px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                    <div>
-                        <h3 className="text-lg font-semibold text-gray-800">Payment Breakdown</h3>
-                        <p className="text-sm text-gray-600">Complete cost analysis</p>
-                    </div>
-                    {promotionStatus?.isInPromotion && (
-                        <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                            🎉 {promotionMonths}-Month Promotion
-                        </span>
-                    )}
-                </div>
+            <div className="px-5 py-4 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900">Payment Breakdown</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Complete cost analysis</p>
             </div>
 
-            {/* Promotion Banner */}
-            {promotionStatus && (
-                <div className={`px-6 py-3 border-b ${promotionStatus.isInPromotion
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-gray-50 border-gray-200'}`}
-                >
-                    <div className="flex items-center gap-3">
-                        {promotionStatus.isInPromotion ? (
-                            <>
-                                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                                    <span className="text-green-600 font-bold">✓</span>
-                                </div>
-                                <div>
-                                    <p className="font-medium text-green-800">Service Fee Waived!</p>
-                                    <p className="text-sm text-green-600">
-                                        Enjoying your {promotionMonths}-month promotion period
-                                        {promotionStatus.promotionEndDate && (
-                                            <> until {new Date(promotionStatus.promotionEndDate).toLocaleDateString()}</>
-                                        )}
-                                    </p>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <span className="text-gray-600 font-bold">$</span>
-                                </div>
-                                <div>
-                                    <p className="font-medium text-gray-800">Standard Service Fee Applies</p>
-                                    <p className="text-sm text-gray-600">
-                                        {promotionStatus.message || 'Promotion period has ended'}
-                                    </p>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
+            <div className="p-5 space-y-5">
 
-            {/* Content */}
-            <div className="p-6">
                 {/* Job Amount */}
-                <div className="mb-6 pb-6 border-b border-gray-200">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-700 font-medium">Job Amount</span>
-                        <span className="text-2xl font-bold text-gray-900">
-                            {formatCurrency(breakdown.jobAmount)}
-                        </span>
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                    <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-0.5">Total Job Amount</p>
+                        <p className="text-xs text-gray-400">Quoted by the service provider</p>
                     </div>
-                    <p className="text-sm text-gray-500">Total cost for the service (quoted by company)</p>
+                    <p className="text-2xl font-bold text-gray-900">{fmt(breakdown?.jobAmount)}</p>
                 </div>
 
                 {/* Deposit */}
-                <div className="space-y-4 mb-6">
-                    <h4 className="font-medium text-gray-800">
-                        Deposit ({breakdown.deposit.percentage}%)
-                    </h4>
-                    <div className="bg-green-50 rounded-xl p-4 border border-green-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-green-800">Deposit Amount</span>
-                            <span className="font-semibold text-green-800">
-                                {formatCurrency(breakdown.deposit.amount)}
-                            </span>
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Deposit ({depositPct}%)</p>
+                    <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-4">
+                        <div>
+                            <p className="font-semibold text-blue-800 text-sm">Deposit Amount</p>
+                            <p className="text-xs text-blue-600 mt-0.5">Payable upfront to secure the job</p>
                         </div>
-                        <p className="text-sm text-green-600">
-                            Payable upfront to secure the job
-                        </p>
+                        <p className="text-lg font-bold text-blue-800">{fmt(depositAmt)}</p>
                     </div>
                 </div>
 
-                {/* Service Fee */}
-                <div className="space-y-4 mb-6">
-                    <h4 className="font-medium text-gray-800">
-                        Platform Service Fee {breakdown.serviceFee.isWaived ? '(Waived)' : ''}
-                    </h4>
-                    <div className={`rounded-xl p-4 border ${breakdown.serviceFee.isWaived
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-blue-50 border-blue-200'}`}
-                    >
-                        <div className="flex justify-between items-center mb-2">
-                            <span className={breakdown.serviceFee.isWaived
-                                ? 'text-green-800'
-                                : 'text-blue-800'}>
-                                {breakdown.serviceFee.isWaived ? 'Fee Waived' : 'Service Fee'}
-                            </span>
-                            <span className={`font-semibold ${breakdown.serviceFee.isWaived
-                                ? 'text-green-600 line-through'
-                                : 'text-blue-800'}`}>
-                                {formatCurrency(breakdown.serviceFee.amount)}
-                            </span>
+                {/* Platform Commission — deducted from provider payout, not charged to customer */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Platform Commission</p>
+                    <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-xl p-4">
+                        <div>
+                            <p className="font-semibold text-amber-800 text-sm">{commissionPct}% Commission</p>
+                            <p className="text-xs text-amber-600 mt-0.5">Deducted from the provider's payout — not charged to you</p>
                         </div>
-                        <p className={`text-sm ${breakdown.serviceFee.isWaived
-                            ? 'text-green-600'
-                            : 'text-blue-600'}`}>
-                            {breakdown.serviceFee.description}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Platform Commission */}
-                <div className="space-y-4 mb-6">
-                    <h4 className="font-medium text-gray-800">Platform Commission</h4>
-                    <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-purple-800">
-                                {breakdown.platformCommission.percentage}% Platform Commission
-                            </span>
-                            <span className="font-semibold text-purple-800">
-                                {formatCurrency(breakdown.platformCommission.amount)}
-                            </span>
-                        </div>
-                        <p className="text-sm text-purple-600">
-                            Deducted from company's payout
-                        </p>
+                        <p className="text-lg font-bold text-amber-800">{fmt(commissionAmt)}</p>
                     </div>
                 </div>
 
                 {/* Payment Schedule */}
-                <div className="space-y-4 mb-6">
-                    <h4 className="font-medium text-gray-800">Payment Schedule</h4>
-                    {breakdown.paymentSchedule.map((stage, index) => (
-                        <div key={index} className="bg-gray-50 rounded-xl p-4">
-                            <div className="flex justify-between items-center mb-3">
-                                <span className="font-medium text-gray-800">{stage.stage}</span>
-                                <span className="font-bold text-gray-900">
-                                    {formatCurrency(stage.total)}
-                                </span>
-                            </div>
-                            <div className="space-y-2">
-                                {stage.items.map((item, itemIndex) => (
-                                    <div key={itemIndex} className="flex justify-between text-sm">
-                                        <span className={`${item.waived ? 'line-through text-gray-500' : 'text-gray-700'}`}>
-                                            {item.label}
-                                            {item.waived && ' (Waived)'}
-                                        </span>
-                                        <span className={item.waived ? 'line-through text-gray-500' : 'font-medium text-gray-800'}>
-                                            {formatCurrency(item.amount)}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Totals Section */}
-                <div className="bg-gray-900 rounded-xl p-6">
-                    <h4 className="text-white font-medium mb-4">Payment Summary</h4>
-
-                    <div className="space-y-3 mb-4">
-                        {/* Amounts Due Now */}
+                {schedule.length > 0 && (
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Payment Schedule</p>
                         <div className="space-y-2">
-                            <div className="flex justify-between text-white">
-                                <span>Deposit ({breakdown.deposit.percentage}%)</span>
-                                <span>{formatCurrency(breakdown.deposit.amount)}</span>
-                            </div>
-                            {!breakdown.serviceFee.isWaived && (
-                                <div className="flex justify-between text-white">
-                                    <span>Service Fee</span>
-                                    <span>{formatCurrency(breakdown.serviceFee.amount)}</span>
+                            {schedule.map((stage, i) => (
+                                <div key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <p className="font-semibold text-gray-800 text-sm">{stage?.stage || `Stage ${i + 1}`}</p>
+                                        <p className="font-bold text-gray-900 text-sm">{fmt(stage?.total)}</p>
+                                    </div>
+                                    {Array.isArray(stage?.items) && (
+                                        <div className="space-y-1.5">
+                                            {stage.items.map((item, j) => (
+                                                <div key={j} className="flex justify-between text-xs">
+                                                    <span className="text-gray-600">{item?.label}</span>
+                                                    <span className="font-medium text-gray-700">{fmt(item?.amount)}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
-
-                        <div className="border-t border-gray-700 pt-3">
-                            <div className="flex justify-between items-center">
-                                <span className="text-white font-medium">Total Due Now</span>
-                                <span className="text-xl font-bold text-green-400">
-                                    {formatCurrency(breakdown.totals.totalDueNow)}
-                                </span>
-                            </div>
+                            ))}
                         </div>
                     </div>
+                )}
 
-                    {/* Future Payments */}
-                    <div className="mt-6 pt-4 border-t border-gray-700">
-                        <p className="text-gray-300 text-sm mb-2">Future Payment (upon completion):</p>
-                        <div className="flex justify-between text-white">
-                            <span>Final Payment</span>
-                            <span>{formatCurrency(breakdown.totals.finalPaymentDue)}</span>
+                {/* Summary */}
+                <div className="bg-gray-900 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-white/10">
+                        <p className="text-white font-bold text-sm">Summary</p>
+                    </div>
+                    <div className="p-5 space-y-3">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-white/70">Deposit ({depositPct}%)</span>
+                            <span className="text-white font-medium">{fmt(depositAmt)}</span>
+                        </div>
+                        <div className="pt-2 border-t border-white/10 flex justify-between items-center">
+                            <span className="text-white font-bold">Due Now</span>
+                            <span className="text-2xl font-bold text-emerald-400">{fmt(totalDueNow)}</span>
+                        </div>
+                        <div className="pt-3 border-t border-white/10">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-white/50">Final payment (on completion)</span>
+                                <span className="text-white/70 font-medium">{fmt(finalDue)}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Company Payout Info */}
-                <div className="mt-6 bg-gray-50 rounded-xl p-4">
-                    <p className="text-sm text-gray-600 mb-1">Company receives after completion:</p>
-                    <div className="flex justify-between items-center">
-                        <span className="font-medium text-gray-800">Company Payout</span>
-                        <span className="text-lg font-bold text-gray-900">
-                            {formatCurrency(breakdown.companyPayout.amount)}
-                        </span>
+                {/* Provider Payout */}
+                <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl p-4">
+                    <div>
+                        <p className="font-semibold text-gray-800 text-sm">Provider Receives</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Job amount minus {commissionPct}% platform commission</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                        (Job amount minus {breakdown.platformCommission.percentage}% platform commission)
-                    </p>
+                    <p className="text-xl font-bold text-gray-900">{fmt(companyPayout)}</p>
                 </div>
 
                 {/* Legend */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 mb-2">Legend:</p>
+                <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Legend</p>
                     <div className="grid grid-cols-2 gap-2">
-                        <div className="flex items-center">
-                            <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                            <span className="text-xs text-gray-600">Customer Payment</span>
-                        </div>
-                        <div className="flex items-center">
-                            <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                            <span className="text-xs text-gray-600">Service Fee</span>
-                        </div>
-                        <div className="flex items-center">
-                            <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
-                            <span className="text-xs text-gray-600">Platform Commission</span>
-                        </div>
-                        <div className="flex items-center">
-                            <div className="w-3 h-3 rounded-full bg-gray-500 mr-2"></div>
-                            <span className="text-xs text-gray-600">Company Receives</span>
-                        </div>
+                        {[
+                            { color: 'bg-blue-500', label: 'Customer Payment' },
+                            { color: 'bg-amber-500', label: 'Platform Commission' },
+                            { color: 'bg-gray-600', label: 'Provider Receives' },
+                        ].map(({ color, label }) => (
+                            <div key={label} className="flex items-center gap-2">
+                                <div className={`w-2.5 h-2.5 rounded-full ${color} shrink-0`} />
+                                <span className="text-xs text-gray-500">{label}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
+
             </div>
         </div>
     );

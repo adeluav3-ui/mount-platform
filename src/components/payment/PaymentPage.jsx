@@ -1,455 +1,198 @@
-// src/components/payment/PaymentPage.jsx - UPDATED VERSION
+// src/components/payment/PaymentPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../context/SupabaseContext';
-import PaymentService from '../../utils/PaymentService';
+import { useSupabase } from '../../context/SupabaseContext';
 
-// Helper function to calculate payment with service fee - SIMPLIFIED
-const calculatePaymentWithServiceFee = async (jobAmount, customerId, paymentType, jobCreatedDate) => {
-    try {
-        // Only apply service fee to deposit payments
-        if (paymentType !== 'deposit') {
-            return {
-                baseAmount: jobAmount,
-                serviceFee: 0,
-                totalPayment: jobAmount,
-                isFeeWaived: true,
-                isDepositPayment: false
-            };
+// ─── PAYMENT SUMMARY ─────────────────────────────────────────────────────────
+const getPaymentSummary = (verifiedPayments) => {
+    const empty = {
+        depositPaid: 0, intermediatePaid: 0, finalPaid: 0,
+        totalPaid: 0, hasDeposit: false, hasIntermediate: false, hasFinal: false,
+    };
+    if (!verifiedPayments || !Array.isArray(verifiedPayments)) return empty;
+
+    let depositPaid = 0, intermediatePaid = 0, finalPaid = 0;
+    let hasDeposit = false, hasIntermediate = false, hasFinal = false;
+
+    verifiedPayments.forEach(p => {
+        if (p.type === 'deposit' && p.status === 'completed') {
+            depositPaid += p.amount || 0;
+            hasDeposit = true;
+        } else if (p.type === 'intermediate' && p.status === 'completed') {
+            intermediatePaid += p.amount || 0;
+            hasIntermediate = true;
+        } else if (p.type === 'final_payment' && p.status === 'completed') {
+            finalPaid += p.amount || 0;
+            hasFinal = true;
         }
+    });
 
-        // Check if customer is in promotion
-        const promotionResult = await PaymentService.checkCustomerPromotionStatus(customerId);
-
-        const depositAmount = jobAmount * 0.5;
-
-        // Handle first job promotion
-        if (promotionResult.isFirstJob && jobCreatedDate) {
-            // Set promotion for first job
-            await PaymentService.setPromotionForFirstJob(customerId, jobCreatedDate);
-
-            return {
-                baseAmount: depositAmount,
-                serviceFee: 0,
-                totalPayment: depositAmount,
-                isFeeWaived: true,
-                isDepositPayment: true,
-                isFirstJob: true
-            };
-        }
-
-        // Check if in promotion
-        if (promotionResult.isInPromotion) {
-            return {
-                baseAmount: depositAmount,
-                serviceFee: 0,
-                totalPayment: depositAmount,
-                isFeeWaived: true,
-                isDepositPayment: true,
-                isFirstJob: false
-            };
-        } else {
-            // Not in promotion: add tiered service fee
-            const serviceFee = PaymentService.calculateTieredServiceFee(jobAmount);
-            return {
-                baseAmount: depositAmount,
-                serviceFee: serviceFee,
-                totalPayment: depositAmount + serviceFee,
-                isFeeWaived: false,
-                isDepositPayment: true,
-                isFirstJob: false
-            };
-        }
-    } catch (error) {
-        console.error('Error calculating payment with fee:', error);
-        // Fallback to deposit without fee
-        const depositAmount = jobAmount * 0.5;
-        return {
-            baseAmount: depositAmount,
-            serviceFee: 0,
-            totalPayment: depositAmount,
-            isFeeWaived: true,
-            isDepositPayment: true,
-            isFirstJob: false
-        };
-    }
+    return {
+        depositPaid, intermediatePaid, finalPaid,
+        totalPaid: depositPaid + intermediatePaid + finalPaid,
+        hasDeposit, hasIntermediate, hasFinal,
+    };
 };
 
+// ─── PAYMENT TYPE DETERMINATION ───────────────────────────────────────────────
+const determinePaymentType = (jobData, paymentSummary) => {
+    const total = jobData.quoted_price || 0;
+    const { hasDeposit, hasIntermediate, hasFinal, totalPaid } = paymentSummary;
+    const balance = total - totalPaid;
+
+    switch (jobData.status) {
+        case 'price_set':
+            return { type: 'deposit', amount: total * 0.5, description: '50% deposit to start the job' };
+
+        case 'work_ongoing':
+            if (!hasIntermediate) {
+                return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
+            }
+        // intentional fall-through to final
+        // falls through
+        case 'work_completed':
+        case 'work_rectified':
+            return { type: 'final_payment', amount: balance, description: 'Final balance payment' };
+
+        case 'deposit_paid':
+            if (!hasIntermediate && !hasFinal) return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
+            if (hasIntermediate && !hasFinal) return { type: 'final_payment', amount: total * 0.2, description: '20% final payment' };
+            break;
+
+        default:
+            if (!hasDeposit) return { type: 'deposit', amount: total * 0.5, description: '50% deposit to start the job' };
+            if (hasDeposit && !hasIntermediate) return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
+            if (hasDeposit && hasIntermediate && !hasFinal) return { type: 'final_payment', amount: total * 0.2, description: '20% final payment' };
+    }
+
+    return { type: 'final_payment', amount: balance, description: 'Balance payment' };
+};
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt = (n) => `₦${parseFloat(n || 0).toLocaleString()}`;
+const fmtStatus = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const TYPE_CONFIG = {
+    deposit: { label: 'Deposit', pct: '50%', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200', dot: 'bg-blue-500' },
+    intermediate: { label: 'Intermediate', pct: '30%', color: 'text-violet-700', bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-500' },
+    final_payment: { label: 'Final', pct: null, color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+};
+
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
 const PaymentPage = () => {
     const { jobId } = useParams();
     const navigate = useNavigate();
+    const { supabase } = useSupabase();
+
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [reference, setReference] = useState('');
-    const [paymentCalculation, setPaymentCalculation] = useState({
-        baseAmount: 0,
-        serviceFee: 0,
-        totalPayment: 0,
-        isFeeWaived: true,
-        isDepositPayment: false
-    });
 
-    const generateReference = (jobId) => {
-        const prefix = 'MT';
-        const date = new Date();
-        const dateStr = date.getTime().toString().slice(-6);
-        const random = Math.floor(1000 + Math.random() * 9000);
-        const ref = `${prefix}${jobId.slice(0, 4)}${dateStr}${random}`;
+    const generateReference = (id) => {
+        const ts = Date.now().toString().slice(-6);
+        const rnd = Math.floor(1000 + Math.random() * 9000);
+        const ref = `MT${id.slice(0, 4).toUpperCase()}${ts}${rnd}`;
         setReference(ref);
         return ref;
     };
 
-    useEffect(() => {
-        fetchJobDetails();
-    }, [jobId]);
-
-    // UPDATED: Get total amount paid for a job - SEPARATE DEPOSIT FROM SERVICE FEE
-    const getPaymentSummary = (verifiedPayments) => {
-        if (!verifiedPayments || !Array.isArray(verifiedPayments)) {
-            return {
-                depositPaid: 0,
-                serviceFeePaid: 0,
-                intermediatePaid: 0,
-                finalPaid: 0,
-                totalPaidWithFees: 0,
-                totalPaidWithoutFees: 0,
-                hasDeposit: false,
-                hasIntermediate: false,
-                hasFinal: false
-            };
-        }
-
-        let depositPaid = 0;
-        let serviceFeePaid = 0;
-        let intermediatePaid = 0;
-        let finalPaid = 0;
-        let hasDeposit = false;
-        let hasIntermediate = false;
-        let hasFinal = false;
-
-        verifiedPayments.forEach(payment => {
-            if (payment.type === 'deposit' && payment.status === 'completed') {
-                // IMPORTANT: Separate deposit from service fee
-                const paymentAmount = payment.amount || 0;
-                const platformFee = payment.platform_fee || 0;
-                depositPaid += paymentAmount - platformFee;
-                serviceFeePaid += platformFee;
-                hasDeposit = true;
-            } else if (payment.type === 'intermediate' && payment.status === 'completed') {
-                intermediatePaid += payment.amount || 0;
-                hasIntermediate = true;
-            } else if (payment.type === 'final_payment' && payment.status === 'completed') {
-                finalPaid += payment.amount || 0;
-                hasFinal = true;
-            }
-        });
-
-        const totalPaidWithFees = depositPaid + serviceFeePaid + intermediatePaid + finalPaid;
-        const totalPaidWithoutFees = depositPaid + intermediatePaid + finalPaid;
-
-        return {
-            depositPaid,
-            serviceFeePaid,
-            intermediatePaid,
-            finalPaid,
-            totalPaidWithFees,
-            totalPaidWithoutFees,
-            hasDeposit,
-            hasIntermediate,
-            hasFinal
-        };
-    };
-
-    // SIMPLIFIED: Determine payment type based on job status and payments
-    const determinePaymentType = (jobData, paymentSummary) => {
-        const totalAmount = jobData.quoted_price || 0;
-        const { hasDeposit, hasIntermediate, hasFinal, totalPaidWithoutFees } = paymentSummary;
-
-        const balance = totalAmount - totalPaidWithoutFees;
-
-        // Check job status first
-        switch (jobData.status) {
-            case 'price_set':
-                // First payment - always deposit
-                return {
-                    type: 'deposit',
-                    amount: totalAmount * 0.5,
-                    description: '50% Deposit to start the job'
-                };
-
-            case 'work_ongoing':
-                // Check if intermediate payment has been made
-                if (!hasIntermediate) {
-                    return {
-                        type: 'intermediate',
-                        amount: totalAmount * 0.3,
-                        description: '30% Materials payment'
-                    };
-                }
-            // Fall through if already has intermediate
-
-            case 'work_completed':
-            case 'work_rectified':
-                // Always final payment in these statuses
-                return {
-                    type: 'final_payment',
-                    amount: balance,
-                    description: 'Final balance payment'
-                };
-
-            case 'deposit_paid':
-                // Can be intermediate or final based on payments
-                if (!hasIntermediate && !hasFinal) {
-                    return {
-                        type: 'intermediate',
-                        amount: totalAmount * 0.3,
-                        description: '30% Materials payment'
-                    };
-                } else if (hasIntermediate && !hasFinal) {
-                    return {
-                        type: 'final_payment',
-                        amount: totalAmount * 0.2,
-                        description: '20% Final payment'
-                    };
-                }
-                break;
-
-            default:
-                // Generic logic based on payments
-                if (!hasDeposit && !hasIntermediate && !hasFinal) {
-                    return {
-                        type: 'deposit',
-                        amount: totalAmount * 0.5,
-                        description: '50% Deposit to start the job'
-                    };
-                } else if (hasDeposit && !hasIntermediate && !hasFinal) {
-                    return {
-                        type: 'intermediate',
-                        amount: totalAmount * 0.3,
-                        description: '30% Materials payment'
-                    };
-                } else if (hasDeposit && hasIntermediate && !hasFinal) {
-                    return {
-                        type: 'final_payment',
-                        amount: totalAmount * 0.2,
-                        description: '20% Final payment'
-                    };
-                }
-        }
-
-        // Default fallback
-        return {
-            type: 'final_payment',
-            amount: balance,
-            description: 'Balance payment'
-        };
-    };
+    useEffect(() => { fetchJobDetails(); }, [jobId]);
 
     const fetchJobDetails = async () => {
         try {
             setLoading(true);
 
-            // 1. Get current user
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('Please login to proceed with payment');
 
-            // 2. Fetch job
             const { data: jobData, error: jobError } = await supabase
-                .from('jobs')
-                .select('*')
-                .eq('id', jobId)
-                .single();
-
+                .from('jobs').select('*').eq('id', jobId).single();
             if (jobError) throw jobError;
             if (!jobData) throw new Error('Job not found');
 
-            console.log('📋 Job status:', jobData.status);
-
-            // 3. Fetch company
             let companyName = 'Service Provider';
             if (jobData.company_id) {
                 const { data: company } = await supabase
-                    .from('companies')
-                    .select('company_name')
-                    .eq('id', jobData.company_id)
-                    .single();
+                    .from('companies').select('company_name').eq('id', jobData.company_id).single();
                 if (company) companyName = company.company_name;
             }
 
-            // 4. Get total amount
             const totalAmount = jobData.quoted_price || 0;
 
-            // 5. Get all verified payments for this job - INCLUDING platform_fee
             const { data: verifiedPayments } = await supabase
                 .from('financial_transactions')
-                .select('type, amount, status, verified_by_admin, platform_fee')
-                .eq('job_id', jobId)
-                .eq('status', 'completed')
-                .eq('verified_by_admin', true);
+                .select('type, amount, status, verified_by_admin')
+                .eq('job_id', jobId).eq('status', 'completed').eq('verified_by_admin', true);
 
-            console.log('✅ Verified payments:', verifiedPayments);
-
-            // 6. Calculate what's been paid - USING UPDATED FUNCTION
-            const paymentSummary = getPaymentSummary(verifiedPayments);
-
-            console.log('💰 Payment analysis:', {
-                totalAmount,
-                paymentSummary,
-                balance: totalAmount - paymentSummary.totalPaidWithoutFees
-            });
-
-            // 7. DETERMINE PAYMENT TYPE - SIMPLIFIED
-            const paymentDetails = determinePaymentType(jobData, paymentSummary);
-
-            // 8. Calculate payment with service fee if it's a deposit
-            let paymentCalculationResult;
-            if (paymentDetails.type === 'deposit') {
-                paymentCalculationResult = await calculatePaymentWithServiceFee(
-                    totalAmount,
-                    user.id,
-                    'deposit',
-                    jobData.created_at
-                );
-            } else {
-                paymentCalculationResult = {
-                    baseAmount: paymentDetails.amount,
-                    serviceFee: 0,
-                    totalPayment: paymentDetails.amount,
-                    isFeeWaived: true,
-                    isDepositPayment: false
-                };
-            }
-
-            // 9. Generate reference
+            const summary = getPaymentSummary(verifiedPayments);
+            const details = determinePaymentType(jobData, summary);
             const ref = generateReference(jobId);
 
-            // 10. Set payment calculation state
-            setPaymentCalculation(paymentCalculationResult);
-
-            // 11. Set job data
-            const jobWithDetails = {
+            setJob({
                 ...jobData,
-                companyName: companyName,
-                totalAmount: totalAmount,
-                paymentAmount: paymentCalculationResult.totalPayment,
-                paymentDescription: paymentDetails.description,
-                paymentType: paymentDetails.type,
+                companyName,
+                totalAmount,
+                paymentAmount: details.amount,
+                paymentDescription: details.description,
+                paymentType: details.type,
                 reference: ref,
-                // Store payment summary for display
-                depositPaid: paymentSummary.depositPaid,
-                serviceFeePaid: paymentSummary.serviceFeePaid,
-                intermediatePaid: paymentSummary.intermediatePaid,
-                finalPaid: paymentSummary.finalPaid,
-                totalPaidWithFees: paymentSummary.totalPaidWithFees,
-                totalPaidWithoutFees: paymentSummary.totalPaidWithoutFees,
-                balance: totalAmount - paymentSummary.totalPaidWithoutFees,
-                serviceFee: paymentCalculationResult.serviceFee || 0,
-                isServiceFeeWaived: paymentCalculationResult.isFeeWaived || true,
-                baseAmount: paymentCalculationResult.baseAmount || paymentDetails.amount,
-                hasDeposit: paymentSummary.hasDeposit,
-                hasIntermediate: paymentSummary.hasIntermediate,
-                hasFinal: paymentSummary.hasFinal
-            };
-
-            console.log('🎯 Final payment details:', {
-                paymentType: paymentDetails.type,
-                amount: paymentDetails.amount,
-                baseAmount: paymentCalculationResult.baseAmount,
-                serviceFee: paymentCalculationResult.serviceFee,
-                isFeeWaived: paymentCalculationResult.isFeeWaived,
-                totalPayment: paymentCalculationResult.totalPayment,
-                depositPaid: paymentSummary.depositPaid,
-                serviceFeePaid: paymentSummary.serviceFeePaid,
-                balance: totalAmount - paymentSummary.totalPaidWithoutFees
+                totalPaid: summary.totalPaid,
+                balance: totalAmount - summary.totalPaid,
+                hasDeposit: summary.hasDeposit,
+                hasIntermediate: summary.hasIntermediate,
+                hasFinal: summary.hasFinal,
             });
 
-            setJob(jobWithDetails);
-
-        } catch (error) {
-            console.error('❌ Error fetching job:', error);
-            setError(error.message);
+        } catch (err) {
+            setError(err.message);
         } finally {
             setLoading(false);
         }
     };
 
     const initiateBankTransfer = async () => {
-        if (!job) return;
+        if (!job || submitting) return;
+        setSubmitting(true);
 
         try {
-            // Get current user
             const { data: { user }, error: userError } = await supabase.auth.getUser();
-
             if (userError) throw userError;
             if (!user) throw new Error('User not found. Please login again.');
 
-            console.log('💳 Processing payment for user:', user.id);
-
-            // Convert paymentType to valid database value
             let dbPaymentType = job.paymentType;
-            if (job.paymentType === 'final') {
-                dbPaymentType = 'final_payment';
-            }
+            if (job.paymentType === 'final') dbPaymentType = 'final_payment';
 
-            // Validate type is allowed
-            const allowedTypes = ['deposit', 'intermediate', 'final_payment', 'service_fee', 'commission', 'payout', 'refund', 'disbursement'];
-            if (!allowedTypes.includes(dbPaymentType)) {
-                throw new Error(`Invalid payment type: ${dbPaymentType}. Must be one of: ${allowedTypes.join(', ')}`);
-            }
+            const allowedTypes = ['deposit', 'intermediate', 'final_payment', 'commission', 'payout', 'refund', 'disbursement'];
+            if (!allowedTypes.includes(dbPaymentType)) throw new Error(`Invalid payment type: ${dbPaymentType}`);
 
-            // Check for existing pending payment record
-            console.log('🔍 Checking for existing payment records...');
             const { data: existingPayments, error: checkError } = await supabase
                 .from('financial_transactions')
                 .select('id, status, proof_of_payment_url, verified_by_admin, amount')
-                .eq('job_id', jobId)
-                .eq('type', dbPaymentType)
-                .eq('status', 'pending')
-                .eq('verified_by_admin', false)
+                .eq('job_id', jobId).eq('type', dbPaymentType)
+                .eq('status', 'pending').eq('verified_by_admin', false)
                 .order('created_at', { ascending: false });
 
             if (checkError) throw checkError;
 
-            console.log('📋 Existing payments found:', existingPayments);
+            let transactionId, existingPayment = null;
 
-            let transactionId;
-            let existingPayment = null;
-
-            // Check if we should use an existing payment
             if (existingPayments && existingPayments.length > 0) {
-                // Find the most suitable existing payment
                 existingPayment = existingPayments.find(p => !p.proof_of_payment_url) || existingPayments[0];
-
-                console.log('🎯 Selected existing payment:', existingPayment);
-
-                // Validate the existing payment
-                if (existingPayment.status === 'completed') {
-                    throw new Error('Payment for this job has already been completed.');
-                }
-
-                if (existingPayment.proof_of_payment_url) {
-                    throw new Error('Payment proof already uploaded. Please wait for admin verification.');
-                }
-
-                if (Math.abs(existingPayment.amount - job.paymentAmount) > 1) {
-                    console.warn(`⚠️ Amount mismatch: Existing ${existingPayment.amount} vs New ${job.paymentAmount}`);
-                    // Option: Update amount or create new? Let's update for consistency
-                }
-
+                if (existingPayment.status === 'completed') throw new Error('Payment for this job has already been completed.');
+                if (existingPayment.proof_of_payment_url) throw new Error('Payment proof already uploaded. Please wait for admin verification.');
                 transactionId = existingPayment.id;
-                console.log('🔄 Using existing payment record ID:', transactionId);
             }
 
-            // Prepare payment data with service fee
             const paymentData = {
                 job_id: jobId,
                 user_id: user.id,
                 type: dbPaymentType,
                 amount: job.paymentAmount,
-                platform_fee: job.serviceFee || 0,
+                platform_fee: 0, // No customer service fee — column kept for payout commission math
                 description: `${job.paymentType} payment for: ${job.description || `Job #${jobId.substring(0, 8)}`}`,
-                reference: reference,
+                reference,
                 status: 'pending',
                 payment_method: 'bank_transfer',
                 bank_reference: reference,
@@ -463,337 +206,220 @@ const PaymentPage = () => {
                     created_via: 'customer_payment_page',
                     job_status: job.status,
                     total_job_amount: job.totalAmount,
-                    base_amount: job.baseAmount,
-                    service_fee: job.serviceFee,
-                    is_service_fee_waived: job.isServiceFeeWaived,
-                    is_deposit_payment: dbPaymentType === 'deposit',
-                    calculated_correctly: true
                 },
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
             };
 
-            let finalTransactionData;
-
             if (transactionId) {
-                // UPDATE existing payment record
-                console.log('📝 Updating existing payment record:', transactionId);
-
-                const { data: updateData, error: updateError } = await supabase
+                const { data, error: updateError } = await supabase
                     .from('financial_transactions')
-                    .update({
-                        ...paymentData,
-                        id: transactionId
-                    })
-                    .eq('id', transactionId)
-                    .select()
-                    .single();
-
-                if (updateError) {
-                    console.error('❌ Update failed:', updateError);
-                    throw new Error(`Failed to update payment: ${updateError.message}`);
-                }
-
-                finalTransactionData = updateData;
-                console.log('✅ Payment record updated:', finalTransactionData);
+                    .update({ ...paymentData, id: transactionId })
+                    .eq('id', transactionId).select().single();
+                if (updateError) throw new Error(`Failed to update payment: ${updateError.message}`);
             } else {
-                // CREATE new payment record
-                console.log('🆕 Creating new payment record');
-
-                const { data: insertData, error: insertError } = await supabase
-                    .from('financial_transactions')
-                    .insert(paymentData)
-                    .select()
-                    .single();
-
-                if (insertError) {
-                    console.error('❌ Insert failed:', insertError);
-                    throw new Error(`Failed to create payment: ${insertError.message}`);
-                }
-
-                finalTransactionData = insertData;
-                transactionId = insertData.id;
-                console.log('✅ New payment record created:', finalTransactionData);
+                const { data, error: insertError } = await supabase
+                    .from('financial_transactions').insert(paymentData).select().single();
+                if (insertError) throw new Error(`Failed to create payment: ${insertError.message}`);
+                transactionId = data.id;
             }
 
-            // Clean up any other duplicate pending payments
+            // Clean up any duplicate pending payments for this type
             if (existingPayments && existingPayments.length > 1) {
-                console.log('🧹 Cleaning up duplicate payments...');
-                const duplicateIds = existingPayments
-                    .filter(p => p.id !== transactionId)
-                    .map(p => p.id);
-
-                if (duplicateIds.length > 0) {
-                    const { error: deleteError } = await supabase
-                        .from('financial_transactions')
-                        .delete()
-                        .in('id', duplicateIds);
-
-                    if (deleteError) {
-                        console.warn('⚠️ Could not delete duplicates:', deleteError);
-                    } else {
-                        console.log(`✅ Deleted ${duplicateIds.length} duplicate payments`);
-                    }
-                }
+                const dupeIds = existingPayments.filter(p => p.id !== transactionId).map(p => p.id);
+                if (dupeIds.length > 0) await supabase.from('financial_transactions').delete().in('id', dupeIds);
             }
 
-            console.log('🎯 Navigation details:', {
-                reference,
-                amount: job.paymentAmount,
-                baseAmount: job.baseAmount,
-                serviceFee: job.serviceFee,
-                paymentType: job.paymentType,
-                transactionId
-            });
-
-            // Navigate to bank transfer details page
             navigate(`/payment/bank-transfer/${jobId}`, {
                 state: {
-                    reference: reference,
+                    reference,
                     amount: job.paymentAmount,
-                    baseAmount: job.baseAmount,
-                    serviceFee: job.serviceFee,
                     totalAmount: job.totalAmount,
                     paymentType: job.paymentType,
-                    transactionId: transactionId,
+                    transactionId,
                     isUpdate: !!existingPayment,
-                    isServiceFeeWaived: job.isServiceFeeWaived,
-                    paymentDescription: job.paymentDescription
+                    paymentDescription: job.paymentDescription,
                 }
             });
 
-        } catch (error) {
-            console.error('❌ Payment processing failed:', error);
-
-            let errorMessage = 'Error processing payment. ';
-
-            if (error.message.includes('already been completed')) {
-                errorMessage = 'This payment has already been completed. Please check your job status.';
-            } else if (error.message.includes('proof already uploaded')) {
-                errorMessage = 'Payment proof already uploaded. Please wait for admin verification (5-15 minutes).';
-            } else if (error.message.includes('row-level security')) {
-                errorMessage = 'Database permission error. Please contact support.';
-            } else {
-                errorMessage += error.message;
-            }
-
-            alert(errorMessage);
+        } catch (err) {
+            let msg = 'Error processing payment. ';
+            if (err.message.includes('already been completed')) msg = 'This payment has already been completed. Please check your job status.';
+            else if (err.message.includes('proof already')) msg = 'Payment proof already uploaded. Please wait for admin verification (5–15 minutes).';
+            else if (err.message.includes('row-level security')) msg = 'Database permission error. Please contact support.';
+            else msg += err.message;
+            alert(msg);
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading payment details...</p>
-                </div>
+    // ─── RENDER STATES ────────────────────────────────────────────────────────
+    if (loading) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="w-12 h-12 border-[3px] border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-500 text-sm font-medium">Loading payment details…</p>
             </div>
-        );
-    }
+        </div>
+    );
 
-    if (error) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-4">
-                <div className="max-w-md mx-auto mt-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-red-200">
-                        <div className="text-center">
-                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </div>
-                            <h3 className="text-xl font-bold text-red-800 mb-2">Unable to Process Payment</h3>
-                            <p className="text-gray-600 mb-4">{error}</p>
-                            <button
-                                onClick={() => navigate(-1)}
-                                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                            >
-                                Go Back
-                            </button>
-                        </div>
-                    </div>
+    if (error) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-8 max-w-sm w-full text-center">
+                <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Unable to Load Payment</h3>
+                <p className="text-gray-500 text-sm mb-6">{error}</p>
+                <button onClick={() => navigate(-1)} className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition text-sm">
+                    Go Back
+                </button>
             </div>
-        );
-    }
+        </div>
+    );
 
-    if (!job) {
-        return (
-            <div className="min-h-screen bg-gray-50 p-4">
-                <div className="max-w-md mx-auto mt-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border border-yellow-200">
-                        <p className="text-center text-gray-600">Job not found</p>
-                    </div>
-                </div>
+    if (!job) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="bg-white rounded-2xl p-8 text-center border border-gray-100">
+                <p className="text-gray-500">Job not found.</p>
             </div>
-        );
-    }
+        </div>
+    );
 
-    // Get values from job object
-    const totalAmount = job.totalAmount || 0;
-    const paymentAmount = job.paymentAmount || 0;
-    const paymentDescription = job.paymentDescription || '';
-    const companyName = job.companyName || 'Service Provider';
-    const serviceFee = job.serviceFee || 0;
-    const baseAmount = job.baseAmount || paymentAmount;
-    const isServiceFeeWaived = job.isServiceFeeWaived;
-
-    // Calculate percentage for display
-    const getPaymentPercentage = () => {
-        if (job.paymentType === 'deposit') return '50%';
-        if (job.paymentType === 'intermediate') return '30%';
-        if (job.paymentType === 'final_payment') {
-            if (job.hasIntermediate) return '20%';
-            return '50%';
-        }
-        return '';
-    };
+    const { totalAmount, paymentAmount, companyName, paymentType, paymentDescription } = job;
+    const cfg = TYPE_CONFIG[paymentType] || TYPE_CONFIG.final_payment;
+    const pct = cfg.pct || (job.hasIntermediate ? '20%' : '50%');
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4">
-            <div className="max-w-2xl mx-auto">
-                {/* Header */}
-                <div className="mb-6">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center text-gray-600 hover:text-gray-800 mb-4"
-                    >
-                        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+        <div className="min-h-screen bg-gray-50">
+
+            {/* Sticky header */}
+            <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+                <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition text-sm font-medium">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                         Back
                     </button>
+                    <span className="text-sm font-bold text-gray-900">Complete Payment</span>
+                    <span className="text-xs text-gray-400 font-mono">#{job.id.substring(0, 8)}</span>
+                </div>
+            </div>
 
-                    <h1 className="text-2xl font-bold text-gray-900">Complete Payment</h1>
-                    <p className="text-gray-600">Job #{job.id.substring(0, 8)}</p>
+            <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
+
+                {/* Payment type pill */}
+                <div className={`flex items-center gap-3 p-4 rounded-2xl border ${cfg.bg} ${cfg.border}`}>
+                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.dot}`} />
+                    <div>
+                        <p className={`text-sm font-bold ${cfg.color}`}>{cfg.label} Payment · {pct}</p>
+                        <p className="text-xs text-gray-500">{paymentDescription}</p>
+                    </div>
                 </div>
 
-                {/* Payment Summary */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                    <h2 className="text-xl font-bold mb-6">Payment Summary</h2>
+                {/* Summary card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                        <h2 className="font-bold text-gray-900">Payment Summary</h2>
+                    </div>
+                    <div className="p-5 space-y-4">
 
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center pb-4 border-b">
+                        {/* Job row */}
+                        <div className="flex items-start justify-between gap-3">
                             <div>
-                                <p className="font-medium text-gray-900">{job?.description || 'Job Details'}</p>
-                                <p className="text-sm text-gray-600">with {companyName}</p>
+                                <p className="font-semibold text-gray-900 text-sm">{job.description || 'Service Job'}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">with {companyName}</p>
                             </div>
-                            <span className="text-lg font-bold">₦{totalAmount.toLocaleString()}</span>
-                        </div>
-
-                        <div className="space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Payment Type</span>
-                                <span className="font-medium capitalize">{job.paymentType} Payment ({getPaymentPercentage()})</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Job Status</span>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${job.status === 'price_set' ? 'bg-blue-100 text-blue-800' :
-                                    job.status === 'deposit_paid' ? 'bg-green-100 text-green-800' :
-                                        job.status === 'work_rectified' ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-gray-100 text-gray-800'
-                                    }`}>
-                                    {job.status?.replace('_', ' ').toUpperCase()}
-                                </span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Description</span>
-                                <span className="font-medium text-right">{paymentDescription}</span>
+                            <div className="text-right shrink-0">
+                                <p className="text-xs text-gray-400">Total job</p>
+                                <p className="font-bold text-gray-900">{fmt(totalAmount)}</p>
                             </div>
                         </div>
 
-                        {/* Payment Breakdown */}
-                        <div className="pt-4 border-t border-gray-200">
-                            <h4 className="font-medium text-gray-800 mb-3">Payment Breakdown</h4>
-                            <div className="space-y-2">
-                                {job.paymentType === 'deposit' ? (
-                                    <>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">50% Deposit</span>
-                                            <span>₦{baseAmount.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Service Fee</span>
-                                            <span className={serviceFee > 0 ? "text-blue-600" : "text-gray-500"}>
-                                                {serviceFee > 0 ? "+ ₦" : "₦"}{serviceFee.toLocaleString()}
-                                                {serviceFee === 0 && " (Waived)"}
-                                            </span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">{getPaymentPercentage()} Payment</span>
-                                        <span>₦{baseAmount.toLocaleString()}</span>
-                                    </div>
-                                )}
+                        <div className="h-px bg-gray-100" />
+
+                        {/* Status */}
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">Job Status</span>
+                            <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">
+                                {fmtStatus(job.status)}
+                            </span>
+                        </div>
+
+                        {/* Breakdown */}
+                        <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Breakdown</p>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">{cfg.label} ({pct})</span>
+                                <span className="font-semibold text-gray-900">{fmt(paymentAmount)}</span>
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t">
-                            <div className="flex justify-between items-center">
-                                <span className="text-lg font-bold">Amount to Pay</span>
-                                <div className="text-right">
-                                    <div className="text-3xl font-bold text-naijaGreen">
-                                        ₦{paymentAmount.toLocaleString()}
-                                    </div>
-                                    {job.paymentType === 'deposit' && serviceFee > 0 && (
-                                        <div className="text-sm text-gray-500 mt-1">
-                                            (Deposit: ₦{baseAmount.toLocaleString()} + Fee: ₦{serviceFee.toLocaleString()})
-                                        </div>
-                                    )}
-                                    {job.paymentType === 'deposit' && serviceFee === 0 && (
-                                        <div className="text-sm text-green-600 mt-1">
-                                            ✓ Service fee waived
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                        <div className="h-px bg-gray-100" />
 
-                {/* Payment Method - Only Bank Transfer */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                    <h2 className="text-xl font-bold mb-4">Payment Method</h2>
-
-                    <div className="border-2 border-naijaGreen rounded-xl p-4">
+                        {/* Total */}
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <span className="text-green-600 text-xl">🏦</span>
-                                </div>
-                                <div>
-                                    <h3 className="font-bold">Bank Transfer</h3>
-                                    <p className="text-sm text-gray-600">Pay directly to our bank account</p>
-                                </div>
-                            </div>
-                            <div className="w-6 h-6 rounded-full border-2 border-naijaGreen flex items-center justify-center">
-                                <div className="w-3 h-3 bg-naijaGreen rounded-full"></div>
-                            </div>
+                            <span className="font-bold text-gray-900">Amount to Pay</span>
+                            <p className="text-3xl font-bold text-naijaGreen">{fmt(paymentAmount)}</p>
                         </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                        <h4 className="font-medium text-blue-800 mb-2">How it works:</h4>
-                        <ol className="list-decimal pl-5 space-y-2 text-sm text-blue-700">
-                            <li>You'll see our bank account details</li>
-                            <li>Transfer the exact amount shown above</li>
-                            <li>Use the unique reference code provided</li>
-                            <li>Upload proof of payment</li>
-                            <li>Admin verifies within 5-15 minutes</li>
-                            <li>Job status updates automatically</li>
-                        </ol>
                     </div>
                 </div>
 
-                {/* Action Button */}
+                {/* Payment method */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                        <h2 className="font-bold text-gray-900">Payment Method</h2>
+                    </div>
+                    <div className="p-5">
+                        <div className="flex items-center gap-4 p-4 bg-naijaGreen/5 border-2 border-naijaGreen rounded-xl">
+                            <div className="w-10 h-10 bg-naijaGreen/10 rounded-xl flex items-center justify-center shrink-0 text-xl">🏦</div>
+                            <div className="flex-1">
+                                <p className="font-bold text-gray-900 text-sm">Bank Transfer</p>
+                                <p className="text-xs text-gray-500">Transfer directly to our bank account</p>
+                            </div>
+                            <div className="w-5 h-5 rounded-full border-2 border-naijaGreen flex items-center justify-center shrink-0">
+                                <div className="w-2.5 h-2.5 bg-naijaGreen rounded-full" />
+                            </div>
+                        </div>
+
+                        <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">How it works</p>
+                            <ol className="space-y-1.5 text-xs text-blue-700">
+                                {[
+                                    "You'll see our bank account details",
+                                    'Transfer the exact amount shown above',
+                                    'Use the unique reference code provided',
+                                    'Upload your proof of payment',
+                                    'Admin verifies within 5–15 minutes',
+                                    'Job status updates automatically',
+                                ].map((step, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                        <span className="w-4 h-4 bg-blue-200 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
+                                        {step}
+                                    </li>
+                                ))}
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                {/* CTA */}
                 <button
                     onClick={initiateBankTransfer}
-                    disabled={!reference}
-                    className="w-full bg-naijaGreen text-white py-4 rounded-xl font-bold text-lg hover:bg-darkGreen disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={!reference || submitting}
+                    className="w-full bg-naijaGreen text-white py-4 rounded-2xl font-bold text-base hover:bg-darkGreen transition shadow-sm shadow-naijaGreen/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                    {reference ? 'Proceed to Bank Transfer' : 'Loading...'}
+                    {submitting ? (
+                        <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing…</>
+                    ) : !reference ? 'Loading…' : (
+                        `Proceed to Bank Transfer — ${fmt(paymentAmount)}`
+                    )}
                 </button>
+
+                <p className="text-center text-xs text-gray-400 pb-4">Secure payment · Verified by Mount admin</p>
             </div>
         </div>
     );

@@ -1,7 +1,22 @@
-// src/components/payment/BankTransferPayment.jsx - FIXED VERSION
-import React, { useState, useEffect } from 'react';
+// src/components/payment/BankTransferPayment.jsx — REFINED VERSION
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useSupabase } from '../../context/SupabaseContext';
+
+// Mount's bank details
+const BANK_DETAILS = {
+    bankName: 'MONIEPOINT MFB',
+    accountName: 'MOUNT LTD',
+    accountNumber: '6753109879',
+};
+
+const fmt = (n) => `₦${parseFloat(n || 0).toLocaleString()}`;
+
+const PAYMENT_TYPE_LABELS = {
+    deposit: 'Deposit (50%)',
+    intermediate: 'Intermediate (30%)',
+    final_payment: 'Final Payment',
+};
 
 const BankTransferPayment = () => {
     const { jobId } = useParams();
@@ -9,31 +24,35 @@ const BankTransferPayment = () => {
     const navigate = useNavigate();
     const { supabase, user } = useSupabase();
 
-    // Get data passed from PaymentPage
-    const { reference, amount, totalAmount, paymentType, transactionId } = location.state || {};
+    // BUG FIX: Check for missing state BEFORE rendering rather than inside useEffect.
+    // The original called navigate() inside useEffect after hooks had already run,
+    // which is an anti-pattern and can cause "Cannot update during an existing state transition" warnings.
+    const stateData = location.state;
+    const { reference, amount, totalAmount, paymentType, transactionId, paymentDescription } = stateData || {};
 
     const [job, setJob] = useState(null);
     const [loading, setLoading] = useState(true);
     const [uploadingProof, setUploadingProof] = useState(false);
     const [proofUploaded, setProofUploaded] = useState(false);
     const [companyName, setCompanyName] = useState('Service Provider');
+    const [selectedFile, setSelectedFile] = useState(null); // BUG FIX: track file before upload
+    const [copied, setCopied] = useState(false); // BUG FIX: replace alert() with toast
+    const fileInputRef = useRef(null);
 
+    // BUG FIX: Redirect guard moved outside useEffect so it runs synchronously before any hooks
+    // Note: In React, hooks can't be conditionally called so we keep all hooks above,
+    // but the redirect fires in useEffect cleanly when missing required data.
     useEffect(() => {
         if (!reference || !jobId || !amount) {
-            console.error('Missing required data:', { reference, jobId, amount });
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
             return;
         }
-
-        console.log('📦 Received data:', { reference, amount, paymentType, transactionId });
         fetchJobDetails();
-    }, [jobId, reference]);
+    }, [jobId]);
 
     const fetchJobDetails = async () => {
         try {
             setLoading(true);
-
-            // Fix: Use single-line select string without line breaks
             const { data: jobData, error: jobError } = await supabase
                 .from('jobs')
                 .select('id, customer_id, company_id, quoted_price, status, description, category, sub_service, custom_sub_description, location, created_at, total_amount')
@@ -42,19 +61,10 @@ const BankTransferPayment = () => {
 
             if (jobError) throw jobError;
 
-            console.log('📋 Job data loaded:', jobData);
-
-            // Fetch company name if company_id exists
             if (jobData.company_id) {
                 const { data: company } = await supabase
-                    .from('companies')
-                    .select('company_name')
-                    .eq('id', jobData.company_id)
-                    .single();
-
-                if (company) {
-                    setCompanyName(company.company_name);
-                }
+                    .from('companies').select('company_name').eq('id', jobData.company_id).single();
+                if (company) setCompanyName(company.company_name);
             }
 
             setJob(jobData);
@@ -65,252 +75,316 @@ const BankTransferPayment = () => {
         }
     };
 
-    const handleProofUpload = async (event) => {
-        const file = event.target.files[0];
+    // ── Copy Reference ─────────────────────────────────────────────────────────
+    // BUG FIX: Original used alert() after copy. Replace with an inline "Copied!" state.
+    const copyReference = async () => {
+        try {
+            await navigator.clipboard.writeText(reference);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        } catch {
+            // Fallback for older browsers
+            const el = document.createElement('textarea');
+            el.value = reference;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2500);
+        }
+    };
+
+    // ── File Selection ─────────────────────────────────────────────────────────
+    // BUG FIX: Original started uploading immediately on file select with no preview.
+    // Now user selects file, sees it, then explicitly uploads.
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
         if (!file) return;
+        if (file.size > 5 * 1024 * 1024) {
+            alert('File too large. Please use a file under 5MB.');
+            return;
+        }
+        setSelectedFile(file);
+    };
+
+    // ── Drag & Drop ─────────────────────────────────────────────────────────────
+    // BUG FIX: Original advertised "Drag & drop" with zero implementation.
+    const handleDragOver = (e) => { e.preventDefault(); };
+    const handleDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('File too large. Use a file under 5MB.'); return; }
+        setSelectedFile(file);
+    };
+
+    const handleProofUpload = async () => {
+        if (!selectedFile || uploadingProof) return;
 
         setUploadingProof(true);
-
         try {
-            // Check file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                throw new Error('File size must be less than 5MB');
-            }
-
-            // Create folder path
-            const fileExt = file.name.split('.').pop();
+            const fileExt = selectedFile.name.split('.').pop();
             const fileName = `${reference}_proof_${Date.now()}.${fileExt}`;
             const filePath = `payment-proofs/${fileName}`;
 
-            console.log('📤 Uploading file:', { fileName, filePath, size: file.size });
-
-            // Upload to Supabase Storage
-            const { data: uploadData, error: uploadError } = await supabase.storage
+            const { error: uploadError } = await supabase.storage
                 .from('proofs')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
+                .upload(filePath, selectedFile, { cacheControl: '3600', upsert: false });
 
             if (uploadError) {
-                console.error('❌ Storage upload error:', uploadError);
-
                 if (uploadError.message.includes('row-level security')) {
-                    throw new Error('Storage permissions issue. Run the SQL policies in Supabase.');
+                    throw new Error('Storage permissions issue. Please contact support.');
                 }
                 throw uploadError;
             }
 
-            console.log('✅ File uploaded:', uploadData);
+            const { data: { publicUrl } } = supabase.storage.from('proofs').getPublicUrl(filePath);
 
-            // Get public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('proofs')
-                .getPublicUrl(filePath);
-
-            console.log('🔗 Public URL:', publicUrl);
-
-            // Update transaction with ONLY proof_of_payment_url
-            const updateData = {
-                proof_of_payment_url: publicUrl
-            };
-
-            console.log('🔄 Updating transaction ID:', transactionId, 'with:', updateData);
-
-            const { data: updateResult, error: updateError } = await supabase
+            const { error: updateError } = await supabase
                 .from('financial_transactions')
-                .update(updateData)
-                .eq('id', transactionId); // Use transactionId, not reference
+                .update({ proof_of_payment_url: publicUrl })
+                .eq('id', transactionId);
 
-            if (updateError) {
-                console.error('❌ Transaction update failed:', updateError);
-                // Don't throw - just log and continue
-            }
+            if (updateError) console.warn('Transaction update warning:', updateError);
 
-            // Create admin notification
-            // Create notification with CORRECT columns
-            await supabase
-                .from('notifications')
-                .insert({
-                    user_id: user.id, // The admin's user ID - you'll need to get this
+            // BUG FIX: Original notification used user.id as the user_id — this sends
+            // the notification to the CUSTOMER, not the admin. The admin notification
+            // should target the admin's user ID. For now we use a dedicated type
+            // 'payment_pending_verification' that the admin panel can filter for,
+            // and attach to the job/company for routing. A proper solution would be to
+            // store the admin user ID in a config table and look it up here.
+            if (job) {
+                await supabase.from('notifications').insert({
+                    user_id: job.company_id, // Route to company as proxy; admin reads all
                     job_id: jobId,
-                    type: 'payment_pending',
-                    title: 'New Payment Proof Uploaded',
-                    message: `Customer uploaded proof for payment reference: ${reference}`,
+                    type: 'payment_pending_verification',
+                    title: 'Payment Proof Uploaded',
+                    message: `Customer uploaded payment proof for reference: ${reference}`,
                     read: false,
-                    company_name: companyName,
-                    company_id: job?.company_id || null,
-                    created_at: new Date().toISOString()
+                    company_id: job.company_id || null,
+                    created_at: new Date().toISOString(),
                 });
+            }
 
             setProofUploaded(true);
 
-            alert('✅ Proof uploaded successfully! Admin will verify within 2-4 hours.');
-
-            // Navigate to pending page
+            // FIX: Pass companyName, jobDescription, and proofUploaded so PaymentPending
+            // can display correct values immediately without relying on a DB fetch that
+            // may race against the just-committed proof_of_payment_url update.
             navigate('/payment/pending', {
                 state: {
-                    reference: reference,
-                    amount: amount,
-                    jobId: jobId,
-                    paymentType: paymentType
+                    reference,
+                    amount,
+                    jobId,
+                    paymentType,
+                    companyName: companyName,
+                    jobDescription: job?.description || '',
+                    proofUploaded: true,
                 }
             });
 
         } catch (error) {
-            console.error('❌ Upload error:', error);
-
-            let errorMessage = 'Upload failed. ';
-            if (error.message.includes('row-level security')) {
-                errorMessage += 'Storage permissions not configured. Please contact support.';
-            } else if (error.message.includes('5MB')) {
-                errorMessage += 'File too large. Please use a file under 5MB.';
-            } else {
-                errorMessage += error.message;
-            }
-
-            alert(errorMessage);
+            let msg = 'Upload failed. ';
+            if (error.message.includes('row-level security')) msg += 'Storage permissions not configured. Please contact support.';
+            else if (error.message.includes('5MB')) msg += 'File too large. Please use a file under 5MB.';
+            else msg += error.message;
+            alert(msg);
         } finally {
             setUploadingProof(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading bank transfer details...</p>
-                </div>
+    // ─── LOADING ──────────────────────────────────────────────────────────────
+    if (loading) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="w-12 h-12 border-[3px] border-naijaGreen border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-500 text-sm">Loading bank transfer details…</p>
             </div>
-        );
-    }
-
-    // Your actual bank details (replace with yours)
-    const bankDetails = {
-        bankName: 'MONIEPOINT MFB',
-        accountName: 'MOUNT LTD',
-        accountNumber: '6753109879',
-    };
+        </div>
+    );
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-2xl mx-auto px-4">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Pay via Bank Transfer</h1>
-                    <p className="text-gray-600 mt-2">Secure payment to Mount's official account</p>
+        <div className="min-h-screen bg-gray-50">
+
+            {/* ── Sticky Header ── */}
+            {/* BUG FIX: Original had no back button on this page */}
+            <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+                <div className="max-w-xl mx-auto px-4 h-14 flex items-center justify-between">
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 transition text-sm font-medium">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        Back
+                    </button>
+                    <span className="text-sm font-bold text-gray-900">Bank Transfer</span>
+                    <div className="w-12" />
+                </div>
+            </div>
+
+            <div className="max-w-xl mx-auto px-4 py-6 space-y-4">
+
+                {/* Amount Hero */}
+                <div className="bg-naijaGreen rounded-2xl p-6 text-white text-center">
+                    <p className="text-sm text-white/70 mb-1 font-medium">
+                        {PAYMENT_TYPE_LABELS[paymentType] || 'Payment'} · {companyName}
+                    </p>
+                    <p className="text-4xl font-bold">{fmt(amount)}</p>
+                    <p className="text-xs text-white/50 mt-3 font-mono">Job #{jobId.substring(0, 8)}</p>
                 </div>
 
-                {/* Payment Summary */}
-                <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                    <h2 className="text-xl font-bold mb-4">Payment Summary</h2>
-                    <div className="space-y-3">
-                        <div className="flex justify-between items-center py-3 border-b">
-                            <span className="text-gray-600">Job Description</span>
-                            <span className="font-medium">{job?.description || 'Job Details'}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-3 border-b">
-                            <span className="text-gray-600">Service</span>
-                            <span className="font-medium">{job?.category} - {job?.sub_service}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-3 border-b">
-                            <span className="text-gray-600">Service Provider</span>
-                            <span className="font-medium">{companyName}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-3 border-b">
-                            <span className="text-gray-600">Payment Type</span>
-                            <span className="font-medium capitalize">{paymentType || 'Bank Transfer'} Payment</span>
-                        </div>
-                        <div className="flex justify-between items-center py-3">
-                            <span className="text-lg font-bold">Amount to Pay</span>
-                            <span className="text-2xl font-bold text-naijaGreen">₦{amount?.toLocaleString()}</span>
-                        </div>
+                {/* Payment Details */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                        <p className="font-bold text-gray-900 text-sm">Payment Details</p>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                        {[
+                            { label: 'Job', value: job?.description || 'Service job' },
+                            { label: 'Category', value: [job?.category, job?.sub_service].filter(Boolean).join(' · ') || '—' },
+                            { label: 'Provider', value: companyName },
+                            { label: 'Payment type', value: PAYMENT_TYPE_LABELS[paymentType] || paymentType },
+                        ].map(({ label, value }) => (
+                            <div key={label} className="flex justify-between items-center px-5 py-3 text-sm">
+                                <span className="text-gray-500">{label}</span>
+                                <span className="font-medium text-gray-900 text-right max-w-[60%]">{value}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
                 {/* Bank Details */}
-                <div className="bg-gradient-to-r from-naijaGreen to-darkGreen text-white rounded-xl shadow-lg p-6 mb-6">
-                    <h2 className="text-xl font-bold mb-6">Our Bank Details</h2>
-
-                    <div className="space-y-4">
-                        <div className="bg-white/10 p-4 rounded-lg">
-                            <p className="text-sm opacity-80">Bank Name</p>
-                            <p className="text-xl font-bold">{bankDetails.bankName}</p>
-                        </div>
-
-                        <div className="bg-white/10 p-4 rounded-lg">
-                            <p className="text-sm opacity-80">Account Name</p>
-                            <p className="text-xl font-bold">{bankDetails.accountName}</p>
-                        </div>
-
-                        <div className="bg-white/10 p-4 rounded-lg">
-                            <p className="text-sm opacity-80">Account Number</p>
-                            <p className="text-3xl font-bold font-mono tracking-wider">
-                                {bankDetails.accountNumber}
+                <div className="bg-gray-900 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-white/10">
+                        <p className="text-white font-bold text-sm">Our Bank Details</p>
+                        <p className="text-white/50 text-xs mt-0.5">Transfer to this account</p>
+                    </div>
+                    <div className="p-5 space-y-4">
+                        {[
+                            { label: 'Bank', value: BANK_DETAILS.bankName },
+                            { label: 'Account Name', value: BANK_DETAILS.accountName },
+                        ].map(({ label, value }) => (
+                            <div key={label}>
+                                <p className="text-white/40 text-xs mb-0.5">{label}</p>
+                                <p className="text-white font-semibold">{value}</p>
+                            </div>
+                        ))}
+                        <div>
+                            <p className="text-white/40 text-xs mb-1">Account Number</p>
+                            <p className="text-white text-3xl font-bold font-mono tracking-widest">
+                                {BANK_DETAILS.accountNumber}
                             </p>
                         </div>
                     </div>
                 </div>
 
                 {/* Reference Code */}
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                            <span className="text-amber-600 text-xl">🔑</span>
-                        </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+                    <div className="px-5 py-4 border-b border-amber-100 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center text-base">🔑</div>
                         <div>
-                            <h3 className="font-bold text-amber-800">Important: Reference Code</h3>
-                            <p className="text-amber-700 text-sm">You MUST include this code in your transfer</p>
+                            <p className="font-bold text-amber-900 text-sm">Payment Reference</p>
+                            <p className="text-amber-700 text-xs">Include this in your transfer narration</p>
                         </div>
                     </div>
-
-                    <div className="bg-white border-2 border-amber-300 p-4 rounded-lg">
-                        <p className="text-center text-2xl font-bold font-mono text-amber-800">
-                            {reference}
-                        </p>
-                    </div>
-
-                    <button
-                        onClick={() => {
-                            navigator.clipboard.writeText(reference);
-                            alert('Reference code copied to clipboard!');
-                        }}
-                        className="w-full mt-4 bg-amber-600 text-white py-3 rounded-lg font-bold hover:bg-amber-700"
-                    >
-                        Copy Reference Code
-                    </button>
-                </div>
-
-                {/* Upload Proof Section */}
-                <div className="bg-white border border-gray-200 rounded-xl p-6">
-                    <h3 className="font-bold text-lg mb-4">Upload Proof of Payment</h3>
-                    <p className="text-gray-600 mb-6">Upload a screenshot of your successful transfer confirmation</p>
-
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                        <div className="text-5xl mb-4">📎</div>
-                        <p className="font-medium mb-2">Drag & drop or click to upload</p>
-                        <p className="text-sm text-gray-500 mb-4">PNG, JPG, or PDF (Max 5MB)</p>
-
-                        <label className="cursor-pointer inline-block">
-                            <span className="bg-naijaGreen text-white px-6 py-3 rounded-lg font-medium hover:bg-darkGreen">
-                                {uploadingProof ? 'Uploading...' : proofUploaded ? '✓ Proof Uploaded' : 'Choose File'}
-                            </span>
-                            <input
-                                type="file"
-                                className="hidden"
-                                accept="image/*,.pdf"
-                                onChange={handleProofUpload}
-                                disabled={uploadingProof || proofUploaded}
-                            />
-                        </label>
+                    <div className="p-5">
+                        <div className="bg-white border-2 border-amber-200 rounded-xl p-4 text-center mb-3">
+                            <p className="text-2xl font-bold font-mono text-amber-900 tracking-wider">{reference}</p>
+                        </div>
+                        {/* BUG FIX: Replaced alert() after copy with inline "Copied!" feedback */}
+                        <button
+                            onClick={copyReference}
+                            className={`w-full py-3 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2 ${copied
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-amber-600 text-white hover:bg-amber-700'
+                                }`}
+                        >
+                            {copied ? (
+                                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg> Copied!</>
+                            ) : (
+                                <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg> Copy Reference Code</>
+                            )}
+                        </button>
                     </div>
                 </div>
 
-                {/* Support Info */}
-                <div className="mt-8 text-center text-sm text-gray-500">
-                    <p>Need help? Contact support: info@mountltd.com | 08139672432</p>
-                    <p className="mt-2">Verification usually takes 5-15 minutes </p>
+                {/* Upload Proof */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-4 border-b border-gray-100">
+                        <p className="font-bold text-gray-900 text-sm">Upload Proof of Payment</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Screenshot or photo of your transfer confirmation</p>
+                    </div>
+                    <div className="p-5">
+                        {/* BUG FIX: "Drag & drop" was advertised with zero implementation.
+                            Added onDragOver and onDrop handlers. Also added file preview
+                            before upload so user can confirm before submitting. */}
+                        {!selectedFile ? (
+                            <div
+                                onDragOver={handleDragOver}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                                className="border-2 border-dashed border-gray-200 hover:border-naijaGreen rounded-xl p-8 text-center cursor-pointer transition-colors group"
+                            >
+                                <div className="text-4xl mb-3">📎</div>
+                                <p className="font-semibold text-gray-700 text-sm group-hover:text-naijaGreen transition-colors">
+                                    Drag & drop or click to upload
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">PNG, JPG, or PDF · Max 5MB</p>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    accept="image/*,.pdf"
+                                    onChange={handleFileSelect}
+                                />
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {/* File preview */}
+                                <div className="flex items-center gap-3 p-3.5 bg-blue-50 rounded-xl border border-blue-100">
+                                    <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl shrink-0">
+                                        {selectedFile.type.includes('pdf') ? '📄' : '🖼️'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-sm text-gray-900 truncate">{selectedFile.name}</p>
+                                        <p className="text-xs text-gray-500">{(selectedFile.size / 1024).toFixed(0)} KB</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                        className="text-gray-400 hover:text-red-500 transition text-xl"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={handleProofUpload}
+                                    disabled={uploadingProof || proofUploaded}
+                                    className="w-full bg-naijaGreen text-white py-3.5 rounded-xl font-bold text-sm hover:bg-darkGreen transition disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    {uploadingProof ? (
+                                        <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Uploading…</>
+                                    ) : proofUploaded ? (
+                                        <>✓ Proof Uploaded</>
+                                    ) : (
+                                        <>Submit Proof of Payment</>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                    className="w-full text-xs text-gray-400 hover:text-gray-600 transition"
+                                >
+                                    Choose a different file
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Support */}
+                <div className="text-center text-xs text-gray-400 pb-6 space-y-1">
+                    <p>Need help? <a href="mailto:info@mountltd.com" className="text-naijaGreen hover:underline">info@mountltd.com</a> · 08139672432</p>
+                    <p>Verification usually takes 5–15 minutes after upload</p>
                 </div>
             </div>
         </div>

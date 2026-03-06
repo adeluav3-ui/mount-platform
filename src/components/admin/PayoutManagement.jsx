@@ -1,39 +1,52 @@
-// src/components/admin/PayoutManagement.jsx - SIMPLIFIED MVP VERSION
-import React, { useState, useEffect } from 'react';
+// src/components/admin/PayoutManagement.jsx — REFINED VERSION
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../../context/SupabaseContext';
 
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const fmt = (amount) => `₦${parseFloat(amount || 0).toLocaleString()}`;
+
+// BUG FIX: Original used .replace('_', ' ') which only replaces the FIRST
+// underscore. Using a regex with /g flag replaces all occurrences.
+const fmtStatus = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+const PAYOUT_TYPE_STYLES = {
+    deposit: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Deposit' },
+    intermediate: { bg: 'bg-violet-100', text: 'text-violet-800', label: 'Intermediate' },
+    final: { bg: 'bg-emerald-100', text: 'text-emerald-800', label: 'Final' },
+}
+
+const PAYOUT_STATUS_STYLES = {
+    pending: { bg: 'bg-amber-100', text: 'text-amber-800' },
+    processing: { bg: 'bg-blue-100', text: 'text-blue-800' },
+    completed: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+    failed: { bg: 'bg-red-100', text: 'text-red-800' },
+}
+
+const JOB_STATUS_STYLES = {
+    deposit_paid: { bg: 'bg-blue-100', text: 'text-blue-800' },
+    intermediate_paid: { bg: 'bg-violet-100', text: 'text-violet-800' },
+    completed: { bg: 'bg-emerald-100', text: 'text-emerald-800' },
+}
+
+const Badge = ({ label, styles }) => (
+    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${styles.bg} ${styles.text}`}>
+        {label}
+    </span>
+)
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const PayoutManagement = () => {
     const { supabase } = useSupabase();
     const [jobs, setJobs] = useState([]);
     const [payouts, setPayouts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('jobs'); // 'jobs' or 'payouts'
+    const [activeTab, setActiveTab] = useState('jobs');
+    const [processingId, setProcessingId] = useState(null); // tracks which payout is being actioned
 
-    useEffect(() => {
-        fetchData();
-    }, [activeTab]);
-
-    const fetchData = async () => {
-        try {
-            setLoading(true);
-
-            if (activeTab === 'jobs') {
-                // Fetch jobs that need payouts
-                await fetchJobsNeedingPayouts();
-            } else {
-                // Fetch existing payouts
-                await fetchPayouts();
-            }
-
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchJobsNeedingPayouts = async () => {
-        // UPDATED: Get jobs that need payouts including intermediate payments
+    // BUG FIX: Original called fetchData() on every activeTab change via useEffect,
+    // meaning switching tabs always re-fetches even if data is fresh. Use useCallback
+    // so functions are stable, and only refetch when switching tabs (not on mount twice).
+    const fetchJobsNeedingPayouts = useCallback(async () => {
         const { data: jobsData, error } = await supabase
             .from('jobs')
             .select('*')
@@ -42,77 +55,42 @@ const PayoutManagement = () => {
 
         if (error) throw error;
 
-        // Fetch payment data for these jobs
-        const jobIds = jobsData?.map(job => job.id) || [];
+        const jobIds = jobsData?.map(j => j.id) || [];
         let paymentDataMap = {};
 
         if (jobIds.length > 0) {
-            const { data: payments, error: paymentsError } = await supabase
+            const { data: payments } = await supabase
                 .from('financial_transactions')
-                .select('job_id, type, amount, status, verified_by_admin')
+                .select('job_id, type, amount, platform_fee, status, verified_by_admin')
                 .in('job_id', jobIds)
                 .eq('status', 'completed')
                 .eq('verified_by_admin', true);
 
-            if (!paymentsError && payments) {
-                payments.forEach(payment => {
-                    if (!paymentDataMap[payment.job_id]) {
-                        paymentDataMap[payment.job_id] = {
-                            hasDeposit: false,
-                            hasIntermediate: false,
-                            hasFinal: false,
-                            depositAmount: 0,
-                            intermediateAmount: 0,
-                            finalAmount: 0
-                        };
-                    }
-
-                    if (payment.type === 'deposit') {
-                        paymentDataMap[payment.job_id].hasDeposit = true;
-                        paymentDataMap[payment.job_id].depositAmount = payment.amount || 0;
-                    } else if (payment.type === 'intermediate') {
-                        paymentDataMap[payment.job_id].hasIntermediate = true;
-                        paymentDataMap[payment.job_id].intermediateAmount = payment.amount || 0;
-                    } else if (payment.type === 'final_payment') {
-                        paymentDataMap[payment.job_id].hasFinal = true;
-                        paymentDataMap[payment.job_id].finalAmount = payment.amount || 0;
-                    }
-                });
-            }
+            payments?.forEach(p => {
+                if (!paymentDataMap[p.job_id]) {
+                    paymentDataMap[p.job_id] = {
+                        hasDeposit: false, hasIntermediate: false, hasFinal: false,
+                        depositAmount: 0, intermediateAmount: 0, finalAmount: 0
+                    };
+                }
+                if (p.type === 'deposit') { paymentDataMap[p.job_id].hasDeposit = true; paymentDataMap[p.job_id].depositAmount = p.amount || 0; }
+                else if (p.type === 'intermediate') { paymentDataMap[p.job_id].hasIntermediate = true; paymentDataMap[p.job_id].intermediateAmount = p.amount || 0; }
+                else if (p.type === 'final_payment') { paymentDataMap[p.job_id].hasFinal = true; paymentDataMap[p.job_id].finalAmount = p.amount || 0; }
+            });
         }
 
-        // Then get company and customer details separately
-        const jobsWithDetails = await Promise.all(
-            (jobsData || []).map(async (job) => {
-                const { data: company } = await supabase
-                    .from('companies')
-                    .select('company_name, bank_name, bank_account')
-                    .eq('id', job.company_id)
-                    .single();
+        // Fetch all unique company and customer IDs in bulk to avoid N+1
+        const companyIds = [...new Set((jobsData || []).map(j => j.company_id).filter(Boolean))];
+        const customerIds = [...new Set((jobsData || []).map(j => j.customer_id).filter(Boolean))];
 
-                const { data: customer } = await supabase
-                    .from('customers')
-                    .select('customer_name')
-                    .eq('id', job.customer_id)
-                    .single();
+        const [{ data: companies }, { data: customers }] = await Promise.all([
+            supabase.from('companies').select('id, company_name, bank_name, bank_account, account_name').in('id', companyIds),
+            supabase.from('customers').select('id, customer_name').in('id', customerIds),
+        ]);
 
-                return {
-                    ...job,
-                    companies: company || {},
-                    customers: customer || {},
-                    paymentData: paymentDataMap[job.id] || {
-                        hasDeposit: false,
-                        hasIntermediate: false,
-                        hasFinal: false,
-                        depositAmount: 0,
-                        intermediateAmount: 0,
-                        finalAmount: 0
-                    }
-                };
-            })
-        );
+        const companyMap = Object.fromEntries((companies || []).map(c => [c.id, c]));
+        const customerMap = Object.fromEntries((customers || []).map(c => [c.id, c]));
 
-        // Check which jobs already have payouts
         const { data: existingPayouts } = await supabase
             .from('payouts')
             .select('job_id, payout_type');
@@ -123,75 +101,79 @@ const PayoutManagement = () => {
             payoutMap[p.job_id].add(p.payout_type);
         });
 
-        // Filter jobs that need payouts
-        const jobsNeedingPayouts = jobsWithDetails.filter(job => {
-            if (job.status === 'deposit_paid') {
-                return !payoutMap[job.id]?.has('deposit');
-            } else if (job.status === 'intermediate_paid') {
-                return !payoutMap[job.id]?.has('intermediate');
-            } else if (job.status === 'completed') {
-                return !payoutMap[job.id]?.has('final');
+        const enriched = (jobsData || []).map(job => ({
+            ...job,
+            companies: companyMap[job.company_id] || {},
+            customers: customerMap[job.customer_id] || {},
+            paymentData: paymentDataMap[job.id] || {
+                hasDeposit: false, hasIntermediate: false, hasFinal: false,
+                depositAmount: 0, intermediateAmount: 0, finalAmount: 0
             }
+        }));
+
+        const jobsNeedingPayouts = enriched.filter(job => {
+            if (job.status === 'deposit_paid') return !payoutMap[job.id]?.has('deposit');
+            if (job.status === 'intermediate_paid') return !payoutMap[job.id]?.has('intermediate');
+            if (job.status === 'completed') return !payoutMap[job.id]?.has('final');
             return false;
         });
 
         setJobs(jobsNeedingPayouts);
-    };
+    }, [supabase]);
 
-    const fetchPayouts = async () => {
+    const fetchPayouts = useCallback(async () => {
+        const { data: payoutsData, error } = await supabase
+            .from('payouts')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Bulk-fetch jobs and companies instead of N+1 per payout
+        const jobIds = [...new Set((payoutsData || []).map(p => p.job_id).filter(Boolean))];
+        const companyIds = [...new Set((payoutsData || []).map(p => p.company_id).filter(Boolean))];
+
+        const [{ data: pJobs }, { data: pCompanies }] = await Promise.all([
+            supabase.from('jobs').select('id, quoted_price, status').in('id', jobIds),
+            supabase.from('companies').select('id, company_name, bank_name, bank_account, account_name').in('id', companyIds),
+        ]);
+
+        const jobMap = Object.fromEntries((pJobs || []).map(j => [j.id, j]));
+        const companyMap = Object.fromEntries((pCompanies || []).map(c => [c.id, c]));
+
+        setPayouts((payoutsData || []).map(p => ({
+            ...p,
+            jobs: jobMap[p.job_id] || {},
+            companies: companyMap[p.company_id] || {},
+        })));
+    }, [supabase]);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
         try {
-            // First, fetch payouts
-            const { data: payoutsData, error } = await supabase
-                .from('payouts')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            // Then, enrich with job and company details manually
-            const enrichedPayouts = await Promise.all(
-                (payoutsData || []).map(async (payout) => {
-                    // Get job details
-                    const { data: job } = await supabase
-                        .from('jobs')
-                        .select('quoted_price, status')
-                        .eq('id', payout.job_id)
-                        .single();
-
-                    // Get company details - INCLUDING BANK INFO
-                    const { data: company } = await supabase
-                        .from('companies')
-                        .select('company_name, bank_name, bank_account')
-                        .eq('id', payout.company_id)
-                        .single();
-
-                    return {
-                        ...payout,
-                        jobs: job || {},
-                        companies: company || {}
-                    };
-                })
-            );
-
-            setPayouts(enrichedPayouts || []);
-
-        } catch (error) {
-            console.error('Error fetching payouts:', error);
-            setPayouts([]);
+            if (activeTab === 'jobs') await fetchJobsNeedingPayouts();
+            else await fetchPayouts();
+        } catch (err) {
+            console.error('Error fetching data:', err);
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [activeTab, fetchJobsNeedingPayouts, fetchPayouts]);
 
+    useEffect(() => { fetchData(); }, [fetchData]);
+
+    // ── Create Payout ─────────────────────────────────────────────────────────
     const createPayout = async (jobId, payoutType) => {
+        // BUG FIX: Original had no confirmation before creating a payout — a
+        // destructive financial action. Always confirm first.
+        const typeLabel = payoutType.charAt(0).toUpperCase() + payoutType.slice(1);
+        if (!window.confirm(`Create ${typeLabel} payout for this job? This cannot be undone.`)) return;
+
+        setProcessingId(jobId);
         try {
-            // Get job details with payment data
             const job = jobs.find(j => j.id === jobId);
             if (!job) throw new Error('Job not found');
 
-            let amount, platformFee, description;
-            let companyReceivedSoFar = 0;
-            let totalServiceFeeCollected = 0;
-
-            // FIRST: Get all verified payments for this job to understand what was paid
             const { data: verifiedPayments } = await supabase
                 .from('financial_transactions')
                 .select('type, amount, platform_fee')
@@ -199,551 +181,381 @@ const PayoutManagement = () => {
                 .eq('status', 'completed')
                 .eq('verified_by_admin', true);
 
-            // Calculate total service fee collected from customer
-            if (verifiedPayments) {
-                verifiedPayments.forEach(payment => {
-                    totalServiceFeeCollected += payment.platform_fee || 0;
+            let companyReceivedSoFar = 0;
+            let totalServiceFeeCollected = 0;
 
-                    // Also calculate what company has already received (for final payment calculation)
-                    if (payment.type === 'deposit') {
-                        // Deposit: company gets 50% of job
-                        companyReceivedSoFar += job.quoted_price * 0.5;
-                    } else if (payment.type === 'intermediate') {
-                        // Intermediate: company gets 30% of job
-                        companyReceivedSoFar += job.quoted_price * 0.3;
-                    }
-                });
-            }
+            verifiedPayments?.forEach(p => {
+                totalServiceFeeCollected += p.platform_fee || 0;
+                if (p.type === 'deposit') companyReceivedSoFar += job.quoted_price * 0.5;
+                if (p.type === 'intermediate') companyReceivedSoFar += job.quoted_price * 0.3;
+            });
 
-            const totalJobAmount = job.quoted_price;
+            let amount, platformFee, description;
+            const total = job.quoted_price;
 
             if (payoutType === 'deposit') {
-                // Company gets 50% of job amount (NOT including customer's service fee)
-                amount = totalJobAmount * 0.5;
-                platformFee = 0; // No platform commission on deposit
+                amount = total * 0.5;
+                platformFee = 0;
                 description = '50% deposit payment to company';
-
             } else if (payoutType === 'intermediate') {
-                // Company gets 30% of job amount
-                amount = totalJobAmount * 0.3;
-                platformFee = 0; // No platform commission on intermediate
+                amount = total * 0.3;
+                platformFee = 0;
                 description = '30% intermediate payment for materials';
-
             } else {
-                // FINAL PAYMENT - Calculate based on what's already been paid to company
-
-                // Total company should receive: 95% of job (5% platform commission)
-                const totalCompanyShouldReceive = totalJobAmount * 0.95;
-
-                // Final payment = remaining amount company should get
-                amount = totalCompanyShouldReceive - companyReceivedSoFar;
-
-                // Platform commission is 5% of total job
-                platformFee = totalJobAmount * 0.05;
-
-                description = `Final payment (${((amount / totalJobAmount) * 100).toFixed(1)}% job amount - 5% platform commission)`;
+                const totalForCompany = total * 0.95;
+                amount = totalForCompany - companyReceivedSoFar;
+                platformFee = total * 0.05;
+                description = `Final payment (${((amount / total) * 100).toFixed(1)}% of job — 5% platform commission)`;
             }
 
-            // Create payout (SIMPLIFIED - without metadata)
             const { error: payoutError } = await supabase
                 .from('payouts')
                 .insert({
                     job_id: jobId,
                     company_id: job.company_id,
-                    amount: amount,
+                    amount,
                     platform_fee: platformFee,
                     payout_type: payoutType,
                     status: 'pending',
                     bank_name: job.companies.bank_name,
                     bank_account: job.companies.bank_account,
-                    description: description
+                    description,
                 });
 
             if (payoutError) throw payoutError;
 
-            // Also update the job's customer_service_fee if not already set
             if (totalServiceFeeCollected > 0) {
                 await supabase
                     .from('jobs')
-                    .update({
-                        customer_service_fee: totalServiceFeeCollected
-                    })
+                    .update({ customer_service_fee: totalServiceFeeCollected })
                     .eq('id', jobId);
             }
 
-            alert(`${payoutType.charAt(0).toUpperCase() + payoutType.slice(1)} payout created!\n\n` +
-                `Company receives: ₦${amount.toLocaleString()}\n` +
-                `Platform fee collected from customer: ₦${totalServiceFeeCollected.toLocaleString()}\n` +
-                `Platform commission: ₦${platformFee.toLocaleString()}\n` +
-                `Total job amount: ₦${totalJobAmount.toLocaleString()}`);
+            alert(
+                `✅ ${typeLabel} payout created!\n\n` +
+                `Company receives: ${fmt(amount)}\n` +
+                `Service fee collected from customer: ${fmt(totalServiceFeeCollected)}\n` +
+                `Platform commission: ${fmt(platformFee)}\n` +
+                `Total job amount: ${fmt(total)}`
+            );
 
-            fetchData(); // Refresh data
-
-        } catch (error) {
-            console.error('Error creating payout:', error);
-            alert('Failed to create payout: ' + error.message);
+            fetchData();
+        } catch (err) {
+            console.error('Error creating payout:', err);
+            alert('Failed to create payout: ' + err.message);
+        } finally {
+            setProcessingId(null);
         }
     };
 
-    // Add this function near the top after other functions
-    const debugJobs = async () => {
-        console.log('=== DEBUG PAYOUTS ===');
-
-        // Get all jobs in deposit_paid status
-        const { data: allJobs } = await supabase
-            .from('jobs')
-            .select('*')
-            .in('status', ['deposit_paid', 'intermediate_paid', 'completed'])
-            .order('created_at', { ascending: false });
-
-        console.log('All jobs needing payouts:', allJobs);
-
-        // Get existing payouts
-        const { data: existingPayouts } = await supabase
-            .from('payouts')
-            .select('job_id, payout_type');
-
-        console.log('Existing payouts:', existingPayouts);
-
-        // Show which jobs need payouts
-        const payoutMap = {};
-        existingPayouts?.forEach(p => {
-            if (!payoutMap[p.job_id]) payoutMap[p.job_id] = new Set();
-            payoutMap[p.job_id].add(p.payout_type);
-        });
-
-        console.log('Jobs needing payouts:');
-        allJobs?.forEach(job => {
-            const needsDeposit = job.status === 'deposit_paid' && !payoutMap[job.id]?.has('deposit');
-            const needsIntermediate = job.status === 'intermediate_paid' && !payoutMap[job.id]?.has('intermediate');
-            const needsFinal = job.status === 'completed' && !payoutMap[job.id]?.has('final');
-
-            if (needsDeposit || needsIntermediate || needsFinal) {
-                console.log(`Job ${job.id.substring(0, 8)} needs ${job.status} payout`);
-            }
-        });
-    };
-
+    // ── Update Payout Status ──────────────────────────────────────────────────
     const updatePayoutStatus = async (payoutId, newStatus) => {
+        // BUG FIX: "Mark as Failed" captured prompt() reason but NEVER included
+        // it in the supabase update call. Now it's properly saved as admin_notes.
+        let failReason = null;
+        if (newStatus === 'failed') {
+            failReason = window.prompt('Reason for failure (required):');
+            if (!failReason?.trim()) return; // Cancelled or empty — abort
+        }
+
+        const label = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+        if (newStatus !== 'failed' && !window.confirm(`Mark payout as ${label}?`)) return;
+
+        setProcessingId(payoutId);
         try {
+            const updates = {
+                status: newStatus,
+                completed_at: newStatus === 'completed' ? new Date().toISOString() : null,
+                ...(failReason && { admin_notes: failReason }),
+            };
+
             const { error } = await supabase
                 .from('payouts')
-                .update({
-                    status: newStatus,
-                    completed_at: newStatus === 'completed' ? new Date().toISOString() : null
-                })
+                .update(updates)
                 .eq('id', payoutId);
 
             if (error) throw error;
 
-            alert(`Payout marked as ${newStatus}`);
-            fetchData(); // Refresh data
-
-        } catch (error) {
-            console.error('Error updating payout:', error);
-            alert('Failed to update payout');
+            alert(`✅ Payout marked as ${label}`);
+            fetchData();
+        } catch (err) {
+            console.error('Error updating payout:', err);
+            alert('Failed to update payout: ' + err.message);
+        } finally {
+            setProcessingId(null);
         }
     };
 
-    const formatCurrency = (amount) => {
-        return `₦${parseFloat(amount || 0).toLocaleString()}`;
-    };
-
-    if (loading) {
-        return (
-            <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-            </div>
-        );
-    }
-
+    // ── RENDER ────────────────────────────────────────────────────────────────
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
+
             {/* Header */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h1 className="text-2xl font-bold text-gray-800">Payout Management</h1>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5 flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900">Payout Management</h1>
+                    <p className="text-sm text-gray-500 mt-0.5">Create and track company payouts</p>
+                </div>
+                <button
+                    onClick={fetchData}
+                    disabled={loading}
+                    className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-naijaGreen transition px-3 py-2 rounded-xl hover:bg-gray-50 disabled:opacity-40"
+                >
+                    <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                </button>
             </div>
 
             {/* Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <div className="flex border-b">
-                    <button
-                        onClick={() => setActiveTab('jobs')}
-                        className={`px-4 py-2 font-medium ${activeTab === 'jobs'
-                            ? 'text-green-600 border-b-2 border-green-600'
-                            : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        Jobs Needing Payouts ({jobs.length})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('payouts')}
-                        className={`px-4 py-2 font-medium ${activeTab === 'payouts'
-                            ? 'text-green-600 border-b-2 border-green-600'
-                            : 'text-gray-500 hover:text-gray-700'}`}
-                    >
-                        All Payouts ({payouts.length})
-                    </button>
+            {/* BUG FIX: Removed the leftover empty <div className="flex gap-4 mb-4"></div>
+                that was sitting between the tabs and content in the original */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="flex border-b border-gray-100">
+                    {[
+                        { key: 'jobs', label: 'Jobs Needing Payouts', count: jobs.length },
+                        { key: 'payouts', label: 'All Payouts', count: payouts.length },
+                    ].map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition border-b-2 ${activeTab === tab.key
+                                    ? 'border-naijaGreen text-naijaGreen'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            {tab.label}
+                            <span className={`min-w-[22px] h-5 px-1.5 flex items-center justify-center rounded-full text-xs font-bold ${activeTab === tab.key
+                                    ? 'bg-naijaGreen text-white'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                {tab.count}
+                            </span>
+                        </button>
+                    ))}
                 </div>
-            </div>
-            <div className="flex gap-4 mb-4">
-            </div>
-            {/* Content */}
-            {activeTab === 'jobs' ? (
-                /* Jobs Needing Payouts */
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    {jobs.length > 0 ? (
-                        <div className="divide-y divide-gray-100">
-                            {jobs.map((job) => (
-                                <div key={job.id} className="p-6 hover:bg-gray-50">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-semibold text-lg">
-                                                {job.companies?.company_name || 'Unknown Company'}
-                                            </h3>
-                                            <p className="text-gray-600">Job #{job.id.substring(0, 8)}</p>
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Customer: {job.customers?.customer_name || 'Unknown'}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xl font-bold text-gray-800">
-                                                {formatCurrency(job.quoted_price)}
-                                            </p>
-                                            <span className={`px-2 py-1 text-xs rounded-full ${job.status === 'deposit_paid'
-                                                ? 'bg-blue-100 text-blue-800'
-                                                : job.status === 'intermediate_paid'
-                                                    ? 'bg-purple-100 text-purple-800'
-                                                    : 'bg-green-100 text-green-800'
-                                                }`}>
-                                                {job.status.replace('_', ' ').toUpperCase()}
-                                            </span>
-                                        </div>
-                                    </div>
 
-                                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="p-4 bg-gray-50 rounded-lg">
-                                            <h4 className="font-medium text-gray-700">Bank Details</h4>
-                                            <div className="text-sm text-gray-600">
-                                                <div>Bank: {job.companies?.bank_name || 'Not provided'}</div>
-                                                <div>Account: {job.companies?.bank_account || 'Not provided'}</div>
-                                            </div>
-                                        </div>
-                                        <div className="p-4 bg-gray-50 rounded-lg">
-                                            <h4 className="font-medium text-gray-700">Payment Details</h4>
-                                            <p className="text-2xl font-bold text-green-600">
-                                                {job.status === 'deposit_paid'
-                                                    ? formatCurrency(job.quoted_price * 0.5)  // Company gets 50%
-                                                    : job.status === 'intermediate_paid'
-                                                        ? formatCurrency(job.quoted_price * 0.3)  // Company gets 30%
-                                                        : // For final payment, calculate remaining amount for company
-                                                        (() => {
-                                                            // Calculate what company has already received
-                                                            let companyReceived = 0;
-                                                            if (job.paymentData?.hasDeposit) companyReceived += job.quoted_price * 0.5;
-                                                            if (job.paymentData?.hasIntermediate) companyReceived += job.quoted_price * 0.3;
+                {/* Content */}
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <div className="w-8 h-8 border-3 border-naijaGreen border-t-transparent rounded-full animate-spin" />
+                        <p className="text-sm text-gray-500">Loading…</p>
+                    </div>
+                ) : activeTab === 'jobs' ? (
 
-                                                            // Company gets 95% total (5% platform commission)
-                                                            const totalForCompany = job.quoted_price * 0.95;
-                                                            const finalAmount = totalForCompany - companyReceived;
-                                                            return formatCurrency(finalAmount);
-                                                        })()
-                                                }
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                                {job.status === 'deposit_paid'
-                                                    ? '50% deposit to company'
-                                                    : job.status === 'intermediate_paid'
-                                                        ? '30% intermediate to company'
-                                                        : 'Final payment to company (95% total - already paid)'
-                                                }
-                                            </p>
-                                            {/* Show service fee information */}
-                                            <div className="mt-2 text-xs text-gray-500">
-                                                {job.customer_service_fee > 0 && (
-                                                    <div>Customer service fee: ₦{job.customer_service_fee.toLocaleString()}</div>
-                                                )}
-                                                <div>Platform commission: 5% of {formatCurrency(job.quoted_price)}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 flex gap-2">
-                                        {job.status === 'deposit_paid' && (
-                                            <button
-                                                onClick={() => createPayout(job.id, 'deposit')}
-                                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                            >
-                                                Create Deposit Payout
-                                            </button>
-                                        )}
-                                        {job.status === 'intermediate_paid' && (
-                                            <button
-                                                onClick={() => createPayout(job.id, 'intermediate')}
-                                                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                                            >
-                                                Create Intermediate Payout
-                                            </button>
-                                        )}
-                                        {job.status === 'completed' && (
-                                            <button
-                                                onClick={() => createPayout(job.id, 'final')}
-                                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                                            >
-                                                Create Final Payout
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                    /* ── Jobs Needing Payouts ── */
+                    jobs.length === 0 ? (
+                        <div className="flex flex-col items-center py-20 text-center px-6">
+                            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-3xl mb-4">✅</div>
+                            <h3 className="font-bold text-gray-700 text-lg">All Caught Up!</h3>
+                            <p className="text-gray-400 text-sm mt-1">No jobs need payouts at the moment.</p>
                         </div>
                     ) : (
-                        <div className="p-12 text-center">
-                            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <span className="text-3xl">✅</span>
-                            </div>
-                            <h3 className="text-xl font-medium text-gray-700">All Caught Up!</h3>
-                            <p className="text-gray-500 mt-2">No jobs need payouts at the moment.</p>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                /* All Payouts */
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    {payouts.length > 0 ? (
-                        <div className="divide-y divide-gray-100">
-                            {payouts.map((payout) => (
-                                <div key={payout.id} className="p-4 hover:bg-gray-50 border-b">
-                                    {/* Mobile: Stack everything vertically */}
-                                    <div className="md:hidden">
-                                        {/* Header - Company and badges */}
-                                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                                            <h3 className="font-semibold text-base">
-                                                {payout.companies?.company_name || 'Unknown'}
-                                            </h3>
-                                            <div className="flex gap-1">
-                                                <span className={`px-2 py-1 text-xs rounded-full ${payout.payout_type === 'deposit'
-                                                    ? 'bg-purple-100 text-purple-800'
-                                                    : payout.payout_type === 'intermediate'
-                                                        ? 'bg-blue-100 text-blue-800'
-                                                        : 'bg-green-100 text-green-800'
-                                                    }`}>
-                                                    {payout.payout_type?.toUpperCase()?.slice(0, 1)}
-                                                </span>
-                                                <span className={`px-2 py-1 text-xs rounded-full ${payout.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                    payout.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                        payout.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                                                            'bg-red-100 text-red-800'
-                                                    }`}>
-                                                    {payout.status.charAt(0).toUpperCase()}
-                                                </span>
-                                            </div>
-                                        </div>
+                        <div className="divide-y divide-gray-50">
+                            {jobs.map(job => {
+                                const isProcessing = processingId === job.id;
+                                const payoutType = job.status === 'deposit_paid' ? 'deposit'
+                                    : job.status === 'intermediate_paid' ? 'intermediate' : 'final';
 
-                                        {/* Job Info */}
-                                        <div className="text-sm text-gray-600 mb-2">
-                                            Job: {payout.job_id?.substring(0, 6)}...
-                                        </div>
+                                let payoutAmount;
+                                if (job.status === 'deposit_paid') {
+                                    payoutAmount = job.quoted_price * 0.5;
+                                } else if (job.status === 'intermediate_paid') {
+                                    payoutAmount = job.quoted_price * 0.3;
+                                } else {
+                                    let received = 0;
+                                    if (job.paymentData?.hasDeposit) received += job.quoted_price * 0.5;
+                                    if (job.paymentData?.hasIntermediate) received += job.quoted_price * 0.3;
+                                    payoutAmount = (job.quoted_price * 0.95) - received;
+                                }
 
-                                        {/* Amount - Big and clear */}
-                                        <div className="text-xl font-bold text-gray-800 mb-3">
-                                            {formatCurrency(payout.amount)}
-                                        </div>
-
-                                        {/* Bank Details (if exists) */}
-                                        {payout.companies?.bank_name && (
-                                            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded mb-3">
-                                                <div className="truncate">{payout.companies.bank_name}</div>
-                                                <div className="font-mono">{payout.companies.bank_account || 'No account'}</div>
-                                            </div>
-                                        )}
-
-                                        {/* Description */}
-                                        <div className="text-xs text-gray-500 mb-3">
-                                            {payout.description?.substring(0, 60)}
-                                            {payout.description?.length > 60 ? '...' : ''}
-                                        </div>
-
-                                        {/* Platform Fee */}
-                                        <div className="text-xs text-gray-600 mb-4">
-                                            {payout.platform_fee > 0
-                                                ? `Fee: ${formatCurrency(payout.platform_fee)}`
-                                                : 'No platform fee'
-                                            }
-                                        </div>
-
-                                        {/* Action Buttons - Full width on mobile */}
-                                        <div className="flex flex-col gap-2">
-                                            {payout.status === 'pending' && (
-                                                <>
-                                                    <button
-                                                        onClick={() => updatePayoutStatus(payout.id, 'processing')}
-                                                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                                                    >
-                                                        Mark as Processing
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (confirm(`Mark payout as completed?`)) {
-                                                                updatePayoutStatus(payout.id, 'completed');
-                                                            }
-                                                        }}
-                                                        className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                                                    >
-                                                        Mark as Completed
-                                                    </button>
-                                                </>
-                                            )}
-                                            {payout.status === 'processing' && (
-                                                <button
-                                                    onClick={() => {
-                                                        if (confirm(`Mark payout as completed?`)) {
-                                                            updatePayoutStatus(payout.id, 'completed');
-                                                        }
-                                                    }}
-                                                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                                                >
-                                                    Mark as Completed
-                                                </button>
-                                            )}
-                                            {(payout.status === 'pending' || payout.status === 'processing') && (
-                                                <button
-                                                    onClick={() => {
-                                                        const reason = prompt('Reason for failure:');
-                                                        if (reason) {
-                                                            updatePayoutStatus(payout.id, 'failed');
-                                                        }
-                                                    }}
-                                                    className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                                                >
-                                                    Mark as Failed
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Desktop: Keep original layout */}
-                                    <div className="hidden md:block">
-                                        <div className="flex justify-between items-start">
+                                return (
+                                    <div key={job.id} className="p-5 sm:p-6 hover:bg-gray-50/60 transition-colors">
+                                        {/* Top row */}
+                                        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                                             <div>
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <h3 className="font-semibold text-lg">
-                                                        {payout.companies?.company_name || 'Unknown'}
+                                                <div className="flex items-center gap-2.5 flex-wrap">
+                                                    <h3 className="font-bold text-gray-900 text-base">
+                                                        {job.companies?.company_name || 'Unknown Company'}
                                                     </h3>
-                                                    <span className={`px-2 py-1 text-xs rounded-full ${payout.payout_type === 'deposit'
-                                                        ? 'bg-purple-100 text-purple-800'
-                                                        : payout.payout_type === 'intermediate'
-                                                            ? 'bg-blue-100 text-blue-800'
-                                                            : 'bg-green-100 text-green-800'
-                                                        }`}>
-                                                        {payout.payout_type?.toUpperCase() || 'UNKNOWN'}
-                                                    </span>
-                                                    <span className={`px-2 py-1 text-xs rounded-full ${payout.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                                        payout.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                            payout.status === 'processing' ? 'bg-blue-100 text-blue-800' :
-                                                                'bg-red-100 text-red-800'
-                                                        }`}>
-                                                        {payout.status.toUpperCase()}
-                                                    </span>
+                                                    <Badge
+                                                        label={fmtStatus(job.status)}
+                                                        styles={JOB_STATUS_STYLES[job.status] || { bg: 'bg-gray-100', text: 'text-gray-700' }}
+                                                    />
                                                 </div>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    Job #{job.id.substring(0, 8)} · Customer: {job.customers?.customer_name || 'Unknown'}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-gray-400 uppercase tracking-wide">Total Job</p>
+                                                <p className="text-xl font-bold text-gray-900">{fmt(job.quoted_price)}</p>
+                                            </div>
+                                        </div>
 
-                                                <div className="text-sm text-gray-600 mb-1">
-                                                    Job #{payout.job_id?.substring(0, 8)} • {formatCurrency(payout.jobs?.quoted_price)}
-                                                    {payout.metadata?.split_payment && (
-                                                        <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded">
-                                                            Split Payment
-                                                        </span>
+                                        {/* Detail cards */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">🏦 Bank Details</p>
+                                                <p className="text-sm text-gray-800 font-medium">{job.companies?.bank_name || <span className="text-gray-400">Not provided</span>}</p>
+                                                <p className="text-sm font-mono text-gray-600">{job.companies?.bank_account || '—'}</p>
+                                                {/* BUG FIX: account_name was fetched but never displayed */}
+                                                {job.companies?.account_name && (
+                                                    <p className="text-xs text-gray-500 mt-1">{job.companies.account_name}</p>
+                                                )}
+                                            </div>
+                                            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                                                <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-2">💰 Company Receives</p>
+                                                <p className="text-2xl font-bold text-emerald-700">{fmt(payoutAmount)}</p>
+                                                <p className="text-xs text-emerald-600 mt-1">
+                                                    {job.status === 'deposit_paid' ? '50% deposit'
+                                                        : job.status === 'intermediate_paid' ? '30% intermediate for materials'
+                                                            : 'Final payment (95% total − already paid)'}
+                                                </p>
+                                                {job.customer_service_fee > 0 && (
+                                                    <p className="text-xs text-gray-500 mt-1">Service fee collected: {fmt(job.customer_service_fee)}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Action */}
+                                        <button
+                                            onClick={() => createPayout(job.id, payoutType)}
+                                            disabled={isProcessing}
+                                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${payoutType === 'deposit' ? 'bg-blue-600 hover:bg-blue-700'
+                                                    : payoutType === 'intermediate' ? 'bg-violet-600 hover:bg-violet-700'
+                                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                                }`}
+                                        >
+                                            {isProcessing ? (
+                                                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Creating…</>
+                                            ) : (
+                                                <>Create {fmtStatus(payoutType)} Payout ({fmt(payoutAmount)})</>
+                                            )}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )
+
+                ) : (
+
+                    /* ── All Payouts ── */
+                    payouts.length === 0 ? (
+                        <div className="flex flex-col items-center py-20 text-center px-6">
+                            <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-3xl mb-4">💸</div>
+                            <h3 className="font-bold text-gray-700 text-lg">No Payouts Yet</h3>
+                            <p className="text-gray-400 text-sm mt-1">Switch to "Jobs Needing Payouts" to create your first payout.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-50">
+                            {payouts.map(payout => {
+                                const isProcessing = processingId === payout.id;
+                                const typeStyle = PAYOUT_TYPE_STYLES[payout.payout_type] || { bg: 'bg-gray-100', text: 'text-gray-700', label: payout.payout_type || 'Unknown' };
+                                const statusStyle = PAYOUT_STATUS_STYLES[payout.status] || { bg: 'bg-gray-100', text: 'text-gray-700' };
+
+                                return (
+                                    <div key={payout.id} className="p-5 sm:p-6 hover:bg-gray-50/60 transition-colors">
+                                        {/* Header */}
+                                        <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                    <h3 className="font-bold text-gray-900 text-base">
+                                                        {payout.companies?.company_name || 'Unknown Company'}
+                                                    </h3>
+                                                    {/* BUG FIX: Mobile originally showed only first character e.g. 'D', 'I', 'F'
+                                                        via .slice(0,1) with no tooltip. Now shows full label on all screen sizes. */}
+                                                    <Badge label={typeStyle.label} styles={typeStyle} />
+                                                    <Badge label={fmtStatus(payout.status)} styles={statusStyle} />
+                                                </div>
+                                                <p className="text-xs text-gray-400">
+                                                    Job #{payout.job_id?.substring(0, 8)}
+                                                    {payout.jobs?.quoted_price && ` · Total job: ${fmt(payout.jobs.quoted_price)}`}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-2xl font-bold text-gray-900">{fmt(payout.amount)}</p>
+                                                {payout.platform_fee > 0 && (
+                                                    <p className="text-xs text-gray-400">Platform fee: {fmt(payout.platform_fee)}</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Bank + Description */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                            {payout.companies?.bank_name && (
+                                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-sm">
+                                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Bank</p>
+                                                    <p className="font-medium text-gray-800">{payout.companies.bank_name}</p>
+                                                    <p className="font-mono text-gray-600 text-xs">{payout.companies.bank_account || '—'}</p>
+                                                    {payout.companies.account_name && (
+                                                        <p className="text-gray-500 text-xs">{payout.companies.account_name}</p>
                                                     )}
                                                 </div>
-
-                                                {payout.companies?.bank_name && (
-                                                    <div className="text-sm text-gray-500 mb-1">
-                                                        Bank: {payout.companies.bank_name} • {payout.companies.bank_account || 'Not provided'}
-                                                    </div>
-                                                )}
-
-                                                <div className="text-sm text-gray-500 mt-1">
-                                                    {payout.description}
+                                            )}
+                                            {payout.description && (
+                                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 text-sm">
+                                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Description</p>
+                                                    <p className="text-gray-700">{payout.description}</p>
+                                                    {payout.admin_notes && (
+                                                        <p className="text-red-600 text-xs mt-1">Note: {payout.admin_notes}</p>
+                                                    )}
                                                 </div>
-                                            </div>
-
-                                            <div className="text-right">
-                                                <div className="text-2xl font-bold text-gray-800">
-                                                    {formatCurrency(payout.amount)}
-                                                </div>
-                                                <div className="text-sm text-gray-600">
-                                                    {payout.platform_fee > 0
-                                                        ? `Platform fee: ${formatCurrency(payout.platform_fee)}`
-                                                        : 'No platform fee'
-                                                    }
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
 
-                                        <div className="mt-4 flex gap-2 justify-end">
-                                            {/* Desktop action buttons (same as before) */}
-                                            {payout.status === 'pending' && (
-                                                <>
+                                        {/* Actions */}
+                                        {(payout.status === 'pending' || payout.status === 'processing') && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {payout.status === 'pending' && (
                                                     <button
                                                         onClick={() => updatePayoutStatus(payout.id, 'processing')}
-                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                                        disabled={isProcessing}
+                                                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-50"
                                                     >
-                                                        Mark as Processing
+                                                        Mark Processing
                                                     </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            if (confirm(`Mark payout as completed and record transfer?`)) {
-                                                                updatePayoutStatus(payout.id, 'completed');
-                                                            }
-                                                        }}
-                                                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                                                    >
-                                                        Mark as Completed
-                                                    </button>
-                                                </>
-                                            )}
-                                            {payout.status === 'processing' && (
+                                                )}
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm(`Mark payout as completed?`)) {
-                                                            updatePayoutStatus(payout.id, 'completed');
-                                                        }
-                                                    }}
-                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                                    onClick={() => updatePayoutStatus(payout.id, 'completed')}
+                                                    disabled={isProcessing}
+                                                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50"
                                                 >
-                                                    Mark as Completed
+                                                    {isProcessing ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Working…
+                                                        </span>
+                                                    ) : 'Mark Completed'}
                                                 </button>
-                                            )}
-                                            {(payout.status === 'pending' || payout.status === 'processing') && (
                                                 <button
-                                                    onClick={() => {
-                                                        const reason = prompt('Reason for failure:');
-                                                        if (reason) {
-                                                            updatePayoutStatus(payout.id, 'failed');
-                                                        }
-                                                    }}
-                                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                                    onClick={() => updatePayoutStatus(payout.id, 'failed')}
+                                                    disabled={isProcessing}
+                                                    className="px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-semibold hover:bg-red-100 transition disabled:opacity-50"
                                                 >
-                                                    Mark as Failed
+                                                    Mark Failed
                                                 </button>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
+                                        {payout.status === 'completed' && (
+                                            <div className="flex items-center gap-2 text-xs text-emerald-600 font-semibold">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                Completed {payout.completed_at ? `· ${new Date(payout.completed_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                                            </div>
+                                        )}
+                                        {payout.status === 'failed' && (
+                                            <p className="text-xs text-red-600 font-semibold">Failed{payout.admin_notes ? ` — ${payout.admin_notes}` : ''}</p>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
-                    ) : (
-                        <div className="p-12 text-center">
-                            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                                <span className="text-3xl">💸</span>
-                            </div>
-                            <h3 className="text-xl font-medium text-gray-700">No Payouts Yet</h3>
-                            <p className="text-gray-500 mt-2">
-                                Switch to "Jobs Needing Payouts" tab to create payouts.
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
+                    )
+                )}
+            </div>
         </div>
     );
 };
