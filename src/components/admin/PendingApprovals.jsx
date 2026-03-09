@@ -48,6 +48,16 @@ const PendingApprovals = () => {
 
     const handleApproveCompany = async (companyId) => {
         try {
+            // Step 1: Get the company details we need for Monnify
+            const { data: company, error: fetchError } = await supabase
+                .from('companies')
+                .select('id, company_name, email')
+                .eq('id', companyId)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Step 2: Set approved = true
             const { error } = await supabase
                 .from('companies')
                 .update({ approved: true })
@@ -55,18 +65,46 @@ const PendingApprovals = () => {
 
             if (error) throw error;
 
-            // Record admin action
+            // Step 3: Record admin action
             await supabase.from('admin_actions').insert({
                 action_type: 'company_approval',
                 description: `Approved company ${companyId}`,
                 user_id: (await supabase.auth.getUser()).data.user.id
             });
 
+            // Step 4: Create Monnify reserved account (idempotent — safe to call again)
+            // This handles the case where the company signed up with approved: false
+            // and didn't get an account created at signup time.
+            try {
+                const monnifyResponse = await supabase.functions.invoke('create-monnify-account', {
+                    body: {
+                        company_id: company.id,
+                        company_name: company.company_name,
+                        email: company.email,
+                    },
+                });
+
+                if (monnifyResponse.error) {
+                    console.error('Monnify account creation failed during approval:', monnifyResponse.error);
+                    // Don't fail the approval — just warn admin
+                    alert(`✅ Company approved!\n\n⚠️ Note: Monnify virtual account creation failed. Please retry from the provider's profile or contact Monnify support.\n\nError: ${monnifyResponse.error.message}`);
+                } else if (monnifyResponse.data?.already_existed) {
+                    alert('✅ Company approved! (Monnify virtual account already existed.)');
+                } else {
+                    const acct = monnifyResponse.data?.account;
+                    alert(`✅ Company approved!\n\n🏦 Monnify Virtual Account Created:\nAccount Number: ${acct?.accountNumber}\nBank: ${acct?.bankName}`);
+                }
+            } catch (monnifyErr) {
+                console.error('Monnify error during approval:', monnifyErr);
+                alert(`✅ Company approved!\n\n⚠️ Monnify virtual account creation failed. Please retry manually.\n\nError: ${monnifyErr.message}`);
+            }
+
             // Refresh the list
             fetchPendingCompanies();
+
         } catch (error) {
             console.error('Error approving company:', error);
-            alert('Failed to approve company');
+            alert('Failed to approve company: ' + error.message);
         }
     };
 

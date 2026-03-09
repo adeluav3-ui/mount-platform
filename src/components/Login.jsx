@@ -264,7 +264,6 @@ export default function Login() {
         setLoading(true);
 
         try {
-            // Extract saved form data
             const {
                 email,
                 password,
@@ -272,57 +271,37 @@ export default function Login() {
                 address,
                 phone,
                 selectedServices,
-                selectedSubCategories, // OBJECT, not array
+                selectedSubCategories,
                 bankName,
                 bankAccount,
                 code: enteredCode,
                 companyPicture
             } = companyFormData;
 
-            console.log("=== COMPANY SIGNUP AFTER AGREEMENT ACCEPTANCE ===");
-            console.log("1. Selected Services:", selectedServices);
-
-            // Step 1: Mark code as used FIRST (before anything else)
+            // Step 1: Mark code as used FIRST
             const { error: codeUpdateError } = await supabase
                 .from('verification_codes')
                 .update({ used: true })
                 .eq('code', enteredCode);
 
-            if (codeUpdateError) {
-                console.error("Code update error:", codeUpdateError);
-                throw codeUpdateError;
-            }
-            console.log("2. Code marked as used");
+            if (codeUpdateError) throw codeUpdateError;
 
             // Step 2: Create auth user
-            console.log("3. Creating auth user...");
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: email.trim(),
                 password: password.trim(),
                 options: {
-                    data: {
-                        name: companyName,
-                        phone: phone
-                    },
+                    data: { name: companyName, phone: phone },
                     emailRedirectTo: window.location.origin + '/login?confirmed=true'
                 }
             });
 
-            if (authError) {
-                console.error("Auth error:", authError);
-                throw authError;
-            }
-
-            if (!authData.user) {
-                console.error("No user returned from auth:", authData);
-                throw new Error('User creation failed. Please try again.');
-            }
+            if (authError) throw authError;
+            if (!authData.user) throw new Error('User creation failed. Please try again.');
 
             const userId = authData.user.id;
-            console.log("4. User ID created:", userId);
 
-            // Step 3: Create profile FIRST (immediately after auth)
-            console.log("5. Creating profile...");
+            // Step 3: Create profile
             const { error: profileError } = await supabase.from('profiles').insert({
                 id: userId,
                 full_name: companyName,
@@ -332,65 +311,46 @@ export default function Login() {
                 updated_at: new Date().toISOString()
             });
 
-            if (profileError) {
-                console.error("Profile insert error:", profileError);
-                throw profileError;
-            }
-            console.log("6. Profile inserted successfully");
+            if (profileError) throw profileError;
 
-            // Step 4: Wait to ensure profile is committed
             await new Promise(resolve => setTimeout(resolve, 1000));
 
+            // Step 4: Upload picture
             let pictureUrl = null;
-
-            // Step 5: Upload picture (AFTER profile is created)
             if (companyPicture) {
-                console.log("7. Uploading company picture...");
                 const fileExt = companyPicture.name.split('.').pop();
                 const fileName = `${userId}/profile.${fileExt}`;
-
                 const { error: uploadError } = await supabase.storage
                     .from('company-pictures')
                     .upload(fileName, companyPicture, { upsert: true });
 
-                if (uploadError) {
-                    console.error("Picture upload error:", uploadError);
-                    // Don't throw - just continue without picture
-                    console.warn("Continuing without company picture");
-                } else {
+                if (!uploadError) {
                     const { data: urlData } = supabase.storage
                         .from('company-pictures')
                         .getPublicUrl(fileName);
                     pictureUrl = urlData.publicUrl;
-                    console.log("8. Picture uploaded:", pictureUrl);
                 }
             }
 
-            // Step 6: Create subcategory_prices object
+            // Step 5: Build subcategory_prices
             const subcategory_prices = {};
-
             if (selectedSubCategories && typeof selectedSubCategories === 'object') {
                 Object.entries(selectedSubCategories).forEach(([mainCategory, subCats]) => {
                     if (subCats && Array.isArray(subCats)) {
-                        subCats.forEach(subCat => {
-                            subcategory_prices[subCat] = "TBD";
-                        });
+                        subCats.forEach(subCat => { subcategory_prices[subCat] = "TBD"; });
                     }
                 });
             }
 
-            console.log("9. Subcategory prices to save:", subcategory_prices);
-
-            // Step 7: FINALLY create company record
-            console.log("10. Inserting into companies table...");
+            // Step 6: Insert company record
             const { error: companyInsertError } = await supabase.from('companies').insert({
                 id: userId,
                 company_name: companyName,
                 address: address,
                 phone: phone,
                 email: email,
-                services: selectedServices, // Main categories array
-                subcategory_prices: subcategory_prices, // Subcategories object
+                services: selectedServices,
+                subcategory_prices: subcategory_prices,
                 bank_name: bankName,
                 bank_account: bankAccount,
                 approved: true,
@@ -401,11 +361,32 @@ export default function Login() {
                 created_at: new Date().toISOString()
             });
 
-            if (companyInsertError) {
-                console.error("Company insert error:", companyInsertError);
-                throw companyInsertError;
+            if (companyInsertError) throw companyInsertError;
+
+            // ── Step 7: Create Monnify reserved account ───────────────────────────
+            // Fire and forget — don't block signup if Monnify is slow or down.
+            // Account creation is idempotent so it can be retried safely later.
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                const monnifyResponse = await supabase.functions.invoke('create-monnify-account', {
+                    body: {
+                        company_id: userId,
+                        company_name: companyName,
+                        email: email,
+                    },
+                });
+
+                if (monnifyResponse.error) {
+                    // Log but don't fail signup — account can be created manually later
+                    console.error('Monnify account creation failed (non-blocking):', monnifyResponse.error);
+                } else {
+                    console.log('Monnify virtual account created:', monnifyResponse.data?.account?.accountNumber);
+                }
+            } catch (monnifyErr) {
+                // Non-blocking — signup succeeds even if Monnify is unreachable
+                console.error('Monnify account creation error (non-blocking):', monnifyErr);
             }
-            console.log("11. Company inserted successfully");
+            // ─────────────────────────────────────────────────────────────────────
 
             alert('✅ Company created successfully! Agreement accepted. You can now log in.');
 
@@ -416,6 +397,7 @@ export default function Login() {
             setLoading(false);
         }
     };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -936,7 +918,7 @@ export default function Login() {
                         </button>
                     </form>
                     {/* Divider */}
-                    {/*<div className="relative my-8">
+                    <div className="relative my-8">
                         <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-gray-300"></div>
                         </div>
