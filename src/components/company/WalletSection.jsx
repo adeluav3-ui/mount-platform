@@ -36,7 +36,8 @@ const WithdrawModal = ({ wallet, company, onClose, onSuccess, supabase, user }) 
 
         setSubmitting(true);
         try {
-            const { error: insertError } = await supabase
+            // Insert withdrawal request
+            const { data: withdrawal, error: insertError } = await supabase
                 .from('withdrawal_requests')
                 .insert({
                     company_id: user.id,
@@ -45,20 +46,33 @@ const WithdrawModal = ({ wallet, company, onClose, onSuccess, supabase, user }) 
                     bank_name: company.bank_name || '',
                     bank_account: company.bank_account || '',
                     account_name: company.account_name || company.company_name || '',
-                });
+                })
+                .select()
+                .single();
 
             if (insertError) throw insertError;
 
-            // Notify admin
-            await supabase.from('notifications').insert({
-                user_id: user.id,
-                type: 'withdrawal_requested',
-                title: 'Withdrawal Request Submitted',
-                message: `Your withdrawal request of ${fmt(amt)} has been submitted and will be processed within 24–48 hours.`,
-                read: false,
-            });
+            // Call edge function to process immediately
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-withdrawal`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ withdrawal_request_id: withdrawal.id }),
+                }
+            );
 
-            onSuccess();
+            const result = await response.json();
+
+            if (result.success) {
+                onSuccess('completed');
+            } else {
+                onSuccess('failed', result.error);
+            }
         } catch (err) {
             console.error('Withdrawal error:', err);
             setError('Failed to submit request. Please try again.');
@@ -228,11 +242,15 @@ export default function WalletSection({ company }) {
         return () => supabase.removeChannel(channel);
     }, [user, supabase, loadWallet]);
 
-    const handleWithdrawSuccess = () => {
+    const handleWithdrawSuccess = (status, errorMsg) => {
         setShowModal(false);
-        setSuccessMsg('Withdrawal request submitted! Funds will arrive within 24–48 hours.');
+        if (status === 'completed') {
+            setSuccessMsg('Withdrawal successful! Funds are on their way to your bank account.');
+        } else {
+            setSuccessMsg(`Withdrawal could not be processed: ${errorMsg}. Your balance has been restored.`);
+        }
         loadWallet();
-        setTimeout(() => setSuccessMsg(''), 6000);
+        setTimeout(() => setSuccessMsg(''), 8000);
     };
 
     if (loading) {
@@ -349,8 +367,8 @@ export default function WalletSection({ company }) {
                             <div key={w.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition">
                                 <div className="flex items-center gap-4">
                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${w.status === 'completed' ? 'bg-green-100' :
-                                            w.status === 'pending' ? 'bg-yellow-100' :
-                                                w.status === 'processing' ? 'bg-blue-100' : 'bg-red-100'
+                                        w.status === 'pending' ? 'bg-yellow-100' :
+                                            w.status === 'processing' ? 'bg-blue-100' : 'bg-red-100'
                                         }`}>
                                         {w.status === 'completed' ? '✅' :
                                             w.status === 'pending' ? '⏳' :
