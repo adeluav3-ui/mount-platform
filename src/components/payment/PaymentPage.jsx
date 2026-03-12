@@ -211,10 +211,10 @@ const PaymentPage = () => {
             };
 
             if (transactionId) {
-                const { data, error: updateError } = await supabase
+                const { error: updateError } = await supabase
                     .from('financial_transactions')
                     .update({ ...paymentData, id: transactionId })
-                    .eq('id', transactionId).select().single();
+                    .eq('id', transactionId);
                 if (updateError) throw new Error(`Failed to update payment: ${updateError.message}`);
             } else {
                 const { data, error: insertError } = await supabase
