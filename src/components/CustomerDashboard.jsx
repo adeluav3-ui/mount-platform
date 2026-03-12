@@ -12,6 +12,7 @@ import VerificationModal from './VerificationModal';
 import OnboardingGuide from './onboarding/OnboardingGuide';
 import HelpCenter from './onboarding/HelpCenter';
 import ChatModal from './chat/ChatModal';
+import CustomerProfile from './CustomerProfile';
 import { useMessaging } from '../context/MessagingContext.jsx';
 
 // --- Icons (using Tailwind's recommended Heroicons) ---
@@ -651,6 +652,16 @@ export default function CustomerDashboard() {
                             <span className="hidden sm:inline">My Jobs</span>
                         </button>
 
+                        <button
+                            onClick={() => setViewWithHistory('profile')}
+                            className={`font-medium px-3 sm:px-4 py-2 rounded-full transition ${currentView === 'profile'
+                                    ? 'bg-white text-naijaGreen'
+                                    : 'text-white hover:bg-white/20'
+                                }`}
+                        >
+                            <span className="sm:hidden">👤</span>
+                            <span className="hidden sm:inline">Profile</span>
+                        </button>
                         {/* Notification Bell Button - NO BADGE */}
                         <button
                             onClick={() => {
@@ -724,6 +735,14 @@ export default function CustomerDashboard() {
 
                 {currentView === 'myJobs' && renderMyJobs()}
 
+                {currentView === 'profile' && (
+                    <CustomerProfile
+                        user={user}
+                        supabase={supabase}
+                        setViewWithHistory={setViewWithHistory}
+                    />
+                )}
+
                 {currentView === 'notifications' && (
                     <CustomerNotifications
                         user={user}
@@ -763,6 +782,16 @@ export default function CustomerDashboard() {
                         </button>
 
                         <button
+                            onClick={() => setViewWithHistory('profile')}
+                            className={`flex flex-col items-center gap-1 ${currentView === 'profile' ? 'text-naijaGreen' : 'text-gray-600'}`}
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-xs">Profile</span>
+                        </button>
+
+                        <button
                             onClick={() => setViewWithHistory('postJob')}
                             className={`flex flex-col items-center gap-1 ${currentView === 'postJob' ? 'text-naijaGreen' : 'text-gray-600'}`}
                         >
@@ -771,7 +800,6 @@ export default function CustomerDashboard() {
                             </svg>
                             <span className="text-xs">Post Job</span>
                         </button>
-                        {/* Add to mobile navigation (after Post Job button) */}
                         <button
                             onClick={() => setShowHelpCenter(true)}
                             className={`flex flex-col items-center gap-1 ${currentView === 'help' ? 'text-naijaGreen' : 'text-gray-600'}`}
