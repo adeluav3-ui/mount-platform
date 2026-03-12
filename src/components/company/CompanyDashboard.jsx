@@ -7,6 +7,7 @@ import JobsSection from './JobsSection'
 import logo from '../../assets/logo.png';
 import TelegramSetupGuide from './TelegramSetupGuide';
 import ChatModal from '../chat/ChatModal';
+import WalletSection from './WalletSection';
 import { useMessaging } from '../../context/MessagingContext.jsx';
 
 export default function CompanyDashboard() {
@@ -1311,6 +1312,15 @@ export default function CompanyDashboard() {
               )}
             </button>
             <button
+              onClick={() => setActivePanel('wallet')}
+              className={`px-4 py-3 font-medium text-sm transition-colors relative ${activePanel === 'wallet'
+                ? 'text-naijaGreen border-b-2 border-naijaGreen'
+                : 'text-gray-500 hover:text-gray-700'
+                }`}
+            >
+              Wallet
+            </button>
+            <button
               onClick={() => setShowChat(true)}
               className="relative p-2 text-gray-600 hover:text-naijaGreen hover:bg-gray-100 rounded-full transition"
             >
@@ -1602,6 +1612,9 @@ export default function CompanyDashboard() {
                 )}
               </div>
             )}
+            {activePanel === 'wallet' && (
+              <WalletSection company={company} />
+            )}
           </>
         )}
       </main>
@@ -1609,7 +1622,6 @@ export default function CompanyDashboard() {
         isOpen={showChat}
         onClose={() => {
           setShowChat(false);
-          // Just force hide the dot, don't check again
           forceHideDot();
         }}
         currentUserId={user?.id}
