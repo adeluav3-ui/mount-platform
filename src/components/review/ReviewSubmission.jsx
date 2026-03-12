@@ -195,9 +195,8 @@ const ReviewSubmission = () => {
                     review_id: review.id,
                     customer_rating: rating,
                     customer_review: comment.trim(),
-                    reviewed: true,  // ← This should be lowercase true
+                    reviewed: true,
                     completion_date: new Date().toISOString(),
-                    payment_verified: true,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', jobId);
