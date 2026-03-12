@@ -87,6 +87,7 @@ export default function CustomerDashboard() {
     const [showRedDot, setShowRedDot] = useState(false);
     const [showVideoTutorial, setShowVideoTutorial] = useState(false);
     const [showHelpCenter, setShowHelpCenter] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     const [currentView, setCurrentView] = useState('dashboard');
 
@@ -307,9 +308,9 @@ export default function CustomerDashboard() {
         };
     }, [user, supabase, currentView]);
 
-    // Custom setView function
     const setViewWithHistory = (view) => {
         setCurrentView(view);
+        setShowMobileMenu(false);
     };
 
     // Fetch user name AND verification data
@@ -628,57 +629,93 @@ export default function CustomerDashboard() {
                         )}
                     </button>
                     <div className="flex items-center gap-3 sm:gap-6">
-                        {/* Help/Tutorial Button - Add this HERE */}
-                        {/* Help Button in top navigation */}
-                        <button
-                            onClick={() => setShowHelpCenter(true)}
-                            className="p-2 text-white hover:text-yellow-300 transition hidden sm:block"
-                            title="Help Center"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </button>
-                        <button
-                            onClick={() => {
-                                setViewWithHistory('myJobs');
-                            }}
-                            className={`font-medium px-3 sm:px-4 py-2 rounded-full transition ${currentView === 'myJobs'
-                                ? 'bg-white text-naijaGreen'
-                                : 'text-white hover:bg-white/20'
-                                }`}
-                        >
-                            <span className="sm:hidden">📋</span>
-                            <span className="hidden sm:inline">My Jobs</span>
-                        </button>
+                        {/* Desktop nav - hidden on mobile */}
+                        <div className="hidden sm:flex items-center gap-6">
+                            <button
+                                onClick={() => setShowHelpCenter(true)}
+                                className="p-2 text-white hover:text-yellow-300 transition"
+                                title="Help Center"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </button>
+                            <button
+                                onClick={() => setViewWithHistory('myJobs')}
+                                className={`font-medium px-4 py-2 rounded-full transition ${currentView === 'myJobs' ? 'bg-white text-naijaGreen' : 'text-white hover:bg-white/20'}`}
+                            >
+                                My Jobs
+                            </button>
+                            <button
+                                onClick={() => setViewWithHistory('profile')}
+                                className={`font-medium px-4 py-2 rounded-full transition ${currentView === 'profile' ? 'bg-white text-naijaGreen' : 'text-white hover:bg-white/20'}`}
+                            >
+                                Profile
+                            </button>
+                            <button
+                                onClick={() => setViewWithHistory('notifications')}
+                                className="p-2 text-white hover:text-yellow-300 transition"
+                            >
+                                <BellIcon className="w-7 h-7" />
+                            </button>
+                            <button
+                                onClick={signOut}
+                                className="bg-white text-naijaGreen font-bold px-4 py-2 rounded-full hover:bg-gray-100 transition text-sm"
+                            >
+                                Log Out
+                            </button>
+                        </div>
 
-                        <button
-                            onClick={() => setViewWithHistory('profile')}
-                            className={`font-medium px-3 sm:px-4 py-2 rounded-full transition ${currentView === 'profile'
-                                    ? 'bg-white text-naijaGreen'
-                                    : 'text-white hover:bg-white/20'
-                                }`}
-                        >
-                            <span className="sm:hidden">👤</span>
-                            <span className="hidden sm:inline">Profile</span>
-                        </button>
-                        {/* Notification Bell Button - NO BADGE */}
-                        <button
-                            onClick={() => {
-                                setViewWithHistory('notifications');
-                            }}
-                            className="p-2 text-white hover:text-yellow-300 transition"
-                        >
-                            <BellIcon className="w-6 sm:w-7 h-6 sm:h-7" />
-                        </button>
-
-                        <button
-                            onClick={signOut}
-                            className="bg-white text-naijaGreen font-bold px-3 sm:px-4 py-2 rounded-full hover:bg-gray-100 transition text-sm sm:text-base"
-                        >
-                            Log Out
-                        </button>
+                        {/* Mobile - bell + hamburger only */}
+                        <div className="flex sm:hidden items-center gap-2">
+                            <button
+                                onClick={() => setViewWithHistory('notifications')}
+                                className="p-2 text-white hover:text-yellow-300 transition"
+                            >
+                                <BellIcon className="w-6 h-6" />
+                            </button>
+                            <button
+                                onClick={() => setShowMobileMenu(prev => !prev)}
+                                className="p-2 text-white hover:text-yellow-300 transition"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
+
+                    {/* Mobile dropdown menu */}
+                    {showMobileMenu && (
+                        <div className="sm:hidden absolute top-16 right-0 left-0 bg-naijaGreen border-t border-white/20 shadow-xl z-50">
+                            {[
+                                { label: '🏠 Dashboard', view: 'dashboard' },
+                                { label: '📋 My Jobs', view: 'myJobs' },
+                                { label: '👤 Profile', view: 'profile' },
+                                { label: '🔔 Notifications', view: 'notifications' },
+                                { label: '📝 Post Job', view: 'postJob' },
+                                { label: '❓ Help', action: () => setShowHelpCenter(true) },
+                            ].map(item => (
+                                <button
+                                    key={item.label}
+                                    onClick={() => {
+                                        if (item.action) item.action();
+                                        else setViewWithHistory(item.view);
+                                        setShowMobileMenu(false);
+                                    }}
+                                    className={`w-full text-left px-6 py-4 text-white font-medium hover:bg-white/10 transition border-b border-white/10 ${currentView === item.view ? 'bg-white/20' : ''}`}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                            <button
+                                onClick={signOut}
+                                className="w-full text-left px-6 py-4 text-red-300 font-medium hover:bg-white/10 transition"
+                            >
+                                🚪 Log Out
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
