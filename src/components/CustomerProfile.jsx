@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 import VerificationModal from './VerificationModal';
 
-const PAYSTACK_PUBLIC_KEY = 'pk_test_535c52d3bb40d34bd34aba8b4db32bcc29db5b1f';
+const PAYSTACK_PUBLIC_KEY = 'pk_live_0d70846f234f0d4d3861698734950048b58f2764';
 
 const PLANS = [
     {
