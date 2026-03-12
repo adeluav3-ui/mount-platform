@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 import VerificationModal from './VerificationModal';
 
-const PAYSTACK_PUBLIC_KEY = 'pk_live_0d70846f234f0d4d3861698734950048b58f2764';
+const PAYSTACK_PUBLIC_KEY = 'pk_test_535c52d3bb40d34bd34aba8b4db32bcc29db5b1f';
 
 const PLANS = [
     {
@@ -11,7 +11,7 @@ const PLANS = [
         name: 'Logistics',
         monthlyPrice: 5000,
         yearlyPrice: 57000,
-        planIdMonthly: 'PLN_3tdtvb132thk1hr',
+        planIdMonthly: 'PLN_32rwu4fudk5yl1z',
         planIdYearly: null, // yearly is one-time charge
         color: 'from-blue-500 to-blue-600',
         badge: '🚚',
@@ -23,7 +23,7 @@ const PLANS = [
         name: 'Basic',
         monthlyPrice: 15000,
         yearlyPrice: 171000,
-        planIdMonthly: 'PLN_2iwog9z6h8jgbzt',
+        planIdMonthly: 'PLN_h0pvuhhdtinof53',
         planIdYearly: null,
         color: 'from-gray-500 to-gray-600',
         badge: '⚡',
@@ -34,7 +34,7 @@ const PLANS = [
         name: 'Standard',
         monthlyPrice: 25000,
         yearlyPrice: 285000,
-        planIdMonthly: 'PLN_746nl7acl3cs1sy',
+        planIdMonthly: 'PLN_6x6uirl9g69w52k',
         planIdYearly: null,
         color: 'from-naijaGreen to-darkGreen',
         badge: '🌟',
@@ -46,7 +46,7 @@ const PLANS = [
         name: 'Premium',
         monthlyPrice: 50000,
         yearlyPrice: 570000,
-        planIdMonthly: 'PLN_5l5rozwz1c2zour',
+        planIdMonthly: 'PLN_bqietirrn2omu3p',
         planIdYearly: null,
         color: 'from-amber-500 to-amber-600',
         badge: '👑',
@@ -553,8 +553,8 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
 
                     {/* Payment method notice */}
                     <div className={`mb-4 px-3 py-2.5 rounded-lg text-xs flex items-center gap-2 ${billingCycle === 'monthly'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                            : 'bg-green-50 text-green-700 border border-green-100'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                        : 'bg-green-50 text-green-700 border border-green-100'
                         }`}>
                         {billingCycle === 'monthly' ? (
                             <>
