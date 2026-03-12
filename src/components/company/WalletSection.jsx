@@ -403,7 +403,7 @@ export default function WalletSection({ company }) {
                 <span className="text-blue-500 text-lg flex-shrink-0">ℹ️</span>
                 <div className="text-sm text-blue-700">
                     <p className="font-medium mb-1">About Withdrawals</p>
-                    <p>Withdrawal requests are processed within 24–48 hours. Funds are sent directly to your linked bank account. Commission (5%) is deducted from final payments only — deposits and intermediate payments are credited in full.</p>
+                    <p>Withdrawal requests are processed within 24 hours. Funds below 100k will be processed in under an hour. Funds are sent directly to your linked bank account. Commission (5%) is deducted from final payments only — deposits and intermediate payments are credited in full.</p>
                 </div>
             </div>
 

@@ -35,14 +35,19 @@ async function getMonnifyToken(): Promise<string> {
 }
 
 // Get bank code from bank name using Monnify banks list
+// Replace the getBankCode function with this:
 async function getBankCode(token: string, bankName: string): Promise<string | null> {
-    const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/sdk/transactions/banks`, {
+    const response = await fetch(`${MONNIFY_BASE_URL}/api/v1/banks`, {
         headers: { 'Authorization': `Bearer ${token}` },
     })
     const data = await response.json()
     if (!data.requestSuccessful) return null
 
     const banks: Array<{ name: string; code: string }> = data.responseBody
+
+    // Log all banks for debugging
+    console.log('Available banks:', banks.map(b => b.name).join(', '))
+
     const match = banks.find(b =>
         b.name.toLowerCase().includes(bankName.toLowerCase()) ||
         bankName.toLowerCase().includes(b.name.toLowerCase())
