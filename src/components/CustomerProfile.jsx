@@ -268,17 +268,20 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
     };
 
     const handlePaystackCheckout = (plan) => {
-        const amount = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
-        const planId = plan.planIdMonthly; // monthly recurring; yearly handled separately
+        const isYearly = billingCycle === 'yearly';
+        const amount = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
 
-        // Load Paystack inline
         const handler = window.PaystackPop.setup({
             key: PAYSTACK_PUBLIC_KEY,
             email: user.email,
             amount: amount * 100, // kobo
             currency: 'NGN',
-            plan: billingCycle === 'monthly' ? planId : undefined,
-            // For yearly: one-time charge, no plan
+            // Monthly: pass plan code → Paystack handles recurring, card only
+            // Yearly: no plan code → one-time charge, transfer allowed
+            plan: isYearly ? undefined : plan.planIdMonthly,
+            channels: isYearly
+                ? ['card', 'bank_transfer', 'ussd', 'bank']  // all channels for yearly
+                : ['card'], // card only for monthly recurring
             metadata: {
                 custom_fields: [
                     { display_name: 'Plan', variable_name: 'plan', value: plan.name },
@@ -288,7 +291,6 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
             },
             callback: (response) => {
                 console.log('Paystack payment successful:', response.reference);
-                // Webhook will handle subscription creation
                 setSaveMsg('Payment successful! Your plan will activate shortly.');
                 setTimeout(() => setSaveMsg(''), 6000);
                 loadData();
@@ -547,6 +549,24 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                                 <span className="ml-1 text-naijaGreen">−5%</span>
                             </button>
                         </div>
+                    </div>
+
+                    {/* Payment method notice */}
+                    <div className={`mb-4 px-3 py-2.5 rounded-lg text-xs flex items-center gap-2 ${billingCycle === 'monthly'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                            : 'bg-green-50 text-green-700 border border-green-100'
+                        }`}>
+                        {billingCycle === 'monthly' ? (
+                            <>
+                                <span>💳</span>
+                                <span><strong>Card payment only</strong> — monthly plans are automatically renewed via your debit/credit card</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>🏦</span>
+                                <span><strong>Card or bank transfer</strong> — yearly plans are a one-time charge, you'll be reminded to renew before expiry</span>
+                            </>
+                        )}
                     </div>
 
                     {/* Plan cards */}
