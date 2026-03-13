@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 import VerificationModal from './VerificationModal';
 
-const PAYSTACK_PUBLIC_KEY = 'pk_live_0d70846f234f0d4d3861698734950048b58f2764';
+const PAYSTACK_PUBLIC_KEY = 'pk_test_535c52d3bb40d34bd34aba8b4db32bcc29db5b1f';
 
 const PLANS = [
     {
@@ -11,7 +11,7 @@ const PLANS = [
         name: 'Logistics',
         monthlyPrice: 5000,
         yearlyPrice: 57000,
-        planIdMonthly: 'PLN_3tdtvb132thk1hr',
+        planIdMonthly: 'PLN_32rwu4fudk5yl1z',
         planIdYearly: null,
         color: 'from-blue-500 to-blue-600',
         badge: '🚚',
@@ -23,7 +23,7 @@ const PLANS = [
         name: 'Basic',
         monthlyPrice: 15000,
         yearlyPrice: 171000,
-        planIdMonthly: 'PLN_2iwog9z6h8jgbzt',
+        planIdMonthly: 'PLN_h0pvuhhdtinof53',
         planIdYearly: null,
         color: 'from-gray-500 to-gray-600',
         badge: '⚡',
@@ -34,7 +34,7 @@ const PLANS = [
         name: 'Standard',
         monthlyPrice: 25000,
         yearlyPrice: 285000,
-        planIdMonthly: 'PLN_746nl7acl3cs1sy',
+        planIdMonthly: 'PLN_6x6uirl9g69w52k',
         planIdYearly: null,
         color: 'from-naijaGreen to-darkGreen',
         badge: '🌟',
@@ -46,7 +46,7 @@ const PLANS = [
         name: 'Premium',
         monthlyPrice: 50000,
         yearlyPrice: 570000,
-        planIdMonthly: 'PLN_5l5rozwz1c2zour',
+        planIdMonthly: 'PLN_bqietirrn2omu3p',
         planIdYearly: null,
         color: 'from-amber-500 to-amber-600',
         badge: '👑',
@@ -321,6 +321,184 @@ function LeaderboardModal({ onClose, currentUserId, supabase, myRank, myTotalJob
     );
 }
 
+// ─── Subscription Terms Modal ─────────────────────────────────────────────────
+function SubscriptionTermsModal({ plan, billingCycle, onAccept, onDecline }) {
+    const fmt = (n) => `₦${parseFloat(n || 0).toLocaleString()}`;
+    const price = billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+    const CREDIT_RATE = 0.9;
+    const monthlyCredit = plan.monthlyPrice * CREDIT_RATE;
+    const mountFee = plan.monthlyPrice * 0.1;
+    const hasSPPlus = ['basic', 'standard', 'premium'].includes(plan.key);
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+            <div className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] flex flex-col overflow-hidden">
+
+                {/* Header */}
+                <div className="bg-gradient-to-r from-gray-900 to-gray-800 px-6 py-5 shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-bold text-white">Before You Subscribe</h3>
+                            <p className="text-gray-400 text-sm mt-0.5">Please read and agree to continue</p>
+                        </div>
+                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center text-xl shrink-0`}>
+                            {plan.badge}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Scrollable body */}
+                <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+                    {/* Plan summary */}
+                    <div className="bg-gray-50 rounded-2xl p-4 flex items-center justify-between">
+                        <div>
+                            <p className="font-bold text-gray-900">{plan.name} Plan</p>
+                            <p className="text-xs text-gray-500 capitalize mt-0.5">{billingCycle} billing</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xl font-bold text-gray-900">{fmt(price)}</p>
+                            <p className="text-xs text-gray-400">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</p>
+                        </div>
+                    </div>
+
+                    {/* Section 1: Credit wallet breakdown */}
+                    <div className="space-y-2.5">
+                        <p className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                            How Your Credit Wallet Works
+                        </p>
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 space-y-3 text-sm">
+                            <p className="text-gray-700 leading-relaxed">
+                                Each billing cycle, your subscription fee is split between Mount and your credit wallet:
+                            </p>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5">
+                                    <span className="text-gray-600">Mount service fee (10%)</span>
+                                    <span className="font-bold text-gray-800">{fmt(mountFee)}</span>
+                                </div>
+                                <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5">
+                                    <span className="text-gray-600">Your credit wallet (90%)</span>
+                                    <span className="font-bold text-indigo-700">{fmt(monthlyCredit)}</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Credit is added to your wallet every month and can be used to offset job payments on Mount.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Section 2: Credit allowance structure */}
+                    <div className="space-y-2.5">
+                        <p className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            <span className="w-6 h-6 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                            Monthly Credit Allowance Structure
+                        </p>
+                        <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 space-y-3 text-sm">
+                            <p className="text-gray-700 leading-relaxed">
+                                To ensure fair usage, only a portion of your credit wallet is usable at any given time within each billing cycle:
+                            </p>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">Days 1 – 14</p>
+                                        <p className="text-xs text-gray-500">First half of the month</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-amber-700">50% usable</p>
+                                        <p className="text-xs text-gray-500">{fmt(monthlyCredit * 0.5)} available</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2.5">
+                                    <div>
+                                        <p className="font-semibold text-gray-800">Days 15 – End</p>
+                                        <p className="text-xs text-gray-500">Second half of the month</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-green-700">70% usable</p>
+                                        <p className="text-xs text-gray-500">{fmt(monthlyCredit * 0.7)} available</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                Unused credit rolls over indefinitely — it never expires. A full override of these caps requires admin approval. Contact support to request one.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Section 3: Service Providers+ notice (only if applicable) */}
+                    {hasSPPlus && (
+                        <div className="space-y-2.5">
+                            <p className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                                <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                                Service Providers+ Payments
+                            </p>
+                            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 text-sm text-gray-700 leading-relaxed">
+                                <p>
+                                    Your plan includes access to <strong>Service Providers+</strong> — our exclusive directory of verified professionals beyond home services.
+                                </p>
+                                <p className="mt-2 text-purple-700 font-medium">
+                                    ⚠️ Please note: At this time, credit wallet funds cannot be used to pay for Service Providers+ bookings. This feature is on our roadmap and will be enabled in a future update.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Section 4: No refunds */}
+                    <div className="space-y-2.5">
+                        <p className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            <span className={`w-6 h-6 bg-red-100 text-red-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0`}>{hasSPPlus ? '4' : '3'}</span>
+                            Refund Policy
+                        </p>
+                        <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-gray-700 leading-relaxed">
+                            <p>
+                                <strong>Subscription payments are non-refundable.</strong> Once a payment is processed, it cannot be reversed or refunded under any circumstances.
+                            </p>
+                            <p className="mt-2">
+                                If you are unsatisfied with what Mount offers, you may <strong>cancel your subscription at any time</strong> by reaching out to our customer care team. Cancellation takes effect at the end of your current billing period.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Section 5: Support */}
+                    <div className="space-y-2.5">
+                        <p className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                            <span className={`w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold shrink-0`}>{hasSPPlus ? '5' : '4'}</span>
+                            Need Help?
+                        </p>
+                        <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-sm text-gray-700 space-y-2">
+                            <p>Our customer support team is available to help with subscription changes, cancellations, credit queries, and anything else.</p>
+                            <p className="font-medium text-green-800">
+                                📞 Call, text, or email us via the <strong>Help Center</strong> in the app — we're always reachable.
+                            </p>
+                        </div>
+                    </div>
+
+                    <p className="text-xs text-gray-400 text-center pb-1">
+                        By tapping "I Agree & Continue", you confirm that you have read, understood, and accepted these terms.
+                    </p>
+                </div>
+
+                {/* Footer buttons */}
+                <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row gap-3 shrink-0 bg-white">
+                    <button
+                        onClick={onDecline}
+                        className="flex-1 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition text-sm"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onAccept}
+                        className={`flex-1 py-3 bg-gradient-to-r ${plan.color} text-white rounded-xl font-bold hover:opacity-90 transition text-sm shadow-lg`}
+                    >
+                        I Agree & Continue
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function CustomerProfile({ user, supabase, setViewWithHistory }) {
     const [customer, setCustomer] = useState(null);
@@ -338,6 +516,7 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [showServiceProvidersPlus, setShowServiceProvidersPlus] = useState(false);
     const [myRank, setMyRank] = useState(null);
+    const [pendingPlan, setPendingPlan] = useState(null); // plan awaiting terms acceptance
 
     const loadData = useCallback(async () => {
         if (!user) return;
@@ -420,6 +599,22 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
             onClose: () => { },
         });
         handler.openIframe();
+    };
+
+    // Show terms modal first — only proceed to Paystack after acceptance
+    const handleSubscribeClick = (plan) => {
+        if (subscription?.plan === plan.key) return;
+        setPendingPlan(plan);
+    };
+
+    const handleTermsAccept = () => {
+        const plan = pendingPlan;
+        setPendingPlan(null);
+        handlePaystackCheckout(plan);
+    };
+
+    const handleTermsDecline = () => {
+        setPendingPlan(null);
     };
 
     // Access: basic, standard, premium only
@@ -705,7 +900,7 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                                         ))}
                                     </div>
                                     <button
-                                        onClick={() => !isActive && handlePaystackCheckout(plan)}
+                                        onClick={() => !isActive && handleSubscribeClick(plan)}
                                         disabled={isActive}
                                         className={`mt-3 w-full py-2.5 rounded-xl text-sm font-semibold transition ${isActive ? 'bg-green-100 text-green-700 cursor-default' : `bg-gradient-to-r ${plan.color} text-white hover:opacity-90`}`}
                                     >
@@ -719,6 +914,15 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
             </div>
 
             {/* ── Modals ── */}
+            {pendingPlan && (
+                <SubscriptionTermsModal
+                    plan={pendingPlan}
+                    billingCycle={billingCycle}
+                    onAccept={handleTermsAccept}
+                    onDecline={handleTermsDecline}
+                />
+            )}
+
             {showServiceProvidersPlus && (
                 <ServiceProvidersPlusModal
                     onClose={() => setShowServiceProvidersPlus(false)}
