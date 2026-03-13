@@ -1,20 +1,19 @@
 // supabase/functions/monnify-webhook/index.ts
 // Handles incoming Monnify payment notifications for Mount.
 //
-// ACTUAL JOB STATUS FLOW:
+// PAYMENT GATEWAY FLOW (new):
+//   Reference format: MT-{jobId8}-{typeCode}-{companyId8}-{timestamp6}
+//   typeCode: D=deposit, I=intermediate, F=final_payment
+//   Webhook parses reference → finds job + company → credits wallet
+//
+// JOB STATUS FLOW:
 //   price_set        → deposit paid      → deposit_paid
 //   work_ongoing     → intermediate paid → intermediate_paid
 //   work_completed   → final paid        → completed
 //   work_rectified   → final paid        → completed
 //
-// COMMISSION:
-//   5% of quoted_price deducted from FINAL payment only.
-//
-// CREDIT WALLET:
-//   If customer used credit, the pending financial_transaction row
-//   will have metadata.credit_used > 0.
-//   Webhook reads this, deducts from credit_wallets, and credits
-//   provider with full amount (cash + credit), minus commission.
+// COMMISSION: 5% of quoted_price on FINAL payment only.
+// CREDIT WALLET: reads metadata.credit_used from pending transaction.
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -24,7 +23,18 @@ const MONNIFY_SECRET_KEY = Deno.env.get('MONNIFY_SECRET_KEY')!
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-// ── Signature verification ────────────────────────────────────────────────────
+const TYPE_CODE_MAP: Record<string, 'deposit' | 'intermediate' | 'final_payment'> = {
+    D: 'deposit',
+    I: 'intermediate',
+    F: 'final_payment',
+}
+
+const NEXT_STATUS_MAP: Record<string, string> = {
+    deposit: 'deposit_paid',
+    intermediate: 'intermediate_paid',
+    final_payment: 'completed',
+}
+
 function verifySignature(rawBody: string, signature: string): boolean {
     try {
         const computed = createHmac('sha512', MONNIFY_SECRET_KEY)
@@ -36,24 +46,20 @@ function verifySignature(rawBody: string, signature: string): boolean {
     }
 }
 
-// ── Determine payment type from job status ────────────────────────────────────
-function determinePaymentType(
-    jobStatus: string
-): { type: 'deposit' | 'intermediate' | 'final_payment'; nextStatus: string } | null {
-    switch (jobStatus) {
-        case 'price_set':
-            return { type: 'deposit', nextStatus: 'deposit_paid' }
-        case 'work_ongoing':
-            return { type: 'intermediate', nextStatus: 'intermediate_paid' }
-        case 'work_completed':
-        case 'work_rectified':
-            return { type: 'final_payment', nextStatus: 'completed' }
-        default:
-            return null
-    }
+function parseReference(ref: string): {
+    jobIdPrefix: string
+    paymentType: 'deposit' | 'intermediate' | 'final_payment'
+    companyIdPrefix: string
+} | null {
+    if (!ref || !ref.startsWith('MT-')) return null
+    const parts = ref.split('-')
+    if (parts.length !== 5) return null
+    const [, jobIdPrefix, typeCode, companyIdPrefix] = parts
+    const paymentType = TYPE_CODE_MAP[typeCode]
+    if (!paymentType || !jobIdPrefix || !companyIdPrefix) return null
+    return { jobIdPrefix, paymentType, companyIdPrefix }
 }
 
-// ── Main handler ──────────────────────────────────────────────────────────────
 serve(async (req) => {
     if (req.method !== 'POST') {
         return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
@@ -82,94 +88,85 @@ serve(async (req) => {
         return new Response(JSON.stringify({ received: true }), { status: 200 })
     }
 
-    if (eventData?.product?.type !== 'RESERVED_ACCOUNT') {
-        console.log(`Ignoring product type: ${eventData?.product?.type}`)
-        return new Response(JSON.stringify({ received: true }), { status: 200 })
-    }
-
     if (eventData?.paymentStatus !== 'PAID') {
         console.log(`Ignoring payment status: ${eventData?.paymentStatus}`)
         return new Response(JSON.stringify({ received: true }), { status: 200 })
     }
 
-    const transactionReference = eventData.transactionReference
-    const companyId = eventData.product.reference
-    const amountPaid = parseFloat(eventData.amountPaid) // cash actually received
+    const paymentReference = eventData.paymentReference
+    const amountPaid = parseFloat(eventData.amountPaid)
 
-    if (!transactionReference || !companyId || !amountPaid) {
-        console.error('Missing required fields', { transactionReference, companyId, amountPaid })
+    if (!paymentReference || !amountPaid) {
+        console.error('Missing required fields', { paymentReference, amountPaid })
         return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 })
     }
+
+    const parsed = parseReference(paymentReference)
+
+    if (!parsed) {
+        console.log(`Ignoring non-Mount reference: ${paymentReference}`)
+        return new Response(JSON.stringify({ received: true, skipped: true }), { status: 200 })
+    }
+
+    const { jobIdPrefix, paymentType, companyIdPrefix } = parsed
+    const nextStatus = NEXT_STATUS_MAP[paymentType]
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
     try {
-        // ── Duplicate guard ───────────────────────────────────────────────────
+        // Duplicate guard
         const { data: existingTx } = await supabase
             .from('financial_transactions')
             .select('id')
-            .eq('reference', transactionReference)
+            .eq('reference', paymentReference)
             .eq('status', 'completed')
             .maybeSingle()
 
         if (existingTx) {
-            console.log(`Duplicate transaction ignored: ${transactionReference}`)
+            console.log(`Duplicate ignored: ${paymentReference}`)
             return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 })
         }
 
-        // ── Find active payable job for this company ──────────────────────────
+        // Find job by ID prefix
         const { data: job, error: jobError } = await supabase
             .from('jobs')
-            .select('id, status, quoted_price, customer_id, company_id, category')
-            .eq('company_id', companyId)
-            .in('status', ['price_set', 'work_ongoing', 'work_completed', 'work_rectified'])
-            .order('created_at', { ascending: false })
-            .limit(1)
+            .select('id, status, quoted_price, customer_id, company_id, category, description')
+            .ilike('id', `${jobIdPrefix}%`)
             .maybeSingle()
 
         if (jobError || !job) {
-            console.error(`No active payable job found for company ${companyId}`, jobError)
+            console.error(`No job found with prefix ${jobIdPrefix}`, jobError)
             return new Response(
-                JSON.stringify({ received: true, warning: 'No matching job found', companyId }),
+                JSON.stringify({ received: true, warning: 'Job not found', jobIdPrefix }),
                 { status: 200 }
             )
         }
 
-        const paymentInfo = determinePaymentType(job.status)
+        // Find company by ID prefix
+        const { data: company } = await supabase
+            .from('companies')
+            .select('id')
+            .ilike('id', `${companyIdPrefix}%`)
+            .maybeSingle()
 
-        if (!paymentInfo) {
-            console.error(`Cannot determine payment type for job status: ${job.status}`)
-            return new Response(
-                JSON.stringify({ received: true, warning: 'Unhandled job status', status: job.status }),
-                { status: 200 }
-            )
-        }
+        const companyId = company?.id || job.company_id
 
-        const { type: paymentType, nextStatus } = paymentInfo
-
-        // ── Read pending transaction to get credit_used ───────────────────────
-        // Customer may have applied credit at checkout — if so, the pending
-        // financial_transaction row will have metadata.credit_used set.
+        // Find pending transaction to get credit_used
         const { data: pendingTx } = await supabase
             .from('financial_transactions')
             .select('id, metadata')
-            .eq('job_id', job.id)
-            .eq('type', paymentType)
+            .eq('reference', paymentReference)
             .eq('status', 'pending')
-            .eq('verified_by_admin', false)
-            .order('created_at', { ascending: false })
-            .limit(1)
             .maybeSingle()
 
         const creditUsed = parseFloat(pendingTx?.metadata?.credit_used || 0)
         const pendingTxId = pendingTx?.id || null
 
-        // Total amount = cash paid + credit used
         const totalPaymentAmount = parseFloat((amountPaid + creditUsed).toFixed(2))
 
-        console.log(`💳 Payment breakdown: cash=₦${amountPaid} credit=₦${creditUsed} total=₦${totalPaymentAmount}`)
+        console.log(`💳 Payment: cash=₦${amountPaid} credit=₦${creditUsed} total=₦${totalPaymentAmount}`)
 
-        // ── Commission: 5% of quoted_price on final payment only ──────────────
+        // Commission: 5% on final payment only
         let commissionAmount = 0
         let providerCreditAmount = totalPaymentAmount
 
@@ -178,7 +175,7 @@ serve(async (req) => {
             providerCreditAmount = parseFloat((totalPaymentAmount - commissionAmount).toFixed(2))
         }
 
-        // ── Deduct credit from customer wallet ────────────────────────────────
+        // Deduct credit from customer wallet
         if (creditUsed > 0) {
             const { data: creditWallet } = await supabase
                 .from('credit_wallets')
@@ -187,55 +184,36 @@ serve(async (req) => {
                 .maybeSingle()
 
             if (creditWallet) {
-                const newBalance = parseFloat(
-                    Math.max(0, parseFloat(creditWallet.balance) - creditUsed).toFixed(2)
-                )
-                const { error: creditDeductError } = await supabase
+                const newBalance = Math.max(0, parseFloat(creditWallet.balance) - creditUsed)
+                await supabase
                     .from('credit_wallets')
-                    .update({
-                        balance: newBalance,
-                        updated_at: new Date().toISOString(),
-                    })
+                    .update({ balance: parseFloat(newBalance.toFixed(2)), updated_at: new Date().toISOString() })
                     .eq('id', creditWallet.id)
-
-                if (creditDeductError) {
-                    console.error(`Credit wallet deduction failed: ${creditDeductError.message}`)
-                    // Non-fatal — continue processing payment
-                } else {
-                    console.log(`💳 Credit deducted: ₦${creditUsed} from customer ${job.customer_id} | New balance: ₦${newBalance}`)
-                }
-            } else {
-                console.warn(`Credit wallet not found for customer ${job.customer_id}`)
+                console.log(`💳 Credit deducted: ₦${creditUsed} | New balance: ₦${newBalance}`)
             }
         }
 
-        // ── Update job status ─────────────────────────────────────────────────
-        const { error: jobUpdateError } = await supabase
+        // Update job status
+        await supabase
             .from('jobs')
-            .update({
-                status: nextStatus,
-                payment_verified: true,
-                updated_at: new Date().toISOString(),
-            })
+            .update({ status: nextStatus, payment_verified: true, updated_at: new Date().toISOString() })
             .eq('id', job.id)
 
-        if (jobUpdateError) throw new Error(`Job update failed: ${jobUpdateError.message}`)
-
-        // ── Update or insert financial transaction ────────────────────────────
+        // Update or insert financial transaction
         const txData = {
             job_id: job.id,
             user_id: job.customer_id,
             type: paymentType,
             amount: totalPaymentAmount,
             platform_fee: commissionAmount,
-            reference: transactionReference,
+            reference: paymentReference,
             status: 'completed',
-            payment_method: 'bank_transfer',
-            bank_reference: eventData.paymentReference || null,
+            payment_method: 'monnify_gateway',
+            bank_reference: eventData.transactionReference || null,
             verified_by_admin: true,
             metadata: {
-                monnify_transaction_reference: transactionReference,
-                monnify_payment_reference: eventData.paymentReference,
+                monnify_transaction_reference: eventData.transactionReference,
+                monnify_payment_reference: paymentReference,
                 paid_on: eventData.paidOn,
                 customer_name: eventData.customer?.name,
                 customer_email: eventData.customer?.email,
@@ -248,23 +226,12 @@ serve(async (req) => {
         }
 
         if (pendingTxId) {
-            // Update the existing pending transaction
-            const { error: txUpdateError } = await supabase
-                .from('financial_transactions')
-                .update(txData)
-                .eq('id', pendingTxId)
-
-            if (txUpdateError) throw new Error(`Transaction update failed: ${txUpdateError.message}`)
+            await supabase.from('financial_transactions').update(txData).eq('id', pendingTxId)
         } else {
-            // Insert new transaction record
-            const { error: txError } = await supabase
-                .from('financial_transactions')
-                .insert(txData)
-
-            if (txError) throw new Error(`Financial transaction insert failed: ${txError.message}`)
+            await supabase.from('financial_transactions').insert(txData)
         }
 
-        // ── Credit provider wallet ────────────────────────────────────────────
+        // Credit provider wallet
         const { data: existingWallet } = await supabase
             .from('provider_wallets')
             .select('available_balance, total_earned, total_commission')
@@ -272,7 +239,7 @@ serve(async (req) => {
             .maybeSingle()
 
         if (existingWallet) {
-            const { error: walletError } = await supabase
+            await supabase
                 .from('provider_wallets')
                 .update({
                     available_balance: parseFloat((existingWallet.available_balance + providerCreditAmount).toFixed(2)),
@@ -281,10 +248,8 @@ serve(async (req) => {
                     updated_at: new Date().toISOString(),
                 })
                 .eq('company_id', companyId)
-
-            if (walletError) throw new Error(`Wallet update failed: ${walletError.message}`)
         } else {
-            const { error: walletCreateError } = await supabase
+            await supabase
                 .from('provider_wallets')
                 .insert({
                     company_id: companyId,
@@ -293,50 +258,39 @@ serve(async (req) => {
                     total_commission: commissionAmount,
                     updated_at: new Date().toISOString(),
                 })
-
-            if (walletCreateError) throw new Error(`Wallet creation failed: ${walletCreateError.message}`)
         }
 
-        // ── Notifications ─────────────────────────────────────────────────────
+        // Notifications
         const paymentLabels: Record<string, string> = {
             deposit: 'Deposit payment',
             intermediate: 'Intermediate payment',
             final_payment: 'Final payment',
         }
 
-        const creditNote = creditUsed > 0
-            ? ` (includes ₦${creditUsed.toLocaleString()} customer credit)`
-            : ''
+        const creditNote = creditUsed > 0 ? ` (includes ₦${creditUsed.toLocaleString()} credit)` : ''
 
-        await supabase.from('notifications').insert({
-            user_id: companyId,
-            job_id: job.id,
-            type: 'payment_received',
-            title: `${paymentLabels[paymentType]} received`,
-            message: `₦${providerCreditAmount.toLocaleString()} has been credited to your Mount wallet for job #${job.id.slice(0, 8).toUpperCase()}${creditNote}.${paymentType === 'final_payment'
-                    ? ` Platform commission of ₦${commissionAmount.toLocaleString()} has been deducted.`
-                    : ''
-                }`,
-            read: false,
-            created_at: new Date().toISOString(),
-        })
+        await supabase.from('notifications').insert([
+            {
+                user_id: companyId,
+                job_id: job.id,
+                type: 'payment_received',
+                title: `${paymentLabels[paymentType]} received`,
+                message: `₦${providerCreditAmount.toLocaleString()} credited to your wallet for job #${job.id.slice(0, 8).toUpperCase()}${creditNote}.${paymentType === 'final_payment' ? ` Commission of ₦${commissionAmount.toLocaleString()} deducted.` : ''}`,
+                read: false,
+                created_at: new Date().toISOString(),
+            },
+            {
+                user_id: job.customer_id,
+                job_id: job.id,
+                type: 'payment_confirmed',
+                title: `${paymentLabels[paymentType]} confirmed`,
+                message: `Your payment of ₦${totalPaymentAmount.toLocaleString()} has been confirmed for job #${job.id.slice(0, 8).toUpperCase()}.${creditUsed > 0 ? ` ₦${creditUsed.toLocaleString()} was from your credit wallet.` : ''}`,
+                read: false,
+                created_at: new Date().toISOString(),
+            },
+        ])
 
-        await supabase.from('notifications').insert({
-            user_id: job.customer_id,
-            job_id: job.id,
-            type: 'payment_confirmed',
-            title: `${paymentLabels[paymentType]} confirmed`,
-            message: `Your ${paymentLabels[paymentType].toLowerCase()} of ₦${totalPaymentAmount.toLocaleString()} has been confirmed for job #${job.id.slice(0, 8).toUpperCase()}.${creditUsed > 0 ? ` ₦${creditUsed.toLocaleString()} was covered by your credit wallet.` : ''
-                }`,
-            read: false,
-            created_at: new Date().toISOString(),
-        })
-
-        if (paymentType === 'final_payment' && commissionAmount > 0) {
-            console.log(`COMMISSION: Job ${job.id} | Quoted: ₦${job.quoted_price} | Commission: ₦${commissionAmount} | Provider receives: ₦${providerCreditAmount}`)
-        }
-
-        console.log(`✅ Webhook: ${transactionReference} | Company: ${companyId} | Cash: ₦${amountPaid} | Credit: ₦${creditUsed} | Total: ₦${totalPaymentAmount} | ${job.status} → ${nextStatus}`)
+        console.log(`✅ ${paymentReference} | job=${job.id} | ${job.status}→${nextStatus} | cash=₦${amountPaid} credit=₦${creditUsed} provider=₦${providerCreditAmount} commission=₦${commissionAmount}`)
 
         return new Response(
             JSON.stringify({
@@ -356,7 +310,7 @@ serve(async (req) => {
         )
 
     } catch (error) {
-        console.error('Webhook processing error:', error)
+        console.error('Webhook error:', error)
         return new Response(
             JSON.stringify({ received: true, error: error.message }),
             { status: 200 }

@@ -9,7 +9,6 @@ import Dashboard from './components/Dashboard';
 import PaymentPage from './components/payment/PaymentPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminStats from './components/admin/AdminStats';
-import BankTransferPayment from './components/payment/BankTransferPayment';
 import PendingApprovals from './components/admin/PendingApprovals';
 import PayoutManagement from './components/admin/PayoutManagement';
 import JobManagement from './components/admin/JobManagement';
@@ -34,6 +33,7 @@ import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
 import AdminMessagingPage from './components/admin/AdminMessagingPage';
 import CompleteProfile from './components/auth/CompleteProfile'; // NEW
+import PaymentSuccess from './components/payment/PaymentSuccess';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -82,7 +82,7 @@ function ProtectedRoutes() {
 
       {/* Payment routes */}
       <Route path="/payment/pending" element={<PaymentPending />} />
-      <Route path="/payment/bank-transfer/:jobId" element={<BankTransferPayment />} />
+      <Route path="/payment/success" element={<PaymentSuccess />} />
 
       {/* Main routes */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

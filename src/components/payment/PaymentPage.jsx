@@ -142,8 +142,6 @@ const PaymentPage = () => {
                 .eq('customer_id', user.id)
                 .maybeSingle();
 
-            console.log('User ID:', user.id);
-            console.log('Credit wallet:', wallet);
             setCreditWallet(wallet || null);
 
             setJob({
@@ -334,20 +332,43 @@ const PaymentPage = () => {
                 return;
             }
 
-            // ── PARTIAL OR NO CREDIT — go to bank transfer ────────────────────
-            navigate(`/payment/bank-transfer/${jobId}`, {
-                state: {
-                    reference,
+            // ── PARTIAL OR NO CREDIT — initialize Monnify gateway ────────────
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+            const initRes = await supabase.functions.invoke('initialize-monnify-payment', {
+                body: {
+                    jobId,
+                    paymentType: dbPaymentType,
                     amount: amountAfterCredit,
                     fullAmount: job.paymentAmount,
                     creditUsed: creditApplied,
-                    totalAmount: job.totalAmount,
-                    paymentType: job.paymentType,
-                    transactionId,
-                    isUpdate: !!existingPayment,
-                    paymentDescription: job.paymentDescription,
-                }
+                    customerEmail: currentUser?.email,
+                    customerName: job.companyName || 'Customer',
+                    companyId: job.company_id,
+                    companyName: job.companyName,
+                    jobDescription: job.description,
+                    redirectUrl: `${window.location.origin}/payment/success`,
+                },
             });
+
+            if (initRes.error || !initRes.data?.checkoutUrl) {
+                throw new Error(initRes.error?.message || 'Failed to initialize payment. Please try again.');
+            }
+
+            // Store transaction info in sessionStorage for success page
+            sessionStorage.setItem('mountPayment', JSON.stringify({
+                reference: initRes.data.reference,
+                transactionId: initRes.data.transactionId,
+                amount: amountAfterCredit,
+                fullAmount: job.paymentAmount,
+                creditUsed: creditApplied,
+                paymentType: job.paymentType,
+                companyName: job.companyName,
+                jobId,
+            }));
+
+            // Open Monnify checkout
+            window.location.href = initRes.data.checkoutUrl;
 
         } catch (err) {
             let msg = 'Error processing payment. ';
@@ -397,10 +418,7 @@ const PaymentPage = () => {
     const { totalAmount, paymentAmount, companyName, paymentType, paymentDescription } = job;
     const cfg = TYPE_CONFIG[paymentType] || TYPE_CONFIG.final_payment;
     const pct = cfg.pct || (job.hasIntermediate ? '20%' : '50%');
-    const isLogisticsPlan = creditWallet?.plan === 'logistics';
-    const isLogisticsJob = job?.category === 'Logistics Services';
-    const creditAllowedForJob = !isLogisticsPlan || isLogisticsJob;
-    const hasCreditAvailable = usableCreditCap > 0 && creditAllowedForJob;
+    const hasCreditAvailable = usableCreditCap > 0;
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -536,10 +554,10 @@ const PaymentPage = () => {
                         </div>
                         <div className="p-5">
                             <div className="flex items-center gap-4 p-4 bg-naijaGreen/5 border-2 border-naijaGreen rounded-xl">
-                                <div className="w-10 h-10 bg-naijaGreen/10 rounded-xl flex items-center justify-center shrink-0 text-xl">🏦</div>
+                                <div className="w-10 h-10 bg-naijaGreen/10 rounded-xl flex items-center justify-center shrink-0 text-xl">💳</div>
                                 <div className="flex-1">
-                                    <p className="font-bold text-gray-900 text-sm">Bank Transfer</p>
-                                    <p className="text-xs text-gray-500">Transfer directly to our bank account</p>
+                                    <p className="font-bold text-gray-900 text-sm">Monnify Secure Checkout</p>
+                                    <p className="text-xs text-gray-500">Card, bank transfer, or USSD</p>
                                 </div>
                                 <div className="w-5 h-5 rounded-full border-2 border-naijaGreen flex items-center justify-center shrink-0">
                                     <div className="w-2.5 h-2.5 bg-naijaGreen rounded-full" />
@@ -549,12 +567,10 @@ const PaymentPage = () => {
                                 <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">How it works</p>
                                 <ol className="space-y-1.5 text-xs text-blue-700">
                                     {[
-                                        "You'll see our bank account details",
-                                        `Transfer ${creditApplied > 0 ? 'the remaining ' : ''}${fmt(amountAfterCredit)}`,
-                                        'Use the unique reference code provided',
-                                        'Upload your proof of payment',
-                                        'Admin verifies within 5–15 minutes',
-                                        'Job status updates automatically',
+                                        "Tap Pay — a secure Monnify checkout opens",
+                                        "Choose card, bank transfer, or USSD",
+                                        "Complete your payment",
+                                        "Your job status updates automatically",
                                     ].map((step, i) => (
                                         <li key={i} className="flex items-start gap-2">
                                             <span className="w-4 h-4 bg-blue-200 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
@@ -572,8 +588,8 @@ const PaymentPage = () => {
                     onClick={handleProceed}
                     disabled={!reference || submitting}
                     className={`w-full text-white py-4 rounded-2xl font-bold text-base transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isFullyCoveredByCredit
-                        ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
-                        : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
+                            ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                            : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
                         }`}
                 >
                     {submitting ? (
@@ -581,14 +597,14 @@ const PaymentPage = () => {
                     ) : !reference ? 'Loading…' : isFullyCoveredByCredit ? (
                         '💳 Pay with Credit — ₦0'
                     ) : (
-                        `Proceed to Bank Transfer — ${fmt(amountAfterCredit)}`
+                        `Pay ${fmt(amountAfterCredit)} — Monnify Checkout`
                     )}
                 </button>
 
                 <p className="text-center text-xs text-gray-400 pb-4">
                     {isFullyCoveredByCredit
                         ? 'Payment covered by your subscription credit wallet'
-                        : 'Secure payment · Verified by Mount admin'}
+                        : 'Secure checkout powered by Monnify · Card, transfer, or USSD'}
                 </p>
             </div>
         </div>
