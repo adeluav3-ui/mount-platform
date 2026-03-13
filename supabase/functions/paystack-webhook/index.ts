@@ -30,10 +30,16 @@ const PLAN_MOUNT_FEE: Record<string, number> = {
 
 // Map Paystack plan IDs to plan keys
 const PLAN_ID_MAP: Record<string, string> = {
+    // Live
+    'PLN_3tdtvb132thk1hr': 'logistics',
+    'PLN_2iwog9z6h8jgbzt': 'basic',
+    'PLN_746nl7acl3cs1sy': 'standard',
+    'PLN_5l5rozwz1c2zour': 'premium',
+    // Test
     'PLN_32rwu4fudk5yl1z': 'logistics',
     'PLN_h0pvuhhdtinof53': 'basic',
     'PLN_6x6uirl9g69w52k': 'standard',
-    'PLN_bqietirrn2omu3k': 'premium',
+    'PLN_bqietirrn2omu3p': 'premium',
 }
 
 // Verify Paystack webhook signature
@@ -247,6 +253,12 @@ serve(async (req) => {
             case 'charge.success': {
                 const customerId = getCustomerId(data)
                 const planKey = getPlanKey(data)
+
+                if (!planKey) {
+                    console.error('❌ Could not determine plan key — aborting credit. Metadata:', JSON.stringify(data.metadata))
+                    // Still activate subscription but don't credit wallet
+                    break
+                }
                 const billingCycle = getBillingCycle(data)
                 const reference = data.reference as string
 

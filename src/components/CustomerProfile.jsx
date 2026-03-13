@@ -12,11 +12,11 @@ const PLANS = [
         monthlyPrice: 5000,
         yearlyPrice: 57000,
         planIdMonthly: 'PLN_32rwu4fudk5yl1z',
-        planIdYearly: null, // yearly is one-time charge
+        planIdYearly: null,
         color: 'from-blue-500 to-blue-600',
         badge: '🚚',
         features: ['Priority logistics matching', 'Delivery tracking', 'Basic support'],
-        restricted: true, // logistics providers only
+        restricted: true,
     },
     {
         key: 'basic',
@@ -63,6 +63,17 @@ const BADGES = [
     { name: 'Diamond', min: 100, max: Infinity, icon: '💎', color: 'text-cyan-600 bg-cyan-100' },
 ];
 
+const SP_PLUS_CATEGORIES = [
+    { key: 'automobile', label: 'Automobile', icon: '🚗', desc: 'Verified mechanics, auto electricians, panel beaters' },
+    { key: 'catering', label: 'Catering', icon: '🍽️', desc: 'Caterers, bakers, personal chefs' },
+    { key: 'appliance', label: 'Appliance Repair', icon: '🔧', desc: 'AC, fridge, washing machine specialists' },
+    { key: 'fashion', label: 'Fashion', icon: '👗', desc: 'Tailors, fashion designers, alterations' },
+    { key: 'instruments', label: 'Instrument Repair', icon: '🎸', desc: 'Musical instrument servicing and repair' },
+    { key: 'creative', label: 'Creative & Digital', icon: '🎨', desc: 'Videography, photography, graphics design' },
+    { key: 'tech', label: 'Tech & Software', icon: '💻', desc: 'Software engineers, AI automation, IT support' },
+    { key: 'media', label: 'Media Production', icon: '🎬', desc: 'Video editing, animation, content creation' },
+];
+
 const fmt = (n) => `₦${parseFloat(n || 0).toLocaleString()}`;
 
 function getBadge(totalJobs) {
@@ -75,6 +86,137 @@ function getDisplayName(name) {
     const parts = name.trim().split(' ');
     if (parts.length === 1) return parts[0];
     return `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+}
+
+// ─── Service Providers+ Modal ─────────────────────────────────────────────────
+function ServiceProvidersPlusModal({ onClose, hasAccess, onSubscribe }) {
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+
+                {/* Header */}
+                <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 relative shrink-0">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-white/70 hover:text-white transition">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl">✨</div>
+                        <div>
+                            <h3 className="text-xl font-bold text-white">Service Providers+</h3>
+                            <p className="text-purple-200 text-sm">Beyond home services</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="overflow-y-auto flex-1">
+                    {hasAccess ? (
+                        // ── Subscriber: Coming Soon ──────────────────────────
+                        <div className="p-6 text-center space-y-6">
+                            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-4xl">
+                                🚀
+                            </div>
+                            <div>
+                                <h4 className="text-xl font-bold text-gray-900">Coming Soon</h4>
+                                <p className="text-gray-500 text-sm mt-2 leading-relaxed">
+                                    We're verifying and onboarding the best professionals across Nigeria. This feature will be available to you very soon as a Mount subscriber.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-left">
+                                {SP_PLUS_CATEGORIES.map(cat => (
+                                    <div key={cat.key} className="bg-gray-50 rounded-xl p-3 opacity-60">
+                                        <span className="text-xl">{cat.icon}</span>
+                                        <p className="font-semibold text-sm text-gray-700 mt-1">{cat.label}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 leading-tight">{cat.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
+                                <p className="text-sm text-purple-700 font-medium">
+                                    🔔 You'll be notified the moment Service Providers+ goes live. As a subscriber, you get early access.
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={onClose}
+                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:opacity-90 transition"
+                            >
+                                Got it!
+                            </button>
+                        </div>
+                    ) : (
+                        // ── Non-subscriber: Persuasion screen ───────────────
+                        <div className="p-6 space-y-5">
+                            <div className="text-center space-y-2">
+                                <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                                    🔒 Subscribers Only
+                                </div>
+                                <h4 className="text-xl font-bold text-gray-900">
+                                    A whole new world of professionals
+                                </h4>
+                                <p className="text-gray-500 text-sm leading-relaxed">
+                                    Mount subscribers get exclusive access to a curated directory of verified professionals beyond home services — all personally vetted by our team.
+                                </p>
+                            </div>
+
+                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 space-y-3">
+                                <p className="text-sm font-bold text-purple-800">What's inside Service Providers+</p>
+                                {SP_PLUS_CATEGORIES.map(cat => (
+                                    <div key={cat.key} className="flex items-start gap-3">
+                                        <span className="text-xl shrink-0">{cat.icon}</span>
+                                        <div>
+                                            <p className="font-semibold text-sm text-gray-800">{cat.label}</p>
+                                            <p className="text-xs text-gray-500">{cat.desc}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="space-y-2.5">
+                                {[
+                                    { icon: '✅', text: 'Every provider is manually verified by Mount' },
+                                    { icon: '📸', text: 'Browse real photos of previous work' },
+                                    { icon: '📞', text: 'Contact providers directly via call or WhatsApp' },
+                                    { icon: '🌍', text: 'Hard skills and soft skills — all in one place' },
+                                    { icon: '💳', text: 'Use your credit wallet to offset service costs' },
+                                ].map((item, i) => (
+                                    <div key={i} className="flex items-center gap-3 text-sm text-gray-700">
+                                        <span className="text-base shrink-0">{item.icon}</span>
+                                        <span>{item.text}</span>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-gray-50 rounded-xl p-4">
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Available on these plans</p>
+                                <div className="flex gap-2 flex-wrap">
+                                    {['Basic', 'Standard', 'Premium'].map(p => (
+                                        <span key={p} className="px-3 py-1 bg-white border border-gray-200 rounded-full text-sm font-semibold text-gray-700 shadow-sm">
+                                            {p}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={onSubscribe}
+                                className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:opacity-90 transition shadow-lg shadow-purple-200"
+                            >
+                                Subscribe to Unlock Access
+                            </button>
+
+                            <p className="text-center text-xs text-gray-400 pb-2">
+                                Starting from ₦15,000/month · Cancel anytime
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // ─── Leaderboard Modal ───────────────────────────────────────────────────────
@@ -102,8 +244,7 @@ function LeaderboardModal({ onClose, currentUserId, supabase, myRank, myTotalJob
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col">
-                {/* Header */}
-                <div className="bg-gradient-to-r from-naijaGreen to-darkGreen rounded-t-2xl px-6 py-5 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-naijaGreen to-darkGreen rounded-t-2xl px-6 py-5 flex items-center justify-between shrink-0">
                     <div>
                         <h3 className="text-xl font-bold text-white">🏆 Leaderboard</h3>
                         <p className="text-green-100 text-sm">Top customers by completed jobs</p>
@@ -115,7 +256,6 @@ function LeaderboardModal({ onClose, currentUserId, supabase, myRank, myTotalJob
                     </button>
                 </div>
 
-                {/* List */}
                 <div className="overflow-y-auto flex-1">
                     {loading ? (
                         <div className="py-12 text-center text-gray-400">Loading...</div>
@@ -128,16 +268,10 @@ function LeaderboardModal({ onClose, currentUserId, supabase, myRank, myTotalJob
                                 const badge = getBadge(leader.total_jobs);
                                 const me = isMe(leader.id);
                                 const rankIcon = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
-
                                 return (
-                                    <div key={leader.id}
-                                        className={`px-5 py-3.5 flex items-center gap-4 ${me ? 'bg-green-50 border-l-4 border-naijaGreen' : 'hover:bg-gray-50'}`}
-                                    >
+                                    <div key={leader.id} className={`px-5 py-3.5 flex items-center gap-4 ${me ? 'bg-green-50 border-l-4 border-naijaGreen' : 'hover:bg-gray-50'}`}>
                                         <div className="w-8 text-center">
-                                            {rankIcon
-                                                ? <span className="text-xl">{rankIcon}</span>
-                                                : <span className="text-sm font-bold text-gray-500">#{rank}</span>
-                                            }
+                                            {rankIcon ? <span className="text-xl">{rankIcon}</span> : <span className="text-sm font-bold text-gray-500">#{rank}</span>}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className={`font-semibold truncate ${me ? 'text-naijaGreen' : 'text-gray-800'}`}>
@@ -161,9 +295,8 @@ function LeaderboardModal({ onClose, currentUserId, supabase, myRank, myTotalJob
                     )}
                 </div>
 
-                {/* My rank pinned at bottom if not in top 20 */}
                 {!loading && !myInTop20 && myRank && (
-                    <div className="border-t-2 border-dashed border-gray-200 px-5 py-3.5 flex items-center gap-4 bg-green-50">
+                    <div className="border-t-2 border-dashed border-gray-200 px-5 py-3.5 flex items-center gap-4 bg-green-50 shrink-0">
                         <div className="w-8 text-center">
                             <span className="text-sm font-bold text-gray-500">#{myRank}</span>
                         </div>
@@ -197,15 +330,14 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState('');
 
-    // Edit state
     const [editName, setEditName] = useState('');
     const [editPhone, setEditPhone] = useState('');
     const [editing, setEditing] = useState(false);
 
-    // UI state
     const [billingCycle, setBillingCycle] = useState('monthly');
     const [showLeaderboard, setShowLeaderboard] = useState(false);
     const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const [showServiceProvidersPlus, setShowServiceProvidersPlus] = useState(false);
     const [myRank, setMyRank] = useState(null);
 
     const loadData = useCallback(async () => {
@@ -221,7 +353,6 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                 setEditName(cust.customer_name || '');
                 setEditPhone(cust.phone || '');
 
-                // Get rank
                 if (cust.total_jobs > 0) {
                     const { count } = await supabase
                         .from('customers')
@@ -252,9 +383,7 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', user.id);
-
             if (error) throw error;
-
             setCustomer(prev => ({ ...prev, customer_name: editName.trim(), phone: editPhone.trim() }));
             setEditing(false);
             setSaveMsg('Profile updated successfully!');
@@ -270,36 +399,38 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
     const handlePaystackCheckout = (plan) => {
         const isYearly = billingCycle === 'yearly';
         const amount = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
-
         const handler = window.PaystackPop.setup({
             key: PAYSTACK_PUBLIC_KEY,
             email: user.email,
-            amount: amount * 100, // kobo
+            amount: amount * 100,
             currency: 'NGN',
-            // Monthly: pass plan code → Paystack handles recurring, card only
-            // Yearly: no plan code → one-time charge, transfer allowed
             plan: isYearly ? undefined : plan.planIdMonthly,
-            channels: isYearly
-                ? ['card', 'bank_transfer', 'ussd', 'bank']  // all channels for yearly
-                : ['card'], // card only for monthly recurring
+            channels: isYearly ? ['card', 'bank_transfer', 'ussd', 'bank'] : ['card'],
             metadata: {
                 custom_fields: [
-                    { display_name: 'Plan', variable_name: 'plan', value: plan.name },
+                    { display_name: 'Plan', variable_name: 'plan', value: plan.key },
                     { display_name: 'Billing Cycle', variable_name: 'billing_cycle', value: billingCycle },
                     { display_name: 'Customer ID', variable_name: 'customer_id', value: user.id },
                 ]
             },
             callback: (response) => {
-                console.log('Paystack payment successful:', response.reference);
                 setSaveMsg('Payment successful! Your plan will activate shortly.');
                 setTimeout(() => setSaveMsg(''), 6000);
                 loadData();
             },
-            onClose: () => {
-                console.log('Paystack modal closed');
-            },
+            onClose: () => { },
         });
         handler.openIframe();
+    };
+
+    // Access: basic, standard, premium only
+    const spPlusAccess = ['basic', 'standard', 'premium'].includes(subscription?.plan);
+
+    const scrollToSubscription = () => {
+        setShowServiceProvidersPlus(false);
+        setTimeout(() => {
+            document.getElementById('subscription-section')?.scrollIntoView({ behavior: 'smooth' });
+        }, 200);
     };
 
     const badge = getBadge(customer?.total_jobs);
@@ -315,10 +446,8 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
 
     return (
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-            {/* Paystack script */}
             <script src="https://js.paystack.co/v1/inline.js" />
 
-            {/* Save message */}
             {saveMsg && (
                 <div className={`rounded-xl p-4 text-sm font-medium ${saveMsg.includes('Failed') ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
                     {saveMsg}
@@ -341,10 +470,7 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                             </div>
                         </div>
                         {!editing && (
-                            <button
-                                onClick={() => setEditing(true)}
-                                className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition"
-                            >
+                            <button onClick={() => setEditing(true)} className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition">
                                 Edit
                             </button>
                         )}
@@ -356,35 +482,23 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                         <>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                <input
-                                    value={editName}
-                                    onChange={e => setEditName(e.target.value)}
+                                <input value={editName} onChange={e => setEditName(e.target.value)}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-naijaGreen focus:border-transparent"
-                                    placeholder="Your full name"
-                                />
+                                    placeholder="Your full name" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                <input
-                                    value={editPhone}
-                                    onChange={e => setEditPhone(e.target.value)}
+                                <input value={editPhone} onChange={e => setEditPhone(e.target.value)}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-naijaGreen focus:border-transparent"
-                                    placeholder="e.g. 08012345678"
-                                    type="tel"
-                                />
+                                    placeholder="e.g. 08012345678" type="tel" />
                             </div>
                             <div className="flex gap-3 pt-1">
-                                <button
-                                    onClick={() => { setEditing(false); setEditName(customer?.customer_name || ''); setEditPhone(customer?.phone || ''); }}
-                                    className="flex-1 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition"
-                                >
+                                <button onClick={() => { setEditing(false); setEditName(customer?.customer_name || ''); setEditPhone(customer?.phone || ''); }}
+                                    className="flex-1 py-2.5 border-2 border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition">
                                     Cancel
                                 </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving || !editName.trim()}
-                                    className="flex-1 py-2.5 bg-naijaGreen text-white rounded-xl font-medium hover:bg-darkGreen disabled:opacity-50 transition"
-                                >
+                                <button onClick={handleSave} disabled={saving || !editName.trim()}
+                                    className="flex-1 py-2.5 bg-naijaGreen text-white rounded-xl font-medium hover:bg-darkGreen disabled:opacity-50 transition">
                                     {saving ? 'Saving...' : 'Save Changes'}
                                 </button>
                             </div>
@@ -404,18 +518,11 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                             <div className="flex justify-between items-center py-2">
                                 <span className="text-sm text-gray-500">Verification</span>
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${customer?.verification_level === 'verified' ? 'bg-green-100 text-green-700' :
-                                        customer?.verification_level === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-gray-100 text-gray-600'
-                                        }`}>
-                                        {customer?.verification_level === 'verified' ? '✓ Verified' :
-                                            customer?.verification_level === 'pending' ? '⏳ Pending' : 'Basic'}
+                                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${customer?.verification_level === 'verified' ? 'bg-green-100 text-green-700' : customer?.verification_level === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'}`}>
+                                        {customer?.verification_level === 'verified' ? '✓ Verified' : customer?.verification_level === 'pending' ? '⏳ Pending' : 'Basic'}
                                     </span>
                                     {customer?.verification_level !== 'verified' && (
-                                        <button
-                                            onClick={() => setShowVerificationModal(true)}
-                                            className="text-xs text-naijaGreen hover:underline font-medium"
-                                        >
+                                        <button onClick={() => setShowVerificationModal(true)} className="text-xs text-naijaGreen hover:underline font-medium">
                                             Upgrade →
                                         </button>
                                     )}
@@ -426,88 +533,104 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                 </div>
             </div>
 
+            {/* ── Service Providers+ Card ── */}
+            <button
+                onClick={() => setShowServiceProvidersPlus(true)}
+                className="w-full text-left bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-5 shadow-lg shadow-purple-200 hover:opacity-95 transition active:scale-[0.99]"
+            >
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl shrink-0">✨</div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-white font-bold text-base">Service Providers+</h3>
+                                {spPlusAccess ? (
+                                    <span className="bg-white/20 text-white text-xs font-bold px-2 py-0.5 rounded-full">Subscriber</span>
+                                ) : (
+                                    <span className="bg-amber-400 text-amber-900 text-xs font-bold px-2 py-0.5 rounded-full">Members Only</span>
+                                )}
+                            </div>
+                            <p className="text-purple-200 text-sm mt-0.5">
+                                {spPlusAccess
+                                    ? 'Access verified professionals beyond home services'
+                                    : 'Mechanics, caterers, designers, developers & more'}
+                            </p>
+                        </div>
+                    </div>
+                    <svg className="w-5 h-5 text-white/60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                    {SP_PLUS_CATEGORIES.slice(0, 5).map(cat => (
+                        <span key={cat.key} className="bg-white/15 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                            {cat.icon} {cat.label}
+                        </span>
+                    ))}
+                    <span className="bg-white/15 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                        +{SP_PLUS_CATEGORIES.length - 5} more
+                    </span>
+                </div>
+            </button>
+
             {/* ── Rank & Badge Card ── */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-800">My Standing</h3>
-                    <button
-                        onClick={() => setShowLeaderboard(true)}
-                        className="text-sm text-naijaGreen hover:text-darkGreen font-medium flex items-center gap-1"
-                    >
+                    <button onClick={() => setShowLeaderboard(true)} className="text-sm text-naijaGreen hover:text-darkGreen font-medium flex items-center gap-1">
                         🏆 Leaderboard
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </button>
                 </div>
-
                 <div className="grid grid-cols-3 gap-4">
                     <div className="text-center bg-gray-50 rounded-xl p-4">
                         <p className="text-2xl font-bold text-gray-800">{customer?.total_jobs || 0}</p>
                         <p className="text-xs text-gray-500 mt-1">Total Jobs</p>
                     </div>
                     <div className="text-center bg-gray-50 rounded-xl p-4">
-                        <p className="text-2xl font-bold text-gray-800">
-                            {myRank ? `#${myRank}` : '—'}
-                        </p>
+                        <p className="text-2xl font-bold text-gray-800">{myRank ? `#${myRank}` : '—'}</p>
                         <p className="text-xs text-gray-500 mt-1">My Rank</p>
                     </div>
                     <div className="text-center bg-gray-50 rounded-xl p-4">
                         {badge ? (
-                            <>
-                                <p className="text-2xl">{badge.icon}</p>
-                                <p className="text-xs font-semibold mt-1" style={{ color: 'inherit' }}>{badge.name}</p>
-                            </>
+                            <><p className="text-2xl">{badge.icon}</p><p className="text-xs font-semibold mt-1">{badge.name}</p></>
                         ) : (
-                            <>
-                                <p className="text-2xl">🌿</p>
-                                <p className="text-xs text-gray-500 mt-1">No Badge Yet</p>
-                            </>
+                            <><p className="text-2xl">🌿</p><p className="text-xs text-gray-500 mt-1">No Badge Yet</p></>
                         )}
                     </div>
                 </div>
-
                 {badge && (
                     <div className={`mt-4 rounded-xl p-3 flex items-center gap-3 ${badge.color}`}>
                         <span className="text-2xl">{badge.icon}</span>
                         <div>
                             <p className="font-semibold text-sm">{badge.name} Badge</p>
                             <p className="text-xs opacity-75">
-                                {badge.max === Infinity
-                                    ? `${badge.min}+ completed jobs`
-                                    : `${badge.min}–${badge.max} completed jobs`}
+                                {badge.max === Infinity ? `${badge.min}+ completed jobs` : `${badge.min}–${badge.max} completed jobs`}
                             </p>
                         </div>
                     </div>
                 )}
-
                 {!customer?.total_jobs && (
-                    <p className="mt-3 text-sm text-gray-400 text-center">
-                        Complete your first job to earn a badge and appear on the leaderboard
-                    </p>
+                    <p className="mt-3 text-sm text-gray-400 text-center">Complete your first job to earn a badge and appear on the leaderboard</p>
                 )}
             </div>
 
             {/* ── Subscription Card ── */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div id="subscription-section" className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="px-6 py-5 border-b border-gray-100">
                     <div className="flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-800">Subscription</h3>
                             <p className="text-sm text-gray-500 mt-0.5">
-                                {subscription
-                                    ? `Active: ${currentPlan?.name || subscription.plan} Plan`
-                                    : 'You are on the Free Plan'}
+                                {subscription ? `Active: ${currentPlan?.name || subscription.plan} Plan` : 'You are on the Free Plan'}
                             </p>
                         </div>
                         {subscription && (
-                            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-                                Active
-                            </span>
+                            <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">Active</span>
                         )}
                     </div>
-
-                    {/* Current plan details */}
                     {subscription && (
                         <div className="mt-4 bg-gray-50 rounded-xl p-4 space-y-2">
                             <div className="flex justify-between text-sm">
@@ -530,77 +653,46 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                     )}
                 </div>
 
-                {/* Billing toggle */}
                 <div className="px-6 pt-5">
                     <div className="flex items-center justify-between mb-4">
                         <p className="text-sm font-medium text-gray-700">Available Plans</p>
                         <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-                            <button
-                                onClick={() => setBillingCycle('monthly')}
-                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${billingCycle === 'monthly' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
-                            >
+                            <button onClick={() => setBillingCycle('monthly')}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${billingCycle === 'monthly' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}>
                                 Monthly
                             </button>
-                            <button
-                                onClick={() => setBillingCycle('yearly')}
-                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${billingCycle === 'yearly' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
-                            >
-                                Yearly
-                                <span className="ml-1 text-naijaGreen">−5%</span>
+                            <button onClick={() => setBillingCycle('yearly')}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${billingCycle === 'yearly' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}>
+                                Yearly <span className="ml-1 text-naijaGreen">−5%</span>
                             </button>
                         </div>
                     </div>
 
-                    {/* Payment method notice */}
-                    <div className={`mb-4 px-3 py-2.5 rounded-lg text-xs flex items-center gap-2 ${billingCycle === 'monthly'
-                        ? 'bg-blue-50 text-blue-700 border border-blue-100'
-                        : 'bg-green-50 text-green-700 border border-green-100'
-                        }`}>
-                        {billingCycle === 'monthly' ? (
-                            <>
-                                <span>💳</span>
-                                <span><strong>Card payment only</strong> — monthly plans are automatically renewed via your debit/credit card</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>🏦</span>
-                                <span><strong>Card or bank transfer</strong> — yearly plans are a one-time charge, you'll be reminded to renew before expiry</span>
-                            </>
-                        )}
+                    <div className={`mb-4 px-3 py-2.5 rounded-lg text-xs flex items-center gap-2 ${billingCycle === 'monthly' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-green-50 text-green-700 border border-green-100'}`}>
+                        {billingCycle === 'monthly'
+                            ? <><span>💳</span><span><strong>Card payment only</strong> — monthly plans are automatically renewed via your debit/credit card</span></>
+                            : <><span>🏦</span><span><strong>Card or bank transfer</strong> — yearly plans are a one-time charge, you'll be reminded to renew before expiry</span></>
+                        }
                     </div>
 
-                    {/* Plan cards */}
                     <div className="space-y-3 pb-6">
                         {PLANS.map(plan => {
                             const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
                             const isActive = subscription?.plan === plan.key;
-
                             return (
-                                <div
-                                    key={plan.key}
-                                    className={`relative rounded-xl border-2 p-4 transition ${isActive ? 'border-naijaGreen bg-green-50' :
-                                        plan.popular ? 'border-naijaGreen/40' : 'border-gray-200'
-                                        }`}
-                                >
+                                <div key={plan.key} className={`relative rounded-xl border-2 p-4 transition ${isActive ? 'border-naijaGreen bg-green-50' : plan.popular ? 'border-naijaGreen/40' : 'border-gray-200'}`}>
                                     {plan.popular && !isActive && (
-                                        <span className="absolute -top-2.5 left-4 bg-naijaGreen text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-                                            Most Popular
-                                        </span>
+                                        <span className="absolute -top-2.5 left-4 bg-naijaGreen text-white text-xs font-bold px-2.5 py-0.5 rounded-full">Most Popular</span>
                                     )}
                                     {isActive && (
-                                        <span className="absolute -top-2.5 left-4 bg-naijaGreen text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
-                                            Current Plan
-                                        </span>
+                                        <span className="absolute -top-2.5 left-4 bg-naijaGreen text-white text-xs font-bold px-2.5 py-0.5 rounded-full">Current Plan</span>
                                     )}
-
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-center gap-3">
                                             <span className="text-2xl">{plan.badge}</span>
                                             <div>
                                                 <p className="font-bold text-gray-800">{plan.name}</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">
-                                                    {plan.features[0]}
-                                                </p>
+                                                <p className="text-xs text-gray-500 mt-0.5">{plan.features[0]}</p>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -608,22 +700,15 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                                             <p className="text-xs text-gray-500">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</p>
                                         </div>
                                     </div>
-
                                     <div className="mt-3 flex flex-wrap gap-1.5">
                                         {plan.features.map((f, i) => (
-                                            <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                                {f}
-                                            </span>
+                                            <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{f}</span>
                                         ))}
                                     </div>
-
                                     <button
                                         onClick={() => !isActive && handlePaystackCheckout(plan)}
                                         disabled={isActive}
-                                        className={`mt-3 w-full py-2.5 rounded-xl text-sm font-semibold transition ${isActive
-                                            ? 'bg-green-100 text-green-700 cursor-default'
-                                            : `bg-gradient-to-r ${plan.color} text-white hover:opacity-90`
-                                            }`}
+                                        className={`mt-3 w-full py-2.5 rounded-xl text-sm font-semibold transition ${isActive ? 'bg-green-100 text-green-700 cursor-default' : `bg-gradient-to-r ${plan.color} text-white hover:opacity-90`}`}
                                     >
                                         {isActive ? '✓ Active Plan' : `Upgrade to ${plan.name}`}
                                     </button>
@@ -634,7 +719,15 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                 </div>
             </div>
 
-            {/* Leaderboard Modal */}
+            {/* ── Modals ── */}
+            {showServiceProvidersPlus && (
+                <ServiceProvidersPlusModal
+                    onClose={() => setShowServiceProvidersPlus(false)}
+                    hasAccess={spPlusAccess}
+                    onSubscribe={scrollToSubscription}
+                />
+            )}
+
             {showLeaderboard && (
                 <LeaderboardModal
                     onClose={() => setShowLeaderboard(false)}
@@ -646,7 +739,6 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                 />
             )}
 
-            {/* Verification Modal */}
             <VerificationModal
                 isOpen={showVerificationModal}
                 onClose={() => setShowVerificationModal(false)}
