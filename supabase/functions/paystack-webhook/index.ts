@@ -130,6 +130,7 @@ async function creditWallet(
                 mount_fee_collected: parseFloat(existing.mount_fee_collected || 0) + mountFee,
                 last_credited_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
+                plan: planKey,
             })
             .eq('customer_id', customerId)
     } else {
@@ -143,6 +144,7 @@ async function creditWallet(
                 mount_fee_collected: mountFee,
                 last_credited_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
+                plan: planKey,
             })
     }
 

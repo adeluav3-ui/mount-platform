@@ -16,14 +16,11 @@ const getPaymentSummary = (verifiedPayments) => {
 
     verifiedPayments.forEach(p => {
         if (p.type === 'deposit' && p.status === 'completed') {
-            depositPaid += p.amount || 0;
-            hasDeposit = true;
+            depositPaid += p.amount || 0; hasDeposit = true;
         } else if (p.type === 'intermediate' && p.status === 'completed') {
-            intermediatePaid += p.amount || 0;
-            hasIntermediate = true;
+            intermediatePaid += p.amount || 0; hasIntermediate = true;
         } else if (p.type === 'final_payment' && p.status === 'completed') {
-            finalPaid += p.amount || 0;
-            hasFinal = true;
+            finalPaid += p.amount || 0; hasFinal = true;
         }
     });
 
@@ -43,29 +40,35 @@ const determinePaymentType = (jobData, paymentSummary) => {
     switch (jobData.status) {
         case 'price_set':
             return { type: 'deposit', amount: total * 0.5, description: '50% deposit to start the job' };
-
         case 'work_ongoing':
-            if (!hasIntermediate) {
+            if (!hasIntermediate)
                 return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
-            }
-        // intentional fall-through to final
         // falls through
         case 'work_completed':
         case 'work_rectified':
             return { type: 'final_payment', amount: balance, description: 'Final balance payment' };
-
         case 'deposit_paid':
-            if (!hasIntermediate && !hasFinal) return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
-            if (hasIntermediate && !hasFinal) return { type: 'final_payment', amount: total * 0.2, description: '20% final payment' };
+            if (!hasIntermediate && !hasFinal)
+                return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
+            if (hasIntermediate && !hasFinal)
+                return { type: 'final_payment', amount: total * 0.2, description: '20% final payment' };
             break;
-
         default:
             if (!hasDeposit) return { type: 'deposit', amount: total * 0.5, description: '50% deposit to start the job' };
             if (hasDeposit && !hasIntermediate) return { type: 'intermediate', amount: total * 0.3, description: '30% materials payment' };
             if (hasDeposit && hasIntermediate && !hasFinal) return { type: 'final_payment', amount: total * 0.2, description: '20% final payment' };
     }
-
     return { type: 'final_payment', amount: balance, description: 'Balance payment' };
+};
+
+// ─── CREDIT USABLE CAP ───────────────────────────────────────────────────────
+const getUsableCreditCap = (wallet) => {
+    if (!wallet) return 0;
+    const day = new Date().getDate();
+    const pct = day <= 14 ? 0.5 : 0.7;
+    const maxUsable = parseFloat(wallet.monthly_credited || 0) * pct;
+    const balance = parseFloat(wallet.balance || 0);
+    return Math.min(maxUsable, balance);
 };
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -89,6 +92,8 @@ const PaymentPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [reference, setReference] = useState('');
+    const [creditWallet, setCreditWallet] = useState(null);
+    const [useCredit, setUseCredit] = useState(false);
 
     const generateReference = (id) => {
         const ts = Date.now().toString().slice(-6);
@@ -130,6 +135,15 @@ const PaymentPage = () => {
             const details = determinePaymentType(jobData, summary);
             const ref = generateReference(jobId);
 
+            // Fetch credit wallet
+            const { data: wallet } = await supabase
+                .from('credit_wallets')
+                .select('*')
+                .eq('customer_id', user.id)
+                .maybeSingle();
+
+            setCreditWallet(wallet || null);
+
             setJob({
                 ...jobData,
                 companyName,
@@ -143,6 +157,7 @@ const PaymentPage = () => {
                 hasDeposit: summary.hasDeposit,
                 hasIntermediate: summary.hasIntermediate,
                 hasFinal: summary.hasFinal,
+                userId: user.id,
             });
 
         } catch (err) {
@@ -152,7 +167,14 @@ const PaymentPage = () => {
         }
     };
 
-    const initiateBankTransfer = async () => {
+    // ─── CREDIT CALCULATIONS ──────────────────────────────────────────────────
+    const usableCreditCap = getUsableCreditCap(creditWallet);
+    const creditApplied = useCredit ? Math.min(usableCreditCap, job?.paymentAmount || 0) : 0;
+    const amountAfterCredit = Math.max(0, (job?.paymentAmount || 0) - creditApplied);
+    const isFullyCoveredByCredit = useCredit && amountAfterCredit === 0;
+
+    // ─── PROCEED HANDLER ─────────────────────────────────────────────────────
+    const handleProceed = async () => {
         if (!job || submitting) return;
         setSubmitting(true);
 
@@ -190,11 +212,11 @@ const PaymentPage = () => {
                 user_id: user.id,
                 type: dbPaymentType,
                 amount: job.paymentAmount,
-                platform_fee: 0, // No customer service fee — column kept for payout commission math
+                platform_fee: 0,
                 description: `${job.paymentType} payment for: ${job.description || `Job #${jobId.substring(0, 8)}`}`,
                 reference,
                 status: 'pending',
-                payment_method: 'bank_transfer',
+                payment_method: isFullyCoveredByCredit ? 'credit_wallet' : 'bank_transfer',
                 bank_reference: reference,
                 verified_by_admin: false,
                 proof_of_payment_url: null,
@@ -206,6 +228,8 @@ const PaymentPage = () => {
                     created_via: 'customer_payment_page',
                     job_status: job.status,
                     total_job_amount: job.totalAmount,
+                    credit_used: creditApplied,
+                    cash_amount: amountAfterCredit,
                 },
                 created_at: new Date().toISOString(),
             };
@@ -223,16 +247,98 @@ const PaymentPage = () => {
                 transactionId = data.id;
             }
 
-            // Clean up any duplicate pending payments for this type
             if (existingPayments && existingPayments.length > 1) {
                 const dupeIds = existingPayments.filter(p => p.id !== transactionId).map(p => p.id);
                 if (dupeIds.length > 0) await supabase.from('financial_transactions').delete().in('id', dupeIds);
             }
 
+            // ── FULLY COVERED BY CREDIT ───────────────────────────────────────
+            if (isFullyCoveredByCredit) {
+                // Deduct from credit wallet
+                const newBalance = parseFloat(creditWallet.balance) - creditApplied;
+                await supabase
+                    .from('credit_wallets')
+                    .update({ balance: newBalance, updated_at: new Date().toISOString() })
+                    .eq('customer_id', user.id);
+
+                // Credit provider wallet
+                const isFinalPayment = dbPaymentType === 'final_payment';
+                const commission = isFinalPayment ? job.paymentAmount * 0.05 : 0;
+                const providerCredit = job.paymentAmount - commission;
+
+                const { data: providerWallet } = await supabase
+                    .from('provider_wallets')
+                    .select('*')
+                    .eq('company_id', job.company_id)
+                    .single();
+
+                if (providerWallet) {
+                    await supabase
+                        .from('provider_wallets')
+                        .update({
+                            available_balance: parseFloat(providerWallet.available_balance) + providerCredit,
+                            total_earned: parseFloat(providerWallet.total_earned) + providerCredit,
+                            total_commission: parseFloat(providerWallet.total_commission || 0) + commission,
+                            updated_at: new Date().toISOString(),
+                        })
+                        .eq('company_id', job.company_id);
+                }
+
+                // Mark transaction completed
+                await supabase
+                    .from('financial_transactions')
+                    .update({
+                        status: 'completed',
+                        verified_by_admin: true,
+                        admin_notes: 'Auto-verified: fully paid via credit wallet',
+                    })
+                    .eq('id', transactionId);
+
+                // Advance job status
+                const nextStatus = {
+                    price_set: 'deposit_paid',
+                    work_ongoing: 'intermediate_paid',
+                    deposit_paid: 'intermediate_paid',
+                    work_completed: 'completed',
+                    work_rectified: 'completed',
+                }[job.status] || job.status;
+
+                await supabase.from('jobs').update({ status: nextStatus }).eq('id', jobId);
+
+                // Notify provider
+                await supabase.from('notifications').insert({
+                    user_id: job.company_id,
+                    job_id: jobId,
+                    type: 'payment_received',
+                    title: '💳 Payment Received',
+                    message: `${fmt(providerCredit)} credited to your wallet for: ${job.description || `Job #${jobId.substring(0, 8)}`}`,
+                    read: false,
+                    company_id: job.company_id,
+                });
+
+                navigate('/payment/pending', {
+                    state: {
+                        reference,
+                        amount: job.paymentAmount,
+                        jobId,
+                        paymentType: job.paymentType,
+                        companyName: job.companyName,
+                        jobDescription: job.description || '',
+                        proofUploaded: true,
+                        paidByCredit: true,
+                        creditUsed: creditApplied,
+                    }
+                });
+                return;
+            }
+
+            // ── PARTIAL OR NO CREDIT — go to bank transfer ────────────────────
             navigate(`/payment/bank-transfer/${jobId}`, {
                 state: {
                     reference,
-                    amount: job.paymentAmount,
+                    amount: amountAfterCredit,
+                    fullAmount: job.paymentAmount,
+                    creditUsed: creditApplied,
                     totalAmount: job.totalAmount,
                     paymentType: job.paymentType,
                     transactionId,
@@ -273,9 +379,7 @@ const PaymentPage = () => {
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">Unable to Load Payment</h3>
                 <p className="text-gray-500 text-sm mb-6">{error}</p>
-                <button onClick={() => navigate(-1)} className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition text-sm">
-                    Go Back
-                </button>
+                <button onClick={() => navigate(-1)} className="w-full bg-gray-100 text-gray-700 py-2.5 rounded-xl font-semibold hover:bg-gray-200 transition text-sm">Go Back</button>
             </div>
         </div>
     );
@@ -291,6 +395,10 @@ const PaymentPage = () => {
     const { totalAmount, paymentAmount, companyName, paymentType, paymentDescription } = job;
     const cfg = TYPE_CONFIG[paymentType] || TYPE_CONFIG.final_payment;
     const pct = cfg.pct || (job.hasIntermediate ? '20%' : '50%');
+    const isLogisticsPlan = creditWallet?.plan === 'logistics';
+    const isLogisticsJob = job?.category === 'Logistics Services';
+    const creditAllowedForJob = !isLogisticsPlan || isLogisticsJob;
+    const hasCreditAvailable = usableCreditCap > 0 && creditAllowedForJob;
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -327,7 +435,6 @@ const PaymentPage = () => {
                     </div>
                     <div className="p-5 space-y-4">
 
-                        {/* Job row */}
                         <div className="flex items-start justify-between gap-3">
                             <div>
                                 <p className="font-semibold text-gray-900 text-sm">{job.description || 'Service Job'}</p>
@@ -341,7 +448,6 @@ const PaymentPage = () => {
 
                         <div className="h-px bg-gray-100" />
 
-                        {/* Status */}
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Job Status</span>
                             <span className="px-2.5 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-semibold">
@@ -350,76 +456,138 @@ const PaymentPage = () => {
                         </div>
 
                         {/* Breakdown */}
-                        <div className="bg-gray-50 rounded-xl p-4">
-                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Breakdown</p>
+                        <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Breakdown</p>
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-600">{cfg.label} ({pct})</span>
                                 <span className="font-semibold text-gray-900">{fmt(paymentAmount)}</span>
                             </div>
+                            {creditApplied > 0 && (
+                                <div className="flex justify-between text-sm text-purple-700">
+                                    <span>Credit Applied 💳</span>
+                                    <span className="font-semibold">− {fmt(creditApplied)}</span>
+                                </div>
+                            )}
+                            {creditApplied > 0 && (
+                                <>
+                                    <div className="h-px bg-gray-200" />
+                                    <div className="flex justify-between text-sm font-bold">
+                                        <span className="text-gray-700">You Pay</span>
+                                        <span className={isFullyCoveredByCredit ? 'text-purple-700' : 'text-naijaGreen'}>
+                                            {isFullyCoveredByCredit ? '₦0 (Fully covered)' : fmt(amountAfterCredit)}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="h-px bg-gray-100" />
 
-                        {/* Total */}
                         <div className="flex items-center justify-between">
                             <span className="font-bold text-gray-900">Amount to Pay</span>
-                            <p className="text-3xl font-bold text-naijaGreen">{fmt(paymentAmount)}</p>
+                            <p className={`text-3xl font-bold ${isFullyCoveredByCredit ? 'text-purple-600' : 'text-naijaGreen'}`}>
+                                {isFullyCoveredByCredit ? '₦0' : fmt(amountAfterCredit)}
+                            </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Payment method */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="px-5 py-4 border-b border-gray-100">
-                        <h2 className="font-bold text-gray-900">Payment Method</h2>
-                    </div>
-                    <div className="p-5">
-                        <div className="flex items-center gap-4 p-4 bg-naijaGreen/5 border-2 border-naijaGreen rounded-xl">
-                            <div className="w-10 h-10 bg-naijaGreen/10 rounded-xl flex items-center justify-center shrink-0 text-xl">🏦</div>
-                            <div className="flex-1">
-                                <p className="font-bold text-gray-900 text-sm">Bank Transfer</p>
-                                <p className="text-xs text-gray-500">Transfer directly to our bank account</p>
+                {/* Credit Wallet Toggle */}
+                {hasCreditAvailable && (
+                    <div className={`rounded-2xl border-2 overflow-hidden transition-all ${useCredit ? 'border-purple-400 bg-purple-50' : 'border-gray-100 bg-white'}`}>
+                        <div className="px-5 py-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-xl shrink-0">💳</div>
+                                    <div>
+                                        <p className="font-bold text-gray-900 text-sm">Use Credit Wallet</p>
+                                        <p className="text-xs text-gray-500">
+                                            {fmt(usableCreditCap)} available
+                                            <span className="text-gray-400 ml-1">(of {fmt(parseFloat(creditWallet?.balance || 0))} balance)</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setUseCredit(prev => !prev)}
+                                    className={`relative w-12 h-6 rounded-full transition-colors ${useCredit ? 'bg-purple-500' : 'bg-gray-300'}`}
+                                >
+                                    <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${useCredit ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                                </button>
                             </div>
-                            <div className="w-5 h-5 rounded-full border-2 border-naijaGreen flex items-center justify-center shrink-0">
-                                <div className="w-2.5 h-2.5 bg-naijaGreen rounded-full" />
-                            </div>
+                            {useCredit && (
+                                <div className="mt-3 p-3 bg-purple-100 rounded-xl text-xs text-purple-800">
+                                    {isFullyCoveredByCredit
+                                        ? '✅ Your credit covers this payment fully. No transfer needed — just tap Pay below.'
+                                        : `💡 ${fmt(creditApplied)} will be deducted from your credit. You'll transfer the remaining ${fmt(amountAfterCredit)}.`
+                                    }
+                                </div>
+                            )}
                         </div>
+                    </div>
+                )}
 
-                        <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">How it works</p>
-                            <ol className="space-y-1.5 text-xs text-blue-700">
-                                {[
-                                    "You'll see our bank account details",
-                                    'Transfer the exact amount shown above',
-                                    'Use the unique reference code provided',
-                                    'Upload your proof of payment',
-                                    'Admin verifies within 5–15 minutes',
-                                    'Job status updates automatically',
-                                ].map((step, i) => (
-                                    <li key={i} className="flex items-start gap-2">
-                                        <span className="w-4 h-4 bg-blue-200 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
-                                        {step}
-                                    </li>
-                                ))}
-                            </ol>
+                {/* Payment method — hidden if fully covered */}
+                {!isFullyCoveredByCredit && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-100">
+                            <h2 className="font-bold text-gray-900">Payment Method</h2>
+                        </div>
+                        <div className="p-5">
+                            <div className="flex items-center gap-4 p-4 bg-naijaGreen/5 border-2 border-naijaGreen rounded-xl">
+                                <div className="w-10 h-10 bg-naijaGreen/10 rounded-xl flex items-center justify-center shrink-0 text-xl">🏦</div>
+                                <div className="flex-1">
+                                    <p className="font-bold text-gray-900 text-sm">Bank Transfer</p>
+                                    <p className="text-xs text-gray-500">Transfer directly to our bank account</p>
+                                </div>
+                                <div className="w-5 h-5 rounded-full border-2 border-naijaGreen flex items-center justify-center shrink-0">
+                                    <div className="w-2.5 h-2.5 bg-naijaGreen rounded-full" />
+                                </div>
+                            </div>
+                            <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">How it works</p>
+                                <ol className="space-y-1.5 text-xs text-blue-700">
+                                    {[
+                                        "You'll see our bank account details",
+                                        `Transfer ${creditApplied > 0 ? 'the remaining ' : ''}${fmt(amountAfterCredit)}`,
+                                        'Use the unique reference code provided',
+                                        'Upload your proof of payment',
+                                        'Admin verifies within 5–15 minutes',
+                                        'Job status updates automatically',
+                                    ].map((step, i) => (
+                                        <li key={i} className="flex items-start gap-2">
+                                            <span className="w-4 h-4 bg-blue-200 text-blue-800 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
+                                            {step}
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* CTA */}
                 <button
-                    onClick={initiateBankTransfer}
+                    onClick={handleProceed}
                     disabled={!reference || submitting}
-                    className="w-full bg-naijaGreen text-white py-4 rounded-2xl font-bold text-base hover:bg-darkGreen transition shadow-sm shadow-naijaGreen/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className={`w-full text-white py-4 rounded-2xl font-bold text-base transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isFullyCoveredByCredit
+                            ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                            : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
+                        }`}
                 >
                     {submitting ? (
                         <><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing…</>
-                    ) : !reference ? 'Loading…' : (
-                        `Proceed to Bank Transfer — ${fmt(paymentAmount)}`
+                    ) : !reference ? 'Loading…' : isFullyCoveredByCredit ? (
+                        '💳 Pay with Credit — ₦0'
+                    ) : (
+                        `Proceed to Bank Transfer — ${fmt(amountAfterCredit)}`
                     )}
                 </button>
 
-                <p className="text-center text-xs text-gray-400 pb-4">Secure payment · Verified by Mount admin</p>
+                <p className="text-center text-xs text-gray-400 pb-4">
+                    {isFullyCoveredByCredit
+                        ? 'Payment covered by your subscription credit wallet'
+                        : 'Secure payment · Verified by Mount admin'}
+                </p>
             </div>
         </div>
     );
