@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSupabase } from '../context/SupabaseContext';
 import VerificationModal from './VerificationModal';
 
-const PAYSTACK_PUBLIC_KEY = 'pk_test_535c52d3bb40d34bd34aba8b4db32bcc29db5b1f';
+const PAYSTACK_PUBLIC_KEY = 'pk_live_0d70846f234f0d4d3861698734950048b58f2764';
 
 const PLANS = [
     {
@@ -11,7 +11,7 @@ const PLANS = [
         name: 'Logistics',
         monthlyPrice: 5000,
         yearlyPrice: 57000,
-        planIdMonthly: 'PLN_32rwu4fudk5yl1z',
+        planIdMonthly: 'PLN_3tdtvb132thk1hr',
         planIdYearly: null,
         color: 'from-blue-500 to-blue-600',
         badge: '🚚',
@@ -23,7 +23,7 @@ const PLANS = [
         name: 'Basic',
         monthlyPrice: 15000,
         yearlyPrice: 171000,
-        planIdMonthly: 'PLN_h0pvuhhdtinof53',
+        planIdMonthly: 'PLN_2iwog9z6h8jgbzt',
         planIdYearly: null,
         color: 'from-gray-500 to-gray-600',
         badge: '⚡',
@@ -34,7 +34,7 @@ const PLANS = [
         name: 'Standard',
         monthlyPrice: 25000,
         yearlyPrice: 285000,
-        planIdMonthly: 'PLN_6x6uirl9g69w52k',
+        planIdMonthly: 'PLN_746nl7acl3cs1sy',
         planIdYearly: null,
         color: 'from-naijaGreen to-darkGreen',
         badge: '🌟',
@@ -46,7 +46,7 @@ const PLANS = [
         name: 'Premium',
         monthlyPrice: 50000,
         yearlyPrice: 570000,
-        planIdMonthly: 'PLN_bqietirrn2omu3p',
+        planIdMonthly: 'PLN_5l5rozwz1c2zour',
         planIdYearly: null,
         color: 'from-amber-500 to-amber-600',
         badge: '👑',
@@ -181,7 +181,6 @@ function ServiceProvidersPlusModal({ onClose, hasAccess, onSubscribe }) {
                                     { icon: '📸', text: 'Browse real photos of previous work' },
                                     { icon: '📞', text: 'Contact providers directly via call or WhatsApp' },
                                     { icon: '🌍', text: 'Hard skills and soft skills — all in one place' },
-                                    { icon: '💳', text: 'Use your credit wallet to offset service costs' },
                                 ].map((item, i) => (
                                     <div key={i} className="flex items-center gap-3 text-sm text-gray-700">
                                         <span className="text-base shrink-0">{item.icon}</span>
