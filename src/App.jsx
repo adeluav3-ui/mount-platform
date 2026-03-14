@@ -10,15 +10,12 @@ import PaymentPage from './components/payment/PaymentPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import AdminStats from './components/admin/AdminStats';
 import PendingApprovals from './components/admin/PendingApprovals';
-import PayoutManagement from './components/admin/PayoutManagement';
 import JobManagement from './components/admin/JobManagement';
 import UserManagement from './components/admin/UserManagement';
-import AdminPaymentVerification from './components/admin/AdminPaymentVerification';
 import CompanyReviewsPage from './components/company/CompanyReviewsPage';
 import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
-import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
 import ServicesHubPage from './components/seo/ServicesHubPage';
 import ServicePage from './components/seo/ServicePage';
@@ -34,6 +31,8 @@ import PrivacyPage from './components/PrivacyPage';
 import AdminMessagingPage from './components/admin/AdminMessagingPage';
 import CompleteProfile from './components/auth/CompleteProfile'; // NEW
 import PaymentSuccess from './components/payment/PaymentSuccess';
+import AdminSubscriptions from './components/admin/AdminSubscriptions';
+import AdminProviderWallets from './components/admin/AdminProviderWallets';
 
 // Public routes wrapper - accessible without authentication
 function PublicRoutes() {
@@ -99,12 +98,11 @@ function ProtectedRoutes() {
         <Route path="stats" element={<AdminStats />} />
         <Route path="messages" element={<AdminMessagingPage />} />
         <Route path="approvals" element={<PendingApprovals />} />
-        <Route path="payments" element={<AdminPaymentVerification />} />
-        <Route path="verifications" element={<VerificationReview />} />
-        <Route path="payouts" element={<PayoutManagement />} />
         <Route path="jobs" element={<JobManagement />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="subscriptions" element={<AdminSubscriptions />} />
+        <Route path="provider-wallets" element={<AdminProviderWallets />} />
       </Route>
 
       {/* Catch-all for authenticated users */}
