@@ -254,79 +254,25 @@ const PaymentPage = () => {
 
             // ── FULLY COVERED BY CREDIT ───────────────────────────────────────
             if (isFullyCoveredByCredit) {
-                // Deduct from credit wallet
-                const newBalance = parseFloat(creditWallet.balance) - creditApplied;
-                await supabase
-                    .from('credit_wallets')
-                    .update({ balance: newBalance, updated_at: new Date().toISOString() })
-                    .eq('customer_id', user.id);
-
-                // Credit provider wallet
-                const isFinalPayment = dbPaymentType === 'final_payment';
-                const commission = isFinalPayment ? job.quoted_price * 0.05 : 0;
-                const providerCredit = job.paymentAmount - commission;
-
-                const { data: providerWallet } = await supabase
-                    .from('provider_wallets')
-                    .select('*')
-                    .eq('company_id', job.company_id)
-                    .maybeSingle();
-
-                if (providerWallet) {
-                    await supabase
-                        .from('provider_wallets')
-                        .update({
-                            available_balance: parseFloat(providerWallet.available_balance) + providerCredit,
-                            total_earned: parseFloat(providerWallet.total_earned) + providerCredit,
-                            total_commission: parseFloat(providerWallet.total_commission || 0) + commission,
-                            updated_at: new Date().toISOString(),
-                        })
-                        .eq('company_id', job.company_id);
-                } else {
-                    // No wallet row yet — create one
-                    await supabase
-                        .from('provider_wallets')
-                        .insert({
-                            company_id: job.company_id,
-                            available_balance: providerCredit,
-                            total_earned: providerCredit,
-                            total_withdrawn: 0,
-                            total_commission: commission,
-                            updated_at: new Date().toISOString(),
-                        });
-                }
-
-                // Mark transaction completed
-                await supabase
-                    .from('financial_transactions')
-                    .update({
-                        status: 'completed',
-                        verified_by_admin: true,
-                        admin_notes: 'Auto-verified: fully paid via credit wallet',
-                    })
-                    .eq('id', transactionId);
-
-                // Advance job status
-                const nextStatus = {
-                    price_set: 'deposit_paid',
-                    work_ongoing: 'intermediate_paid',
-                    deposit_paid: 'intermediate_paid',
-                    work_completed: 'completed',
-                    work_rectified: 'completed',
-                }[job.status] || job.status;
-
-                await supabase.from('jobs').update({ status: nextStatus }).eq('id', jobId);
-
-                // Notify provider
-                await supabase.from('notifications').insert({
-                    user_id: job.company_id,
-                    job_id: jobId,
-                    type: 'payment_received',
-                    title: '💳 Payment Received',
-                    message: `${fmt(providerCredit)} credited to your wallet for: ${job.description || `Job #${jobId.substring(0, 8)}`}`,
-                    read: false,
-                    company_id: job.company_id,
+                const { data: creditResult, error: creditError } = await supabase.functions.invoke('process-credit-payment', {
+                    body: {
+                        jobId,
+                        customerId: user.id,
+                        companyId: job.company_id,
+                        transactionId,
+                        paymentAmount: job.paymentAmount,
+                        creditApplied,
+                        dbPaymentType,
+                        jobStatus: job.status,
+                        jobDescription: job.description,
+                        companyName: job.companyName,
+                        quotedPrice: job.quoted_price,
+                    },
                 });
+
+                if (creditError || !creditResult?.success) {
+                    throw new Error(creditError?.message || creditResult?.error || 'Credit payment processing failed. Please try again.');
+                }
 
                 navigate('/payment/pending', {
                     state: {
@@ -600,8 +546,8 @@ const PaymentPage = () => {
                     onClick={handleProceed}
                     disabled={!reference || submitting}
                     className={`w-full text-white py-4 rounded-2xl font-bold text-base transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isFullyCoveredByCredit
-                            ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
-                            : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
+                        ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                        : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
                         }`}
                 >
                     {submitting ? (
