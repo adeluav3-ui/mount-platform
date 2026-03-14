@@ -127,12 +127,43 @@ serve(async (req) => {
             return new Response(JSON.stringify({ received: true, duplicate: true }), { status: 200 })
         }
 
-        // Find job by ID prefix
-        const { data: job, error: jobError } = await supabase
-            .from('jobs')
-            .select('id, status, quoted_price, customer_id, company_id, category, description')
-            .ilike('id', `${jobIdPrefix}%`)
+        // Find pending transaction by reference first — it has the full job_id and company_id
+        const { data: pendingTx } = await supabase
+            .from('financial_transactions')
+            .select('id, job_id, metadata')
+            .eq('reference', paymentReference)
+            .eq('status', 'pending')
             .maybeSingle()
+
+        const creditUsed = parseFloat(pendingTx?.metadata?.credit_used || 0)
+        const pendingTxId = pendingTx?.id || null
+
+        // Get job_id and company_id from pending transaction metadata or prefix fallback
+        const jobIdFromTx = pendingTx?.metadata?.job_id || null
+        const companyIdFromTx = pendingTx?.metadata?.company_id || null
+
+        // Find job — use full ID from transaction if available
+        let job: any = null
+        let jobError: any = null
+
+        if (jobIdFromTx) {
+            const res = await supabase
+                .from('jobs')
+                .select('id, status, quoted_price, customer_id, company_id, category, description')
+                .eq('id', jobIdFromTx)
+                .maybeSingle()
+            job = res.data
+            jobError = res.error
+        } else {
+            // Fallback: cast UUID to text for prefix search
+            const res = await supabase
+                .from('jobs')
+                .select('id, status, quoted_price, customer_id, company_id, category, description')
+                .filter('id::text', 'ilike', `${jobIdPrefix}%`)
+                .maybeSingle()
+            job = res.data
+            jobError = res.error
+        }
 
         if (jobError || !job) {
             console.error(`No job found with prefix ${jobIdPrefix}`, jobError)
@@ -142,25 +173,7 @@ serve(async (req) => {
             )
         }
 
-        // Find company by ID prefix
-        const { data: company } = await supabase
-            .from('companies')
-            .select('id')
-            .ilike('id', `${companyIdPrefix}%`)
-            .maybeSingle()
-
-        const companyId = company?.id || job.company_id
-
-        // Find pending transaction to get credit_used
-        const { data: pendingTx } = await supabase
-            .from('financial_transactions')
-            .select('id, metadata')
-            .eq('reference', paymentReference)
-            .eq('status', 'pending')
-            .maybeSingle()
-
-        const creditUsed = parseFloat(pendingTx?.metadata?.credit_used || 0)
-        const pendingTxId = pendingTx?.id || null
+        const companyId = companyIdFromTx || job.company_id
 
         const totalPaymentAmount = parseFloat((amountPaid + creditUsed).toFixed(2))
 
