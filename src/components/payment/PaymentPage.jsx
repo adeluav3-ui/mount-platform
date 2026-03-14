@@ -548,8 +548,8 @@ const PaymentPage = () => {
                     onClick={handleProceed}
                     disabled={!reference || submitting}
                     className={`w-full text-white py-4 rounded-2xl font-bold text-base transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isFullyCoveredByCredit
-                            ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
-                            : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
+                        ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                        : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
                         }`}
                 >
                     {submitting ? (
