@@ -263,14 +263,14 @@ const PaymentPage = () => {
 
                 // Credit provider wallet
                 const isFinalPayment = dbPaymentType === 'final_payment';
-                const commission = isFinalPayment ? job.paymentAmount * 0.05 : 0;
+                const commission = isFinalPayment ? job.quoted_price * 0.05 : 0;
                 const providerCredit = job.paymentAmount - commission;
 
                 const { data: providerWallet } = await supabase
                     .from('provider_wallets')
                     .select('*')
                     .eq('company_id', job.company_id)
-                    .single();
+                    .maybeSingle();
 
                 if (providerWallet) {
                     await supabase
@@ -282,6 +282,18 @@ const PaymentPage = () => {
                             updated_at: new Date().toISOString(),
                         })
                         .eq('company_id', job.company_id);
+                } else {
+                    // No wallet row yet — create one
+                    await supabase
+                        .from('provider_wallets')
+                        .insert({
+                            company_id: job.company_id,
+                            available_balance: providerCredit,
+                            total_earned: providerCredit,
+                            total_withdrawn: 0,
+                            total_commission: commission,
+                            updated_at: new Date().toISOString(),
+                        });
                 }
 
                 // Mark transaction completed
