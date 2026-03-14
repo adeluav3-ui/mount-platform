@@ -16,6 +16,7 @@ import CompanyReviewsPage from './components/company/CompanyReviewsPage';
 import AdminSettings from './components/admin/AdminSettings';
 import PaymentPending from './components/payment/PaymentPending';
 import ReviewSubmission from './components/review/ReviewSubmission';
+import VerificationReview from './components/admin/VerificationReview';
 import WelcomeScreen from './components/WelcomeScreen';
 import ServicesHubPage from './components/seo/ServicesHubPage';
 import ServicePage from './components/seo/ServicePage';
@@ -98,6 +99,7 @@ function ProtectedRoutes() {
         <Route path="stats" element={<AdminStats />} />
         <Route path="messages" element={<AdminMessagingPage />} />
         <Route path="approvals" element={<PendingApprovals />} />
+        <Route path="verifications" element={<VerificationReview />} />
         <Route path="jobs" element={<JobManagement />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="settings" element={<AdminSettings />} />
