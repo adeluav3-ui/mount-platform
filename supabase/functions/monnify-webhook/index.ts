@@ -192,17 +192,22 @@ serve(async (req) => {
         if (creditUsed > 0) {
             const { data: creditWallet } = await supabase
                 .from('credit_wallets')
-                .select('id, balance')
+                .select('id, balance, monthly_used')
                 .eq('customer_id', job.customer_id)
                 .maybeSingle()
 
             if (creditWallet) {
                 const newBalance = Math.max(0, parseFloat(creditWallet.balance) - creditUsed)
+                const newMonthlyUsed = parseFloat((parseFloat(creditWallet.monthly_used || 0) + creditUsed).toFixed(2))
                 await supabase
                     .from('credit_wallets')
-                    .update({ balance: parseFloat(newBalance.toFixed(2)), updated_at: new Date().toISOString() })
+                    .update({
+                        balance: parseFloat(newBalance.toFixed(2)),
+                        monthly_used: newMonthlyUsed,
+                        updated_at: new Date().toISOString(),
+                    })
                     .eq('id', creditWallet.id)
-                console.log(`💳 Credit deducted: ₦${creditUsed} | New balance: ₦${newBalance}`)
+                console.log(`💳 Credit deducted: ₦${creditUsed} | New balance: ₦${newBalance} | Monthly used: ₦${newMonthlyUsed}`)
             }
         }
 

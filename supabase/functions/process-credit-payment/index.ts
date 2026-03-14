@@ -53,14 +53,20 @@ serve(async (req) => {
         if (!creditWallet) throw new Error('Credit wallet not found for customer')
 
         const newCreditBalance = Math.max(0, parseFloat(creditWallet.balance) - creditApplied)
+        const newMonthlyUsed = parseFloat((parseFloat(creditWallet.monthly_used || 0) + creditApplied).toFixed(2))
+
         const { error: cwUpdateError } = await supabase
             .from('credit_wallets')
-            .update({ balance: parseFloat(newCreditBalance.toFixed(2)), updated_at: new Date().toISOString() })
+            .update({
+                balance: parseFloat(newCreditBalance.toFixed(2)),
+                monthly_used: newMonthlyUsed,
+                updated_at: new Date().toISOString(),
+            })
             .eq('id', creditWallet.id)
 
         if (cwUpdateError) throw new Error(`Credit wallet deduction failed: ${cwUpdateError.message}`)
 
-        console.log(`💳 Credit deducted: ₦${creditApplied} | New balance: ₦${newCreditBalance}`)
+        console.log(`💳 Credit deducted: ₦${creditApplied} | New balance: ₦${newCreditBalance} | Monthly used: ₦${newMonthlyUsed}`)
 
         // ── 2. Calculate commission and provider credit ───────────────────────
         const isFinalPayment = dbPaymentType === 'final_payment'

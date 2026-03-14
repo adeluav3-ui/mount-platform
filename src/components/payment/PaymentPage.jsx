@@ -67,8 +67,10 @@ const getUsableCreditCap = (wallet) => {
     const day = new Date().getDate();
     const pct = day <= 14 ? 0.5 : 0.7;
     const maxUsable = parseFloat(wallet.monthly_credited || 0) * pct;
+    const alreadyUsed = parseFloat(wallet.monthly_used || 0);
+    const remaining = Math.max(0, maxUsable - alreadyUsed);
     const balance = parseFloat(wallet.balance || 0);
-    return Math.min(maxUsable, balance);
+    return Math.min(remaining, balance);
 };
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -546,8 +548,8 @@ const PaymentPage = () => {
                     onClick={handleProceed}
                     disabled={!reference || submitting}
                     className={`w-full text-white py-4 rounded-2xl font-bold text-base transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${isFullyCoveredByCredit
-                        ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
-                        : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
+                            ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                            : 'bg-naijaGreen hover:bg-darkGreen shadow-naijaGreen/20'
                         }`}
                 >
                     {submitting ? (
