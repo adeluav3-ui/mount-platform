@@ -2,6 +2,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useSupabase } from './SupabaseContext';
 
+const dedupeMessages = (msgs) => {
+    const seen = new Set();
+    return msgs.filter(m => {
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+    });
+};
 const MessagingContext = createContext();
 
 export const useMessaging = () => {
@@ -124,7 +132,7 @@ export const MessagingProvider = ({ children }) => {
                 .order('created_at', { ascending: true });
 
             if (error) throw error;
-            setMessages(data || []);
+            setMessages(dedupeMessages(data || []));
 
             // Clear badge immediately in local state
             setConversations(prev => prev.map(c => {
@@ -184,7 +192,7 @@ export const MessagingProvider = ({ children }) => {
             created_at: new Date().toISOString(),
             _pending: true,
         };
-        setMessages(prev => [...prev, optimisticMsg]);
+        setMessages(prev => dedupeMessages(prev.map(m => m.id === tempId ? data : m)));
 
         try {
             let mediaUrls = [];
@@ -340,7 +348,7 @@ export const MessagingProvider = ({ children }) => {
                     // User is in this conversation — append message, mark read, no badge
                     setMessages(prev => {
                         if (prev.some(m => m.id === msg.id)) return prev;
-                        return [...prev, msg];
+                        return dedupeMessages([...prev, msg]);
                     });
                     supabase.from('messages').update({ is_read: true }).eq('id', msg.id);
                     setConversations(prev => prev.map(c =>
