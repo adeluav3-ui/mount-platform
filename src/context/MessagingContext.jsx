@@ -110,8 +110,12 @@ export const MessagingProvider = ({ children }) => {
     }, [user, supabase]);
 
     // ── Load messages ─────────────────────────────────────────────────────
+    const loadingConvRef = useRef(null);
+
     const loadMessages = useCallback(async (conversationId) => {
         if (!conversationId || !supabase || !user) return;
+        if (loadingConvRef.current === conversationId) return; // ← guard
+        loadingConvRef.current = conversationId;
         try {
             const { data, error } = await supabase
                 .from('messages')
@@ -159,6 +163,8 @@ export const MessagingProvider = ({ children }) => {
             return data;
         } catch (err) {
             console.error('Error loading messages:', err);
+        } finally {
+            loadingConvRef.current = null;
         }
     }, [supabase, user]);
 
