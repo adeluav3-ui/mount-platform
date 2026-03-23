@@ -30,16 +30,10 @@ const PLAN_MOUNT_FEE: Record<string, number> = {
 
 // Map Paystack plan IDs to plan keys
 const PLAN_ID_MAP: Record<string, string> = {
-    // Live
     'PLN_3tdtvb132thk1hr': 'logistics',
     'PLN_2iwog9z6h8jgbzt': 'basic',
     'PLN_746nl7acl3cs1sy': 'standard',
     'PLN_5l5rozwz1c2zour': 'premium',
-    // Test
-    'PLN_32rwu4fudk5yl1z': 'logistics',
-    'PLN_h0pvuhhdtinof53': 'basic',
-    'PLN_6x6uirl9g69w52k': 'standard',
-    'PLN_bqietirrn2omu3p': 'premium',
 }
 
 // Verify Paystack webhook signature
@@ -127,16 +121,15 @@ async function creditWallet(
         .maybeSingle()
 
     if (existing) {
-        // Update existing wallet
         await supabase
             .from('credit_wallets')
             .update({
                 balance: parseFloat(existing.balance) + creditToAdd,
-                monthly_credited: creditToAdd, // reset to current month's allocation
+                monthly_credited: parseFloat(existing.monthly_credited || 0) + creditToAdd, // ← accumulate
+                monthly_used: 0,
                 mount_fee_collected: parseFloat(existing.mount_fee_collected || 0) + mountFee,
                 last_credited_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                plan: planKey,
             })
             .eq('customer_id', customerId)
     } else {
@@ -147,10 +140,10 @@ async function creditWallet(
                 customer_id: customerId,
                 balance: creditToAdd,
                 monthly_credited: creditToAdd,
+                monthly_used: 0,
                 mount_fee_collected: mountFee,
                 last_credited_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                plan: planKey,
             })
     }
 
@@ -173,7 +166,6 @@ async function activateSubscription(
     const paystackCustomerCode = (paystackData.customer as Record<string, string>)?.customer_code ?? null
     const paystackSubscriptionCode = (paystackData.subscription as Record<string, string>)?.subscription_code ?? null
 
-    // Check for existing subscription
     const { data: existing } = await supabase
         .from('subscriptions')
         .select('*')
@@ -191,6 +183,7 @@ async function activateSubscription(
                 paystack_subscription_code: paystackSubscriptionCode ?? existing.paystack_subscription_code,
                 current_period_start: now.toISOString(),
                 current_period_end: periodEnd.toISOString(),
+                months_credited: 1,
                 updated_at: now.toISOString(),
             })
             .eq('customer_id', customerId)
@@ -253,12 +246,6 @@ serve(async (req) => {
             case 'charge.success': {
                 const customerId = getCustomerId(data)
                 const planKey = getPlanKey(data)
-
-                if (!planKey) {
-                    console.error('❌ Could not determine plan key — aborting credit. Metadata:', JSON.stringify(data.metadata))
-                    // Still activate subscription but don't credit wallet
-                    break
-                }
                 const billingCycle = getBillingCycle(data)
                 const reference = data.reference as string
 

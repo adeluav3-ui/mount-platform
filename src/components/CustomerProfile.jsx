@@ -64,7 +64,7 @@ const BADGES = [
 ];
 
 const SP_PLUS_CATEGORIES = [
-    { key: 'automobile', label: 'Automobile', icon: '🚗', desc: 'Verified mechanics, auto electricians, panel beaters' },
+    { key: 'automobile', label: 'Automobile', icon: '🚗', desc: 'Mechanics, auto electricians, panel beaters' },
     { key: 'catering', label: 'Catering', icon: '🍽️', desc: 'Caterers, bakers, personal chefs' },
     { key: 'appliance', label: 'Appliance Repair', icon: '🔧', desc: 'AC, fridge, washing machine specialists' },
     { key: 'fashion', label: 'Fashion', icon: '👗', desc: 'Tailors, fashion designers, alterations' },
@@ -72,6 +72,10 @@ const SP_PLUS_CATEGORIES = [
     { key: 'creative', label: 'Creative & Digital', icon: '🎨', desc: 'Videography, photography, graphics design' },
     { key: 'tech', label: 'Tech & Software', icon: '💻', desc: 'Software engineers, AI automation, IT support' },
     { key: 'media', label: 'Media Production', icon: '🎬', desc: 'Video editing, animation, content creation' },
+    { key: 'shoe_repair', label: 'Shoe Repair', icon: '👟', desc: 'Cobblers, shoe restoration, bag repair' },
+    { key: 'veterinary', label: 'Veterinary', icon: '🐾', desc: 'Mobile vets, pet care, animal health' },
+    { key: 'hair', label: 'Hair Services', icon: '💇', desc: 'Mobile hairstylists and barbers' },
+    { key: 'makeup', label: 'Makeup & Beauty', icon: '💄', desc: 'Makeup artists, nail technicians, henna' },
 ];
 
 const fmt = (n) => `₦${parseFloat(n || 0).toLocaleString()}`;
@@ -89,7 +93,28 @@ function getDisplayName(name) {
 }
 
 // ─── Service Providers+ Modal ─────────────────────────────────────────────────
-function ServiceProvidersPlusModal({ onClose, hasAccess, onSubscribe }) {
+// ─── Service Providers+ Modal ─────────────────────────────────────────────────
+function ServiceProvidersPlusModal({ onClose, hasAccess, onSubscribe, supabase }) {
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [providers, setProviders] = useState([]);
+    const [loadingProviders, setLoadingProviders] = useState(false);
+
+    useEffect(() => {
+        if (!hasAccess || !selectedCategory) return;
+        const fetchProviders = async () => {
+            setLoadingProviders(true);
+            const { data } = await supabase
+                .from('sp_plus_providers')
+                .select('*')
+                .eq('category', selectedCategory)
+                .eq('is_active', true)
+                .order('name');
+            setProviders(data || []);
+            setLoadingProviders(false);
+        };
+        fetchProviders();
+    }, [selectedCategory, hasAccess, supabase]);
+
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
@@ -112,51 +137,95 @@ function ServiceProvidersPlusModal({ onClose, hasAccess, onSubscribe }) {
 
                 <div className="overflow-y-auto flex-1">
                     {hasAccess ? (
-                        // ── Subscriber: Coming Soon ──────────────────────────
-                        <div className="p-6 text-center space-y-6">
-                            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto text-4xl">
-                                🚀
-                            </div>
-                            <div>
-                                <h4 className="text-xl font-bold text-gray-900">Coming Soon</h4>
-                                <p className="text-gray-500 text-sm mt-2 leading-relaxed">
-                                    We're verifying and onboarding the best professionals across Nigeria. This feature will be available to you very soon as a Mount subscriber.
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3 text-left">
+                        <div className="p-4 space-y-4">
+                            {/* Category pills */}
+                            <div className="flex flex-wrap gap-2">
                                 {SP_PLUS_CATEGORIES.map(cat => (
-                                    <div key={cat.key} className="bg-gray-50 rounded-xl p-3 opacity-60">
-                                        <span className="text-xl">{cat.icon}</span>
-                                        <p className="font-semibold text-sm text-gray-700 mt-1">{cat.label}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5 leading-tight">{cat.desc}</p>
-                                    </div>
+                                    <button
+                                        key={cat.key}
+                                        onClick={() => setSelectedCategory(cat.key === selectedCategory ? null : cat.key)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition border ${selectedCategory === cat.key
+                                                ? 'bg-purple-600 text-white border-purple-600'
+                                                : 'bg-white text-gray-700 border-gray-200 hover:border-purple-300'
+                                            }`}
+                                    >
+                                        <span>{cat.icon}</span>
+                                        <span>{cat.label}</span>
+                                    </button>
                                 ))}
                             </div>
 
-                            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4">
-                                <p className="text-sm text-purple-700 font-medium">
-                                    🔔 You'll be notified the moment Service Providers+ goes live. As a subscriber, you get early access.
-                                </p>
-                            </div>
+                            {/* Provider list */}
+                            {!selectedCategory ? (
+                                <div className="text-center py-12 text-gray-400">
+                                    <p className="text-3xl mb-3">👆</p>
+                                    <p className="text-sm font-medium">Select a category to browse providers</p>
+                                </div>
+                            ) : loadingProviders ? (
+                                <div className="space-y-3">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="animate-pulse bg-gray-100 rounded-2xl h-24" />
+                                    ))}
+                                </div>
+                            ) : providers.length === 0 ? (
+                                <div className="text-center py-12 text-gray-400">
+                                    <p className="text-3xl mb-3">🔍</p>
+                                    <p className="text-sm font-medium">No providers listed yet in this category</p>
+                                    <p className="text-xs mt-1">Check back soon — we're always adding more</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {providers.map(provider => (
+                                        <div key={provider.id} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex gap-4 items-start">
+                                            {/* Photo */}
+                                            <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-purple-100 flex items-center justify-center">
+                                                {provider.photo_url ? (
+                                                    <img src={provider.photo_url} alt={provider.name} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-2xl">
+                                                        {SP_PLUS_CATEGORIES.find(c => c.key === provider.category)?.icon || '👤'}
+                                                    </span>
+                                                )}
+                                            </div>
 
-                            <button
-                                onClick={onClose}
-                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl font-bold hover:opacity-90 transition"
-                            >
-                                Got it!
-                            </button>
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-gray-900 truncate">{provider.name}</p>
+                                                <p className="text-sm text-purple-600 font-medium">{provider.specialty}</p>
+                                                <p className="text-xs text-gray-400 mt-0.5">📍 {provider.location}</p>
+
+                                                {/* Action buttons */}
+                                                <div className="flex gap-2 mt-3">
+                                                    <a
+                                                        href={`tel:${provider.phone}`}
+                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition"
+                                                    >
+                                                        📞 Call
+                                                    </a>
+                                                    {provider.whatsapp && (
+                                                        <a
+                                                            href={`https://wa.me/${provider.whatsapp.replace(/\D/g, '')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-semibold transition"
+                                                        >
+                                                            💬 WhatsApp
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        // ── Non-subscriber: Persuasion screen ───────────────
                         <div className="p-6 space-y-5">
                             <div className="text-center space-y-2">
                                 <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-bold">
                                     🔒 Subscribers Only
                                 </div>
-                                <h4 className="text-xl font-bold text-gray-900">
-                                    A whole new world of professionals
-                                </h4>
+                                <h4 className="text-xl font-bold text-gray-900">A whole new world of professionals</h4>
                                 <p className="text-gray-500 text-sm leading-relaxed">
                                     Mount subscribers get exclusive access to a curated directory of verified professionals beyond home services — all personally vetted by our team.
                                 </p>
@@ -217,7 +286,6 @@ function ServiceProvidersPlusModal({ onClose, hasAccess, onSubscribe }) {
         </div>
     );
 }
-
 // ─── Leaderboard Modal ───────────────────────────────────────────────────────
 function LeaderboardModal({ onClose, currentUserId, supabase, myRank, myTotalJobs, myName }) {
     const [leaders, setLeaders] = useState([]);
@@ -928,6 +996,7 @@ export default function CustomerProfile({ user, supabase, setViewWithHistory }) 
                     onClose={() => setShowServiceProvidersPlus(false)}
                     hasAccess={spPlusAccess}
                     onSubscribe={scrollToSubscription}
+                    supabase={supabase}
                 />
             )}
 
