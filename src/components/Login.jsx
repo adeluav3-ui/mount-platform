@@ -279,12 +279,12 @@ export default function Login() {
             } = companyFormData;
 
             // Step 1: Mark code as used FIRST
-            const { error: codeUpdateError } = await supabase
-                .from('verification_codes')
-                .update({ used: true })
-                .eq('code', enteredCode);
+            // Step 1: Atomically mark code as used (prevents race conditions)
+            const { data: codeValid, error: codeUpdateError } = await supabase
+                .rpc('use_verification_code', { input_code: enteredCode });
 
             if (codeUpdateError) throw codeUpdateError;
+            if (!codeValid) throw new Error('This verification code has already been used or is invalid.');
 
             // Step 2: Create auth user
             const { data: authData, error: authError } = await supabase.auth.signUp({
