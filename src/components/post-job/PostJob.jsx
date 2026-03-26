@@ -1,7 +1,7 @@
 // src/components/post-job/PostJob.jsx — FINAL & CATEGORIES SHOW 100%
 import React from 'react';
 import { useSupabase } from '../../context/SupabaseContext'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Step1Form from './Step1Form'
 import Step2Companies from './Step2Companies'
 import Step3Wait from './Step3Wait'
