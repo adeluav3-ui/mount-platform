@@ -150,7 +150,9 @@ export default function PostJob() {
                     handleDeletePhoto={handleDeletePhoto}
                     openCropper={openCropper}
                     supabase={supabase}
-                    services={services}  // NOW VISIBLE
+                    services={services}
+                    user={user}
+                    setHasPriorityMatching={setHasPriorityMatching}
                 />
             )}
 

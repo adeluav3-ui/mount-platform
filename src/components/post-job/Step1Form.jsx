@@ -21,7 +21,9 @@ export default function Step1Form({
     handleDeletePhoto,
     openCropper,
     supabase,
-    services = {}
+    services = {},
+    user,                     // ← add this
+    setHasPriorityMatching
 }) {
     // Clean up object URLs to prevent memory leaks
     useEffect(() => {
