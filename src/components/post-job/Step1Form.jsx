@@ -138,6 +138,7 @@ export default function Step1Form({
         total_reviews,
         approved,
         company_policies,
+        priority_score,
         created_at,
         updated_at
     `)
@@ -228,7 +229,29 @@ export default function Step1Form({
             return
         }
 
-        setCompanies(matches)
+        // Check if customer has an active Standard or Premium subscription
+        const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('plan')
+            .eq('customer_id', user.id)
+            .eq('status', 'active')
+            .maybeSingle();
+
+        const hasPriorityMatching = ['standard', 'premium'].includes(subscription?.plan);
+
+        // Sort matches based on subscription tier
+        const sortedMatches = [...matches].sort((a, b) => {
+            if (hasPriorityMatching) {
+                // Standard/Premium: sort by priority_score descending
+                return (b.priority_score || 0) - (a.priority_score || 0);
+            } else {
+                // Free/Basic: sort by created_at ascending (oldest first — no advantage)
+                return new Date(a.created_at) - new Date(b.created_at);
+            }
+        });
+        setHasPriorityMatching(hasPriorityMatching);
+
+        setCompanies(sortedMatches)
         setStep(2)
     }
 

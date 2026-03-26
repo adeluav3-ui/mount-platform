@@ -92,6 +92,7 @@ export default function PostJob() {
     const [step, setStep] = useState(1)
     const [selectedCompany, setSelectedCompany] = useState(null)
     const [tempSelectedCompany, setTempSelectedCompany] = useState(null)
+    const [hasPriorityMatching, setHasPriorityMatching] = useState(false);
 
     // LOADER STATES
     const [showLoader, setShowLoader] = useState(false)
@@ -166,6 +167,7 @@ export default function PostJob() {
                     setLoaderCompanyName={setLoaderCompanyName}
                     setTempSelectedCompany={setTempSelectedCompany}
                     services={services}
+                    hasPriorityMatching={hasPriorityMatching}
                 />
             )}
 

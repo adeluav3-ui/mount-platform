@@ -573,7 +573,15 @@ export default function Step2Companies({
                 </svg>
                 Back to Job Details
             </button>
-
+            {hasPriorityMatching && (
+                <div className="bg-gradient-to-r from-naijaGreen/10 to-green-50 border border-naijaGreen/20 rounded-xl px-4 py-3 flex items-center gap-3 mb-2">
+                    <span className="text-xl">🌟</span>
+                    <div>
+                        <p className="text-sm font-bold text-naijaGreen">Priority Matching Active</p>
+                        <p className="text-xs text-gray-600">Top-rated providers are shown first based on your plan</p>
+                    </div>
+                </div>
+            )}
             <h2 className="text-xl font-bold text-center mb-8">Choose a Company</h2>
 
 
